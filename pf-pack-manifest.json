@@ -1,0 +1,25 @@
+{
+  "pack": "prospectforge-base",
+  "manifestVersion": 1,
+  "updatedAt": "2026-07-13",
+  "skills": [
+    {
+      "skill": "transcript-processor",
+      "version": "1.0.0",
+      "changelog": "Initial pack release (preset parity + Prompts Discussed section).",
+      "promptUrl": null
+    },
+    {
+      "skill": "ferryman",
+      "version": "1.0.0",
+      "changelog": "Initial pack release (STATUS/PULL modes, personal-token own-data sync).",
+      "promptUrl": null
+    },
+    {
+      "skill": "update",
+      "version": "1.0.0",
+      "changelog": "Initial release of the updater itself.",
+      "promptUrl": null
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+One markdown file per published update prompt: `{skill}-{version}.md`. Each tells a user's agent what to change in the named skill and why. Keep them surgical — the applying agent merges, it does not replace files.

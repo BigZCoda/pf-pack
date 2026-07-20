@@ -1,13 +1,13 @@
 {
   "pack": "prospectforge-base",
   "manifestVersion": 1,
-  "updatedAt": "2026-07-13",
+  "updatedAt": "2026-07-20",
   "skills": [
     {
       "skill": "transcript-processor",
-      "version": "1.0.0",
-      "changelog": "Initial pack release (preset parity + Prompts Discussed section).",
-      "promptUrl": null
+      "version": "1.0.1",
+      "changelog": "Due-field rules for Action Items lines (fixes silent whole-batch action-item loss on app push).",
+      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/transcript-processor-1.0.1.md"
     },
     {
       "skill": "ferryman",

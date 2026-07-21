@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "contract": "people/readme.md (base facets only -- mentee brains ship no facet packs)",
+  "contract_date": "2026-07-20",
+  "categories": ["mentee", "mentee-prospect", "mentor", "team", "advisor", "partner", "contact", "family"],
+  "base_facets": {
+    "name": "full display name",
+    "category": "one of categories",
+    "status": "one-line current state (condensed from the card's status strip)",
+    "orgs": "organizations they belong to / run",
+    "location": "where they are",
+    "skills": "kebab-case skill tags, evidence lives in prose",
+    "contexts": "how/where you know them (kebab-case: pf-cohort-1, referral source...)",
+    "first-met": "YYYY-MM-DD of earliest known interaction",
+    "last-fold": "YYYY-MM-DD of newest dated entry on the card",
+    "links": "sibling holons: profile, transcripts"
+  },
+  "packs": {},
+  "rules": {
+    "unregistered_fields": "verifier flags any frontmatter key not listed here (schema drift protection)",
+    "fill": "facet-fill harvests existing card prose first, transcripts only when thin; never fabricate -- omit unknowns",
+    "maintenance": "every people-fold (transcript-processor People fold) updates the touched card's facets in scope",
+    "enforcement": "frontmatter required only on cards touched after contract_date; legacy cards grow it opportunistically",
+    "app_boundary": "people cards NEVER push to the app -- brain-side only; card-sharing arrives later as an opt-in app feature"
+  }
+}

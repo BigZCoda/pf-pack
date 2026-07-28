@@ -1,31 +1,71 @@
 {
   "pack": "prospectforge-base",
-  "manifestVersion": 1,
-  "updatedAt": "2026-07-20",
+  "manifestVersion": 2,
+  "updatedAt": "2026-07-28",
+  "manifestChangelog": "v2 (2026-07-28): per-skill files[] mappings (src in this repo -> dest in a brain) so the assembler can build a new brain straight from the registry; shell component versioned; update-skill + ferryman-adapter-contract now bundled. All v1 fields unchanged — /update keeps working.",
+  "shell": {
+    "component": "brain-shell",
+    "version": "0.1",
+    "changelog": "Structure default (folder skeleton + per-folder readmes + SETUP/SHELL/WHAT-YOU-GET + CLAUDE.md with {{INHABITANT}} placeholders). Cast 2026-07-09.",
+    "source": "local:C:/Users/zakko/Documents/BrainDump/brain-shell",
+    "sourceUrl": null,
+    "note": "Assembler clones this, then installs the skills below. Versioned here so structure updates can propagate like skill updates. Phase 2: host the shell + serve via GET /api/v1/pack."
+  },
   "skills": [
     {
       "skill": "transcript-processor",
       "version": "1.2.0",
+      "installedAs": "1.2.0-mentee",
       "changelog": "People fold (mandatory: dated folds + facet maintenance + create-on-recurrence, cards never push to the app) + corrected push facts (upsert-by-id works; Action Items land Pending Review by design).",
-      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/transcript-processor-1.2.0.md"
+      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/transcript-processor-1.2.0.md",
+      "blurb": "processes your meeting/mentor-call transcripts into app-matching summaries + action items (preset parity); answers questions about transcripts; surfaces prompts discussed in calls; runs the mandatory People fold into `people/` cards after every transcript.",
+      "specPath": "skills/transcript-processor/transcript-processor-skill.md",
+      "files": [
+        {"src": "files/transcript-processor-1.2.0/transcript-processor-skill.md", "dest": "skills/transcript-processor/transcript-processor-skill.md"}
+      ]
     },
     {
       "skill": "ferryman",
       "version": "1.1.0",
+      "installedAs": "1.1.0",
       "changelog": "Settled pipeline: push.py --push-summary (due-hygiene in code), pipeline-verify.py, intake reports -> transcripts/import-reports/, ferryman-rules.md ships, upsert-by-id, genericized (your token, your folders).",
-      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/ferryman-1.1.0.md"
+      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/ferryman-1.1.0.md",
+      "blurb": "sync between your PF App account (your own personal token) and your local app mirror. PULL/STATUS via `pull.py`; PUSH is LIVE via `push.py --push-summary` (validate-first, upsert-by-id); `pipeline-verify.py` checks the invariants. Intake procedure: [[skills/ferryman/transcript-intake-runbook.md]].",
+      "specPath": "skills/ferryman/ferryman-skill.md",
+      "files": [
+        {"src": "files/ferryman-1.1.0/ferryman-skill.md", "dest": "skills/ferryman/ferryman-skill.md"},
+        {"src": "files/ferryman-1.1.0/pull.py", "dest": "skills/ferryman/pull.py"},
+        {"src": "files/ferryman-1.1.0/push.py", "dest": "skills/ferryman/push.py"},
+        {"src": "files/ferryman-1.1.0/pipeline-verify.py", "dest": "skills/ferryman/pipeline-verify.py"},
+        {"src": "files/ferryman-1.1.0/transcript-intake-runbook.md", "dest": "skills/ferryman/transcript-intake-runbook.md"},
+        {"src": "files/ferryman-1.1.0/ferryman-adapter-contract.md", "dest": "skills/ferryman/ferryman-adapter-contract.md"},
+        {"src": "files/ferryman-1.1.0/ferryman-rules.md", "dest": "pf-app-holon/ferryman-rules.md"}
+      ]
     },
     {
       "skill": "people-adapter",
       "version": "1.0.0",
+      "installedAs": "1.0.0",
       "changelog": "NEW component: people cards as facets/prose/folds with a machine adapter (list / get-with-strip-tier / verify) + base facet registry. Cards never push to the app.",
-      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/people-adapter-1.0.0.md"
+      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/people-adapter-1.0.0.md",
+      "blurb": "the machine door to `people/` cards — `people.py --list` (frontmatter facets), `--get <slug>` (shareable/full tiers, [private] always stripped), `--verify` (schema + fold checks against `people/facets.json`). People cards NEVER push to the app — brain-side only.",
+      "specPath": "skills/people-adapter/people.py",
+      "files": [
+        {"src": "files/people-adapter-1.0.0/people.py", "dest": "skills/people-adapter/people.py"},
+        {"src": "files/people-adapter-1.0.0/facets.json", "dest": "people/facets.json"}
+      ]
     },
     {
       "skill": "update",
       "version": "1.0.0",
+      "installedAs": "1.0.0",
       "changelog": "Initial release of the updater itself.",
-      "promptUrl": null
+      "promptUrl": null,
+      "blurb": "checks the pf-pack manifest for newer skill versions and applies update prompts on your yes.",
+      "specPath": "skills/update/update-skill.md",
+      "files": [
+        {"src": "files/update-1.0.0/update-skill.md", "dest": "skills/update/update-skill.md"}
+      ]
     }
   ]
 }

@@ -1,12 +1,12 @@
 {
   "pack": "prospectforge-base",
   "manifestVersion": 2,
-  "updatedAt": "2026-07-28",
-  "manifestChangelog": "v2 (2026-07-28): per-skill files[] mappings (src in this repo -> dest in a brain) so the assembler can build a new brain straight from the registry; shell component versioned; update-skill + ferryman-adapter-contract now bundled. All v1 fields unchanged — /update keeps working.",
+  "updatedAt": "2026-08-28",
+  "manifestChangelog": "2026-08-28 release: ferryman 1.2.0 (PATCH correction path, API catalog, owner rules, Topics trap, participants gap documented), transcript-processor 1.2.1 (owner rules + corrected push facts + verbatim check), people-adapter 1.0.1 (career-arc facet), shell v0.2 (standing reminders folded into current-focus, dispatcher-cursor dropped, Ferret reference removed). v2 (2026-07-28): per-skill files[] mappings (src in this repo -> dest in a brain) so the assembler can build a new brain straight from the registry; shell component versioned; update-skill + ferryman-adapter-contract now bundled. All v1 fields unchanged — /update keeps working.",
   "shell": {
     "component": "brain-shell",
-    "version": "0.1",
-    "changelog": "Structure default (folder skeleton + per-folder readmes + SETUP/SHELL/WHAT-YOU-GET + CLAUDE.md with {{INHABITANT}} placeholders). Cast 2026-07-09.",
+    "version": "0.2",
+    "changelog": "v0.2 (2026-08-28): standing reminders live in the 📌 section of context/current-focus.md (standing-reminders.md dropped); dispatcher-cursor.md dropped (a dispatcher install creates its own); Ferret removed from the sync-adapter list; 4-state-file pattern documented in context/readme.md. v0.1: structure default (folder skeleton + per-folder readmes + SETUP/SHELL/WHAT-YOU-GET + CLAUDE.md with {{INHABITANT}} placeholders), cast 2026-07-09.",
     "source": "local:C:/Users/zakko/Documents/BrainDump/brain-shell",
     "sourceUrl": null,
     "note": "Assembler clones this, then installs the skills below. Versioned here so structure updates can propagate like skill updates. Phase 2: host the shell + serve via GET /api/v1/pack."
@@ -14,45 +14,45 @@
   "skills": [
     {
       "skill": "transcript-processor",
-      "version": "1.2.0",
-      "installedAs": "1.2.0-mentee",
-      "changelog": "People fold (mandatory: dated folds + facet maintenance + create-on-recurrence, cards never push to the app) + corrected push facts (upsert-by-id works; Action Items land Pending Review by design).",
-      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/transcript-processor-1.2.0.md",
+      "version": "1.2.1",
+      "installedAs": "1.2.1-mentee",
+      "changelog": "Closed-pool OWNER RULES (presets fixed app-side 2026-08-25 — no more parity exception) + corrected token capabilities (PATCH fixes metadata; delete doesn't exist) + Pending-Review-on-the-record wording + Topics bullet-format trap + verbatim-vs-notes export check.",
+      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/transcript-processor-1.2.1.md",
       "blurb": "processes your meeting/mentor-call transcripts into app-matching summaries + action items (preset parity); answers questions about transcripts; surfaces prompts discussed in calls; runs the mandatory People fold into `people/` cards after every transcript.",
       "specPath": "skills/transcript-processor/transcript-processor-skill.md",
       "files": [
-        {"src": "files/transcript-processor-1.2.0/transcript-processor-skill.md", "dest": "skills/transcript-processor/transcript-processor-skill.md"}
+        {"src": "files/transcript-processor-1.2.1/transcript-processor-skill.md", "dest": "skills/transcript-processor/transcript-processor-skill.md"}
       ]
     },
     {
       "skill": "ferryman",
-      "version": "1.1.0",
-      "installedAs": "1.1.0",
-      "changelog": "Settled pipeline: push.py --push-summary (due-hygiene in code), pipeline-verify.py, intake reports -> transcripts/import-reports/, ferryman-rules.md ships, upsert-by-id, genericized (your token, your folders).",
-      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/ferryman-1.1.0.md",
+      "version": "1.2.0",
+      "installedAs": "1.2.0",
+      "changelog": "PATCH /transcripts/:id metadata-correction path; pull.py refreshes the app's self-describing API catalog (_fetchedAt-stamped); closed-pool owner rules; Topics bullet-format trap; folder table = cache; participants[] documented as a known open gap (push.py sends none yet).",
+      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/ferryman-1.2.0.md",
       "blurb": "sync between your PF App account (your own personal token) and your local app mirror. PULL/STATUS via `pull.py`; PUSH is LIVE via `push.py --push-summary` (validate-first, upsert-by-id); `pipeline-verify.py` checks the invariants. Intake procedure: [[skills/ferryman/transcript-intake-runbook.md]].",
       "specPath": "skills/ferryman/ferryman-skill.md",
       "files": [
-        {"src": "files/ferryman-1.1.0/ferryman-skill.md", "dest": "skills/ferryman/ferryman-skill.md"},
-        {"src": "files/ferryman-1.1.0/pull.py", "dest": "skills/ferryman/pull.py"},
-        {"src": "files/ferryman-1.1.0/push.py", "dest": "skills/ferryman/push.py"},
-        {"src": "files/ferryman-1.1.0/pipeline-verify.py", "dest": "skills/ferryman/pipeline-verify.py"},
-        {"src": "files/ferryman-1.1.0/transcript-intake-runbook.md", "dest": "skills/ferryman/transcript-intake-runbook.md"},
-        {"src": "files/ferryman-1.1.0/ferryman-adapter-contract.md", "dest": "skills/ferryman/ferryman-adapter-contract.md"},
-        {"src": "files/ferryman-1.1.0/ferryman-rules.md", "dest": "pf-app-holon/ferryman-rules.md"}
+        {"src": "files/ferryman-1.2.0/ferryman-skill.md", "dest": "skills/ferryman/ferryman-skill.md"},
+        {"src": "files/ferryman-1.2.0/pull.py", "dest": "skills/ferryman/pull.py"},
+        {"src": "files/ferryman-1.2.0/push.py", "dest": "skills/ferryman/push.py"},
+        {"src": "files/ferryman-1.2.0/pipeline-verify.py", "dest": "skills/ferryman/pipeline-verify.py"},
+        {"src": "files/ferryman-1.2.0/transcript-intake-runbook.md", "dest": "skills/ferryman/transcript-intake-runbook.md"},
+        {"src": "files/ferryman-1.2.0/ferryman-adapter-contract.md", "dest": "skills/ferryman/ferryman-adapter-contract.md"},
+        {"src": "files/ferryman-1.2.0/ferryman-rules.md", "dest": "pf-app-holon/ferryman-rules.md"}
       ]
     },
     {
       "skill": "people-adapter",
-      "version": "1.0.0",
-      "installedAs": "1.0.0",
-      "changelog": "NEW component: people cards as facets/prose/folds with a machine adapter (list / get-with-strip-tier / verify) + base facet registry. Cards never push to the app.",
-      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/people-adapter-1.0.0.md",
+      "version": "1.0.1",
+      "installedAs": "1.0.1",
+      "changelog": "Facet registry v2: career-arc joins the base facets (optional, senior/partner/mentor cards mainly). people.py unchanged.",
+      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/people-adapter-1.0.1.md",
       "blurb": "the machine door to `people/` cards — `people.py --list` (frontmatter facets), `--get <slug>` (shareable/full tiers, [private] always stripped), `--verify` (schema + fold checks against `people/facets.json`). People cards NEVER push to the app — brain-side only.",
       "specPath": "skills/people-adapter/people.py",
       "files": [
-        {"src": "files/people-adapter-1.0.0/people.py", "dest": "skills/people-adapter/people.py"},
-        {"src": "files/people-adapter-1.0.0/facets.json", "dest": "people/facets.json"}
+        {"src": "files/people-adapter-1.0.1/people.py", "dest": "skills/people-adapter/people.py"},
+        {"src": "files/people-adapter-1.0.1/facets.json", "dest": "people/facets.json"}
       ]
     },
     {

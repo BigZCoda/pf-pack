@@ -7,7 +7,7 @@
     "component": "brain-shell",
     "version": "0.2",
     "changelog": "v0.2 (2026-08-28): standing reminders live in the 📌 section of context/current-focus.md (standing-reminders.md dropped); dispatcher-cursor.md dropped (a dispatcher install creates its own); Ferret removed from the sync-adapter list; 4-state-file pattern documented in context/readme.md. v0.1: structure default (folder skeleton + per-folder readmes + SETUP/SHELL/WHAT-YOU-GET + CLAUDE.md with {{INHABITANT}} placeholders), cast 2026-07-09.",
-    "source": "local:C:/Users/zakko/Documents/BrainDump/brain-shell",
+    "source": "local:brain-shell (resolved by assemble-brain.py on the maintainer machine; informational only)",
     "sourceUrl": null,
     "note": "Assembler clones this, then installs the skills below. Versioned here so structure updates can propagate like skill updates. Phase 2: host the shell + serve via GET /api/v1/pack."
   },

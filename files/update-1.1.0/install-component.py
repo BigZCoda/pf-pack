@@ -166,7 +166,12 @@ def main(argv=None):
         for f in files:
             data = fetch(f["src"], a.pack)
             if f.get("sha256") and hashlib.sha256(data).hexdigest() != f["sha256"]:
-                raise RuntimeError("checksum mismatch on %s" % f["src"])
+                # a local pack checkout on Windows may hold a text file with CRLF endings where the repository (and the
+                # checksum) has LF; the LF bytes are what was released
+                lf = data.replace(b"\r\n", b"\n")
+                if b"\0" in data or hashlib.sha256(lf).hexdigest() != f["sha256"]:
+                    raise RuntimeError("checksum mismatch on %s" % f["src"])
+                data = lf
             dest = os.path.join(stage, f["dest"][len(root_rel) + 1:].replace("/", os.sep))
             os.makedirs(os.path.dirname(dest), exist_ok=True)
             with open(dest, "wb") as out:

@@ -110,6 +110,15 @@ def keep_before_replace(brain, old_root, rules):
     return wrote
 
 
+def maintainer_brain(brain, manifest):
+    """The brain the components are released FROM carries release.py in one of their install roots."""
+    for s in manifest.get("skills", []):
+        root = str(s.get("installRoot") or "").strip("/")
+        if root and s.get("update") == "replace-folder" and os.path.isfile(os.path.join(brain, root.replace("/", os.sep), "release.py")):
+            return root
+    return None
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="install or update one replace-folder component from the pf-pack manifest")
     ap.add_argument("component")
@@ -118,6 +127,7 @@ def main(argv=None):
     ap.add_argument("--check", action="store_true", help="report installed and published versions, change nothing")
     ap.add_argument("--dry-run", action="store_true", help="list what would be written, change nothing")
     ap.add_argument("--force", action="store_true", help="replace even a maintainer copy, or reinstall the same version")
+    ap.add_argument("--as-requirement", action="store_true", help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
     brain = brain_root(a.brain)
 
@@ -136,14 +146,27 @@ def main(argv=None):
     root_rel = entry["installRoot"].strip("/")
     root = os.path.join(brain, root_rel.replace("/", os.sep))
     have, want = installed_version(root), entry.get("version")
+    if a.as_requirement and not have and os.path.isdir(root) and os.listdir(root):
+        # a tool this brain already carries by another road (a team copy's export ships its own): left as it is
+        print("%s: %s/ is already here and not managed by the pack; left as it is" % (a.component, root_rel))
+        return 0
     if a.check:
         state = "not installed" if not have else ("current" if vkey(have) >= vkey(want) else "update available")
         print("%s: installed %s, published %s (%s)" % (a.component, have or "none", want, state))
+        for req in entry.get("requires") or []:
+            main([req, "--check", "--as-requirement", "--brain", brain] + (["--pack", a.pack] if a.pack else []))
         return 0
-    if os.path.isfile(os.path.join(root, "release.py")) and not a.force:
-        print("%s holds release.py: this is the maintainer copy the component is released FROM, so it is never replaced "
-              "here (--force overrides)" % root_rel)
+    mroot = maintainer_brain(brain, manifest)
+    if mroot and not a.force:
+        print("%s holds release.py: this is the maintainer brain the components are released FROM, so nothing is "
+              "replaced here (--force overrides)" % mroot)
         return 2
+    for req in entry.get("requires") or []:          # what this component imports and runs, installed first
+        sub = [req, "--brain", brain, "--as-requirement"] + (["--pack", a.pack] if a.pack else []) + (["--dry-run"] if a.dry_run else [])
+        code = main(sub)
+        if code not in (0,):
+            print("%s needs %s, which did not install; %s was not changed." % (a.component, req, a.component))
+            return code
     if have and vkey(have) >= vkey(want) and not a.force:
         print("%s %s is installed and current." % (a.component, have))
         return 0

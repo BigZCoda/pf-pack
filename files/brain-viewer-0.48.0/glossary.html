@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glossary</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { min-height: 100vh; }
+  header.bar { flex-wrap: wrap; height: auto; padding: 8px 14px; gap: 10px; row-gap: 6px; }
+  header.bar input[type=search] { min-width: 140px; flex: 1; }
+  main { padding: 14px 14px 60px; max-width: 900px; margin: 0 auto; }
+  .card { padding: 12px 14px 14px; margin: 0 0 12px; }
+  details.sec > summary { cursor: pointer; list-style: none; display: flex; gap: 9px; align-items: baseline; flex-wrap: wrap; }
+  details.sec > summary::-webkit-details-marker { display: none; }
+  details.sec > summary::before { content: "▸"; font-size: 11px; color: var(--muted); }
+  details.sec[open] > summary::before { content: "▾"; }
+  details.sec > summary h2 { margin: 0; font-size: 19px; font-family: var(--font-display); font-weight: 400; }
+  details.sec > summary .meta { font-size: 12px; }
+  .gnote { color: var(--ink-soft); font-size: 13px; margin: 6px 0 2px; }
+  /* a term: the picture beside the word (Zak, 9/09: "examples of what the different components are next to it") */
+  .term { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-top: 1px solid var(--rule-soft); }
+  .term:first-of-type { border-top: 0; }
+  .term.hit { background: var(--hover); }
+  .term .gy { padding-top: 2px; }
+  .term h3 { margin: 0; font-size: 15.5px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .term h3 .meta { font-size: 11.5px; }
+  .term p { margin: 3px 0 0; }
+  .term .ex { font-size: 13px; color: var(--ink-soft); }
+  .term .an { font-size: 12.5px; color: var(--muted); }
+  .term .kicker { margin-right: 6px; }
+  table.keys { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.keys td { padding: 5px 8px 5px 0; border-top: 1px solid var(--rule-soft); vertical-align: top; }
+  table.keys td:first-child { width: 92px; white-space: nowrap; }
+  table.keys kbd { border: 1px solid var(--rule-soft); border-bottom-width: 2px; border-radius: 3px; padding: 0 5px; background: var(--code); font-size: 12px; }
+  /* the how-it-fits picture: one drawing whose labels are the words themselves */
+  svg.fits { display: block; width: 100%; height: auto; max-height: 46vh; margin: 4px 0 0; }
+  svg.fits text { font-family: var(--font-ui); font-size: 12px; fill: var(--ink); }
+  svg.fits text.lbl { fill: var(--ink-soft); }
+  svg.fits text.small { font-size: 10.5px; fill: var(--muted); }
+  svg .gl { border: 0; text-decoration: underline dotted var(--rule); text-underline-offset: 3px; cursor: help; }
+  svg .gl:hover { fill: var(--accent); }
+  aside.drawer { position: fixed; }
+  @media (max-width: 700px) { nav.panels { display: none; } main { padding: 10px 10px 60px; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Glossary</h1>
+  <input type="search" id="q" placeholder="search a word…" autocomplete="off">
+  <span class="spacer"></span>
+  <nav class="panels" data-page="glossary"></nav>
+</header>
+<main>
+  <details class="card sec" id="fits" open>
+    <summary><h2>How it fits</h2><span class="meta">every label is a word in here; hover one</span></summary>
+    <!-- One drawing: a cell holding parts, a line leaving through a port to the next cell, and the brain reading the
+         same drawing back underneath. Drawn with the tokens, no library. The labels carry data-gl, so the shared hover
+         card answers them exactly as it answers an underlined word anywhere else in the app. -->
+    <svg class="fits" viewBox="0 0 560 364" role="img" aria-label="a cell holding parts, its output on the outside of its wall with a package ready to ship and a store kept at the wall, a line to a second cell, and the brain reading both back">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--rule)"></path>
+        </marker>
+      </defs>
+      <!-- cell A: the ring, its people-facing band in gold on the outside, what runs inside -->
+      <circle cx="150" cy="140" r="86" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"></circle>
+      <path d="M 74 99 A 86 86 0 0 1 144 54" fill="none" stroke="var(--open)" stroke-width="8" stroke-linecap="round"></path>
+      <path d="M 158 55 A 86 86 0 0 1 218 92" fill="none" stroke="var(--open)" stroke-width="8" stroke-linecap="round"></path>
+      <text class="lbl gl" data-gl="cell" x="150" y="40" text-anchor="middle">cell</text>
+      <text class="lbl gl" data-gl="screen" x="150" y="84" text-anchor="middle">screen</text>
+      <circle cx="118" cy="120" r="10" fill="#8a72d6" stroke="var(--rule)" stroke-width="1"></circle>
+      <text class="lbl gl" data-gl="agent" x="118" y="146" text-anchor="middle">agent</text>
+      <rect x="160" y="110" width="22" height="22" rx="2" fill="var(--surface)" stroke="var(--ink-soft)" stroke-width="1.4"></rect>
+      <text class="lbl gl" data-gl="part" x="171" y="148" text-anchor="middle">part</text>
+      <rect x="128" y="162" width="44" height="18" rx="2" fill="var(--done-tint)" stroke="var(--done)" stroke-width="1.4"></rect>
+      <text class="lbl gl" data-gl="store" x="150" y="196" text-anchor="middle">store</text>
+      <!-- the output: one section of the shell, on the OUTSIDE of the wall, in its own color. What the cell makes leaves
+           here, so the line to the next cell starts at it; a package ready to ship waits on the ring just beyond it, and
+           a store dragged against the wall is kept there as a blob. -->
+      <path d="M 232.2 103.4 A 90 90 0 0 1 232.2 176.6" fill="none" stroke="var(--mouth)" stroke-width="8" stroke-linecap="butt"></path>
+      <text class="lbl gl" data-gl="output" x="236" y="199">output</text>
+      <rect x="246" y="99" width="38" height="13" rx="2" fill="var(--mouth-tint)" stroke="var(--mouth)" stroke-width="1.3"></rect>
+      <text class="lbl gl" data-gl="package" x="265" y="92" text-anchor="middle">package</text>
+      <circle cx="68" cy="197" r="14" fill="var(--done-tint)" stroke="var(--done)" stroke-width="1.5"></circle>
+      <text class="lbl gl" data-gl="store" x="30" y="226">store at the wall</text>
+      <!-- the port stays a port, on a rim with nothing else on it; the line out, the bubble in flight along it -->
+      <circle cx="64" cy="140" r="7" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"></circle>
+      <path d="M 244 140 L 342 140" stroke="var(--rule)" stroke-width="1.5" marker-end="url(#ah)"></path>
+      <circle cx="292" cy="140" r="5.5" fill="var(--open)"></circle>
+      <text class="lbl gl" data-gl="port" x="46" y="136" text-anchor="end">port</text>
+      <text class="lbl gl" data-gl="line" x="296" y="124" text-anchor="middle">line</text>
+      <text class="lbl gl" data-gl="bubble" x="296" y="166" text-anchor="middle">bubble</text>
+      <!-- cell B: the same thing, stored -->
+      <circle cx="428" cy="140" r="64" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"></circle>
+      <path d="M 372 108 A 64 64 0 0 1 428 76" fill="none" stroke="var(--open)" stroke-width="7" stroke-linecap="round"></path>
+      <circle cx="428" cy="140" r="34" fill="none" stroke="var(--rule-soft)" stroke-width="1.2"></circle>
+      <circle cx="428" cy="140" r="13" fill="none" stroke="var(--rule-soft)" stroke-width="1.2"></circle>
+      <text class="lbl gl" data-gl="holon" x="428" y="62" text-anchor="middle">holon</text>
+      <!-- the read-back: the same drawing lit by what actually happened -->
+      <path d="M 150 232 L 150 281 L 214 281" stroke="var(--rule-soft)" stroke-width="1.4" stroke-dasharray="4 4" fill="none"></path>
+      <path d="M 428 210 L 428 281 L 366 281" stroke="var(--rule-soft)" stroke-width="1.4" stroke-dasharray="4 4" fill="none"></path>
+      <rect x="214" y="262" width="152" height="40" rx="3" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.2"></rect>
+      <text x="290" y="279" text-anchor="middle" class="small">the brain reads it back</text>
+      <text x="290" y="295" text-anchor="middle" class="lbl"><tspan class="gl" data-gl="log">log</tspan><tspan> · </tspan><tspan class="gl" data-gl="ledger">ledger</tspan><tspan> · </tspan><tspan class="gl" data-gl="runtime">runtime</tspan></text>
+      <text class="small" x="280" y="322" text-anchor="middle">a cell drawn, a holon stored, one line between them; three layers over the same drawing</text>
+      <!-- the zoomed-out grammar: what you can read off a drawing without opening anything (2026-09-10) -->
+      <text class="small" x="280" y="336" text-anchor="middle" font-size="8.6">a line into the band enters through the UI · into the core, by API or agent</text>
+      <text class="small" x="280" y="347" text-anchor="middle" font-size="8.6">out of the mouth, a product leaving · a blob at the wall, where things are kept</text>
+      <text class="small" x="280" y="358" text-anchor="middle" font-size="8.6">a tile on the outer ring, what is packed to ship</text>
+    </svg>
+  </details>
+  <div id="groups"></div>
+  <div id="keys"></div>
+</main>
+<aside class="drawer" id="drawer" hidden></aside>
+<script src="/static/viewer-common.js"></script>
+<script>
+const { esc, inline, md, isImage, lightbox } = BV;
+const $ = s => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+const FROM = (params.get("from") || "").toLowerCase();
+let DATA = null;
+
+// The picture beside the word: the shared glyph table in viewer-common.js (the Forge draws the same glyphs on its tiles).
+const { GLYPH, BY_TERM, BY_GROUP } = BV.glyph;
+const glyphFor = t => (GLYPH[BY_TERM[t.anchor]] || GLYPH[BY_GROUP[(t.group || "").toLowerCase()]] || GLYPH.dot)();
+
+// which group opens for the page the "?" was pressed on (the filtering rule: everything else stays folded)
+const opensFor = g => FROM && (g.pages || []).includes(FROM);
+
+function render() {
+  const box = $("#groups");
+  if (!DATA.available) {
+    box.innerHTML = `<div class="note">${esc(DATA.note || "no glossary here")} Ask Zak for the words you need, or read them in the main brain's viewer.</div>`;
+    return;
+  }
+  const groups = DATA.groups.filter(g => g.terms.length);
+  const anyFrom = groups.some(opensFor);
+  box.innerHTML = groups.map((g, i) => `
+    <details class="card sec" data-group="${esc(g.anchor)}"${opensFor(g) || (!anyFrom && i === 0) ? " open" : ""}>
+      <summary><h2>${esc(g.name)}</h2><span class="meta">${g.terms.length} word${g.terms.length === 1 ? "" : "s"}${(g.pages || []).length ? " · " + esc(g.pages.join(", ")) : ""}</span></summary>
+      ${g.note ? `<p class="gnote">${inline(g.note)}</p>` : ""}
+      ${g.terms.map(t => `<div class="term" id="term-${esc(t.anchor)}">
+        <div class="gy">${glyphFor(t)}</div>
+        <div class="tx">
+          <h3>${esc(t.term)}${(t.aliases || []).length ? `<span class="meta">also: ${esc(t.aliases.join(", "))}</span>` : ""}${t.hover ? "" : `<span class="meta" title="an everyday word: it keeps its entry here, but it is not underlined in running prose">reference</span>`}</h3>
+          <p class="def">${inline(t.definition)}</p>
+          ${t.example ? `<p class="ex"><span class="kicker">example</span>${inline(t.example)}</p>` : ""}
+          ${t.analog ? `<p class="an"><span class="kicker">septabee</span>${inline(t.analog)}</p>` : ""}
+        </div></div>`).join("")}
+    </details>`).join("");
+  const k = DATA.keys || [];
+  $("#keys").innerHTML = k.length ? `<details class="card sec" id="keysec"${FROM ? "" : " open"}>
+    <summary><h2>Keys</h2><span class="meta">${k.length} keys · nothing is hidden</span></summary>
+    <table class="keys">${k.map(x => `<tr><td><kbd>${esc(x.key)}</kbd></td><td>${esc(x.what)}<span class="meta"> ${esc((x.pages || []).join(", "))}</span></td></tr>`).join("")}</table></details>` : "";
+  $("#crumb") && ($("#crumb").textContent = "");
+  jump();
+}
+
+// search: matches the word, its aliases and its definition; opens the groups that hold a hit and marks them
+function search(term) {
+  const q = term.trim().toLowerCase();
+  for (const d of document.querySelectorAll("#groups details.sec")) {
+    let hits = 0;
+    for (const el of d.querySelectorAll(".term")) {
+      const on = !q || el.textContent.toLowerCase().includes(q);
+      el.hidden = !on; el.classList.toggle("hit", !!q && on); if (on) hits++;
+    }
+    d.hidden = !!q && !hits;
+    if (q) d.open = hits > 0;
+  }
+  const f = $("#fits"); if (f) f.open = !q;
+}
+
+function jump() {
+  const a = (location.hash || "").replace(/^#/, ""); if (!a) return;
+  const el = document.getElementById(a); if (!el) return;
+  const d = el.closest("details"); if (d) d.open = true;
+  el.scrollIntoView({ block: "center" }); el.classList.add("hit");
+  setTimeout(() => el.classList.remove("hit"), 2500);
+}
+
+// the read drawer: an example that names a file opens it here rather than sending Zak to look on disk
+async function openFile(path) {
+  const d = $("#drawer"); d.hidden = false;
+  d.innerHTML = `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(path)}</code></div>`;
+  if (!path.includes("/")) { const r = await fetch(`/api/resolve?name=${encodeURIComponent(path)}`); const j = await r.json(); if (j.path) path = j.path; else { d.innerHTML += `<div class="empty">${esc(j.error || "could not resolve " + path)}</div>`; return; } }
+  if (isImage(path)) { d.hidden = true; lightbox(path); return; }
+  const r = await fetch(`/api/file?path=${encodeURIComponent(path)}`); const j = await r.json();
+  const body = j.error ? `<div class="empty">${esc(j.error)}</div>`
+    : path.endsWith(".json") ? `<pre>${esc((() => { try { return JSON.stringify(JSON.parse(j.text), null, 1); } catch (e) { return j.text; } })())}</pre>`
+    : `<article class="md">${md(j.text, { base: path.split("/").slice(0, -1).join("/") })}</article>`;
+  d.innerHTML = `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(path)}</code>${BV.readerLink(path)}${j.mtime ? `<span class="meta">touched ${esc(j.mtime.slice(0, 10))}</span>` : ""}</div>${body}`;
+  d.scrollTop = 0;
+}
+
+document.addEventListener("click", e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  const w = e.target.closest("a.wikilink");
+  if (w) { e.preventDefault(); const t = w.dataset.wikilink.split("#")[0].trim(); if (t.endsWith(".canvas")) window.open(`/canvases?open=${encodeURIComponent(t)}`, "_blank"); else openFile(t); return; }
+  const g = e.target.closest("svg .gl[data-gl]");   // a label on the picture jumps to its entry as well as showing the card
+  if (g) { location.hash = "term-" + g.dataset.gl; jump(); }
+});
+document.addEventListener("keydown", e => {
+  if (BV.typing(e)) return;                                  // no hotkey while he is typing (T-0112)
+  if (e.key === "Escape") { $("#drawer").hidden = true; }
+  if (e.key === "/") { e.preventDefault(); $("#q").focus(); }
+});
+$("#q").addEventListener("input", e => search(e.target.value));
+window.addEventListener("hashchange", jump);
+
+BV.glossary.load().then(gl => {
+  DATA = { available: gl.available, note: gl.note, groups: gl.groups, terms: gl.terms, keys: gl.keys };
+  render();
+  BV.glossary.keysHint("glossary");
+}).catch(e => { $("#groups").innerHTML = `<div class="note">Could not read the glossary: ${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

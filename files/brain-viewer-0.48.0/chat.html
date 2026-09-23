@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .layout { flex: 1; display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 0; position: relative; }
+  /* the rail's edge is draggable and the width is remembered per browser (2026-09-10, T-0080) */
+  .railgrip { position: absolute; top: 0; bottom: 0; width: 7px; margin-left: -3px; z-index: 4; cursor: col-resize; touch-action: none; }
+  .railgrip:hover, .railgrip.on { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+  /* popped out into its own window: the conversation alone (the rail and the home blocks step out of the way) */
+  body.solo .layout { grid-template-columns: minmax(0, 1fr); }
+  body.solo nav.side, body.solo .railgrip, body.solo .blocks, body.solo details.calls, body.solo details.organize, body.solo details.waiting, body.solo details.running, body.solo details.recent { display: none; }
+  nav.side { border-right: 1px solid var(--rule); background: var(--surface); overflow: auto; padding: 8px 0 24px; }
+  nav.side details.past > summary { cursor: pointer; list-style: none; font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 6px 18px 2px; padding: 3px 0; }
+  nav.side details.past > summary::-webkit-details-marker { display: none; }
+  nav.side details.past > summary::before { content: "▸ "; }
+  nav.side details.past[open] > summary::before { content: "▾ "; }
+  nav.side .row .t.small { font-size: 13.5px; }
+  nav.side .row .navcount { display: inline-block; margin-left: 6px; min-width: 17px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: var(--surface); font-family: var(--font-mono); font-size: 10.5px; line-height: 16px; text-align: center; vertical-align: 1px; }
+
+  .stage { position: relative; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  /* the strip above the conversation -- the stage line, Waiting on you, Running now, Recently done. With nothing open it
+     sits at its own height, the way the home has always opened (2026-09-10, T-0100). */
+  .blocks { flex: none; display: flex; flex-direction: column; min-height: 0; }
+  /* With a conversation open, or a turn running, the three blocks are folded to their summary line and the conversation
+     takes what is left: never less than half the window. Unfolding one scrolls this strip instead of squeezing the
+     conversation, and the composer stays pinned under it. Zak, 2026-09-10: "I still can't see the chat." */
+  body.talking .blocks { flex: 0 1 auto; overflow: auto; }
+  body.talking .thread { min-height: 52vh; }
+  body.talking details.waiting[open], body.talking details.recent[open], body.talking details.organize[open] { max-height: none; overflow: visible; }
+  body.talking form.composer { flex: none; }
+  /* Waiting on you: pinned above the conversation, every open question and open task of Zak's, grouped by project */
+  details.waiting { margin: 12px 34px 0; padding: 8px 14px 10px; flex: none; }
+  details.waiting[open] { max-height: 46vh; overflow: auto; }
+  details.waiting > summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-family: var(--font-display); font-size: 17px; }
+  details.waiting > summary::-webkit-details-marker { display: none; }
+  details.waiting > summary::before { content: "▸"; font-size: 11px; color: var(--muted); }
+  details.waiting[open] > summary::before { content: "▾"; }
+  details.calls > summary .meta { font-family: var(--font-ui); font-size: 12px; }
+  details.calls ul.calls { list-style: none; margin: 4px 0 0; padding: 0 12px 8px; }
+  details.calls li { padding: 6px 0; border-top: 1px solid var(--rule-soft); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  details.calls li.past { opacity: .6; }
+  details.calls li.live { font-weight: 600; }
+  details.calls .preplink { font-weight: 700; text-decoration: underline; }
+  details.waiting > summary .meta { font-family: var(--font-ui); font-size: 12px; }
+  /* the one link out of this block: the day on one page, with its own count (2026-09-15, T-0150) */
+  details.waiting > summary #todaylink { font-family: var(--font-ui); font-size: 13px; margin-left: auto; white-space: nowrap; }
+  details.waiting details.pj { border-top: 1px solid var(--rule-soft); padding: 4px 0 2px; }
+  details.waiting details.pj > summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding: 4px 0; font-family: var(--font-display); font-size: 15px; }
+  details.waiting details.pj > summary::-webkit-details-marker { display: none; }
+  details.waiting details.pj > summary::before { content: "▸"; font-size: 10px; color: var(--muted); }
+  details.waiting details.pj[open] > summary::before { content: "▾"; }
+  details.waiting details.pj > summary:hover { color: var(--accent); }
+  /* Still to organize: what took the stage line's place above Waiting on you (2026-09-15, T-0154). Zak, 9/15: the build
+     order belongs on the project being worked on, and the home should show what still needs sorting. One fold per
+     ledger with something left in its Inbox. Layout only; card chrome, colors and fonts are viewer-tokens.css. */
+  details.organize { margin: 10px 34px 0; padding: 8px 14px 10px; flex: none; }
+  details.organize[open] { max-height: 40vh; overflow: auto; }
+  details.organize > summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-family: var(--font-display); font-size: 15px; }
+  details.organize > summary::-webkit-details-marker { display: none; }
+  details.organize > summary::before { content: "▸"; font-size: 10px; color: var(--muted); }
+  details.organize[open] > summary::before { content: "▾"; }
+  details.organize > summary .meta { font-family: var(--font-ui); font-size: 12px; }
+  details.organize details.og { border-top: 1px solid var(--rule-soft); padding: 4px 0 2px; }
+  details.organize details.og > summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding: 4px 0; font-family: var(--font-display); font-size: 14.5px; }
+  details.organize details.og > summary::-webkit-details-marker { display: none; }
+  details.organize details.og > summary::before { content: "▸"; font-size: 10px; color: var(--muted); }
+  details.organize details.og[open] > summary::before { content: "▾"; }
+  details.organize details.og > summary:hover { color: var(--accent); }
+  details.organize details.og > summary .meta { font-family: var(--font-ui); font-size: 12px; }
+  details.organize ul.unsorted { list-style: none; margin: 0 0 4px; padding: 0; }
+  details.organize li.un { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; padding: 5px 0; align-items: baseline; border-top: 1px solid var(--rule-soft); }
+  details.organize li.un:first-child { border-top: 0; }
+  details.organize li.un .mk { font-family: var(--font-mono); font-size: 12px; color: var(--muted); white-space: pre; }
+  details.organize li.un .t { font-size: 13.5px; }
+  details.organize li.un .m { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 2px; font-size: 12px; color: var(--muted); }
+  /* Recently done: the timeline on the home page, folded (2026-09-09, step 2c) */
+  details.recent { margin: 8px 34px 0; padding: 8px 14px 10px; flex: none; }
+  details.recent[open] { max-height: 40vh; overflow: auto; }
+  details.recent > summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-family: var(--font-display); font-size: 15px; }
+  details.recent > summary::-webkit-details-marker { display: none; }
+  details.recent > summary::before { content: "▸"; font-size: 10px; color: var(--muted); }
+  details.recent[open] > summary::before { content: "▾"; }
+  details.recent > summary .meta { font-family: var(--font-ui); font-size: 12px; }
+  details.waiting .q { margin-bottom: 8px; }
+  details.waiting ul.items { margin: 0; }
+  details.running { margin: 12px 34px 0; padding: 8px 14px 10px; flex: none; }
+  details.running > summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+  details.running > summary::-webkit-details-marker { display: none; }
+  details.running > summary::before { content: "▸"; font-size: 11px; }
+  details.running[open] > summary::before { content: "▾"; }
+  details.running .rs { border-top: 1px solid var(--rule-soft); padding: 7px 0 4px; font-size: 13px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  details.running .rs b { font-family: var(--font-display); font-weight: 400; font-size: 14px; }
+  details.running .rs .m { color: var(--muted); font-size: 12px; }
+  details.running .sub { margin-left: 18px; color: var(--ink-soft); font-size: 12.5px; padding: 2px 0; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rule); flex: none; display: inline-block; }
+  .dot.on { background: var(--open); box-shadow: 0 0 0 3px var(--open-tint); }
+
+  .thread { flex: 1; overflow: auto; padding: 16px 34px 26px; display: flex; flex-direction: column; gap: 16px; }
+  .who { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 1px solid var(--rule-soft); }
+  .who h2 { margin: 0; font-size: 26px; line-height: 1.1; }
+  .who .meta a { margin-left: 8px; }
+  .msg { display: flex; flex-direction: column; max-width: 78ch; }
+  .msg.user { align-self: flex-end; align-items: flex-end; }
+  .msg.user .bubble { background: var(--selected); border: 1px solid var(--rule-soft); border-radius: var(--radius-lg); padding: 8px 14px; }
+  .msg.user .bubble article.md { border: 0; box-shadow: none; background: transparent; padding: 0; }
+  .msg.bot article.md { border: 0; box-shadow: none; background: transparent; padding: 0; }
+  .msg .m { font-size: 12px; color: var(--muted); margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .msg .err { border-left: 3px solid var(--blocked); padding: 6px 10px; background: var(--blocked-tint); color: var(--blocked); font-size: 13.5px; border-radius: var(--radius); }
+  details.work { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); }
+  details.work > summary { cursor: pointer; list-style: none; }
+  details.work > summary::-webkit-details-marker { display: none; }
+  details.work > summary::before { content: "▸ "; }
+  details.work[open] > summary::before { content: "▾ "; }
+  details.work ul { list-style: none; margin: 6px 0 0; padding: 0 0 0 12px; border-left: 2px solid var(--rule-soft); }
+  details.work li { padding: 3px 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  details.work li .name { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); }
+  details.work li .sum { color: var(--ink-soft); }
+  details.work li .pv { width: 100%; padding-left: 14px; font-size: 12px; white-space: pre-wrap; }
+  details.work details.rep { width: 100%; margin: 2px 0 4px 14px; }
+  details.work details.rep > summary { cursor: pointer; color: var(--accent); }
+  details.work details.rep article.md { font-size: 13px; padding: 4px 0 4px 12px; border-left: 2px solid var(--rule-soft); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .chips a.badge { text-decoration: none; cursor: pointer; }
+  .caret { display: inline-block; width: 7px; height: 14px; background: var(--muted); vertical-align: -2px; margin-left: 2px; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { to { opacity: 0; } }
+  .empty-thread { color: var(--muted); text-align: center; max-width: 62ch; margin: auto; padding: 40px 20px; }
+  /* what a turn cost, and what every turn carries before a word is typed (2026-09-17, T-0187) */
+  .msg .m .cost { color: var(--muted); }
+  .msg .m .cost.est { font-style: italic; }
+  .weigh { color: var(--muted); font-size: 12px; text-align: center; margin: 2px 0 8px; }
+
+  form.composer { border-top: 1px solid var(--rule); background: var(--surface); padding: 12px 34px 14px; display: flex; flex-direction: column; gap: 8px; }
+  form.composer textarea { width: 100%; min-height: 60px; max-height: 40vh; resize: vertical; padding: 8px 10px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--bg); box-sizing: border-box; }
+  form.composer textarea:focus { outline: none; border-color: var(--accent); }
+  form.composer .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  form.composer .row .status-line { margin: 0; flex: 1; min-width: 160px; }
+  form.composer .models { display: flex; gap: 2px; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } nav.side { max-height: 32vh; border-right: 0; border-bottom: 1px solid var(--rule); } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Home</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <button class="btn" type="button" id="popout" title="open this conversation in its own window, without the list beside it">pop out</button>
+  <nav class="panels" data-page="home"></nav>
+</header>
+<div class="layout" id="layout">
+  <nav class="side" id="rail"></nav>
+  <div class="railgrip" id="railgrip" title="drag to widen or narrow this list; the width is remembered in this browser"></div>
+  <div class="stage">
+    <div class="blocks" id="blocks">
+      <details class="card calls" id="calls" open><summary>Today's calls <span class="meta" id="callsSum">reading the calendar file…</span></summary><div id="callsBody"></div></details>
+      <details class="card organize" id="organize"><summary>Still to organize <span class="meta" id="orgSum">reading the ledgers…</span></summary><div id="orgBody"></div></details>
+      <details class="card waiting" id="waiting" open><summary>Waiting on you <span class="meta" id="waitSum">reading the ledgers…</span><a href="/today" id="todaylink" title="the day on one page: the questions blocking work, and everything due today or earlier">today</a></summary><div id="waitBody"></div></details>
+      <details class="card running" id="running"><summary><span class="dot" id="runDot"></span><span id="runSum">Running now</span></summary><div id="runBody"><div class="bubs small" id="runbubs"></div><div id="runlines"></div></div></details>
+      <details class="card recent" id="recent"><summary>Recently done <span class="meta" id="recentSum">the timeline of what is closed</span></summary><div id="recentBody"></div></details>
+    </div>
+    <div class="thread" id="thread"></div>
+    <form class="composer" id="composer">
+      <textarea id="box" rows="2" placeholder="type here · Enter sends · Shift+Enter for a new line · paste a picture straight in"></textarea>
+      <div class="row">
+        <span class="kicker">model</span><span class="models" id="models"></span>
+        <button class="btn" type="button" id="attach" title="add a picture to this message: it is kept in the brain and the message carries its path">picture</button>
+        <input type="file" id="pick" accept="image/*" multiple hidden>
+        <span class="status-line meta" id="status"></span>
+        <button class="btn" type="button" id="stop" hidden>stop</button>
+        <button class="btn primary" type="submit" id="send">send</button>
+      </div>
+    </form>
+    <aside class="drawer" id="drawer" hidden></aside>
+  </div>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /chat -- talk to the brain's agents from the app (ideas E16, step 2 of the rebuild). Zak, 9/09: "making something that allows
+// me to chat in the app with the agents rather than with you directly... talk to one agent and have it automatically task and
+// dispatch to other agents that are located in the project, and then also the capability to chat per project."
+// Every conversation here is a real Claude Code session that serve.py starts (`claude -p`, this machine, this account): the
+// first turn opens it with a session id, every later turn resumes it. The page streams the answer as it arrives, shows the
+// tool calls and sub-agents behind a folded "working…" line, and marks the ledger items the turn created as chips that open
+// /projects. The brain keeps only an index of the conversation (context/chats/); the body is Claude Code's own transcript.
+// The old Agents page is folded in as the collapsed "Running now" strip on top (the route /agents still answers).
+const { esc, md, mode, badges, refreshBadges, itemRow: row, questionCard: qCard, ledgerAct, showAll, mountShowAll } = BV;
+const $ = s => document.querySelector(s);
+let PROJECTS = [], CHATS = [], MODELS = [], BADGE = null, WAIT = null;
+// Which project's questions and tasks are open inside Waiting on you. ONE at a time (2026-09-10, T-0107): clicking
+// along the rail used to leave every project's items open at once, so the block was a wall. A plain click on a project
+// opens it and closes the one that was open; shift-click keeps the other open. Empty = nothing chosen yet, and the
+// block opens on the project the rail is on (or the first one with something waiting).
+let WOPEN = new Set();
+let CUR = { project: "main", chat: null, turns: [], subagents: [], rec: null };
+let FROM = null;   // the conversation whose reply this next message carries (a send-to; T-0094)
+let LIVE = null;            // the turn on the wire: {msg (the bot message element), segs, tools, done}
+// The model a turn runs on. The DEFAULT comes from the server (sonnet since 2026-09-17, T-0187; opus and fable are one
+// press away), so this browser only remembers a choice Zak actually made -- hence the new key: the old one had "opus"
+// stored in it from the months when opus was the default, and that would have pinned the expensive model forever.
+let MODEL = null, CTX = null;
+try { MODEL = localStorage.getItem("bv.chat.model2") || null; } catch (e) {}
+
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+// ---- the conversation has to be visible (2026-09-10, T-0100) ----
+// Zak: "I still can't see the chat. It needs to be able to be seen." With a conversation open, or a turn on the wire, the
+// three home blocks fold to their summary line and the thread takes the remaining height (the CSS holds it at half the
+// window at least). Unfolding one is still one click: the strip above scrolls, the conversation does not shrink.
+// Which conversation this browser was last in is remembered here, so coming back to the home lands in it.
+const LAST = "bv.chat.last";
+const rememberChat = id => { try { id ? localStorage.setItem(LAST, id) : localStorage.removeItem(LAST); } catch (e) {} };
+const rememberedChat = () => { try { return localStorage.getItem(LAST) || null; } catch (e) { return null; } };
+const talking = () => !!(CUR.chat || LIVE);
+function scrollThread() {
+  const th = $("#thread"); if (!th) return;
+  th.scrollTop = th.scrollHeight;
+  requestAnimationFrame(() => { th.scrollTop = th.scrollHeight; });   // again once the layout has settled
+}
+function popTitle() {
+  const b = $("#popout"); if (!b) return;
+  b.title = CUR.chat
+    ? `open this conversation in its own window, without the list beside it: ${(CUR.rec && CUR.rec.title) || "the one on screen"}`
+    : `no conversation is open yet, so this opens an empty one with ${projectName(CUR.project)} in its own window`;
+}
+// fold = true only at the moment a conversation is entered; a block Zak opens afterwards stays open
+function focusThread(fold) {
+  const on = talking();
+  document.body.classList.toggle("talking", on);
+  if (on && fold) for (const id of ["#waiting", "#running", "#recent"]) { const d = $(id); if (d) { d.open = false; if (id === "#running") d.dataset.touched = "1"; } }
+  if (!on) {
+    const rec = $("#recent"); if (rec) rec.open = false;
+    const w = $("#waiting"); if (w && WAIT && WAIT.total) w.open = true;
+    const r = $("#running"); if (r) delete r.dataset.touched;
+  }
+  popTitle();
+  scrollThread();
+}
+const shortModel = m => String(m || "").replace(/^claude-/, "");
+function when(iso) {
+  if (!iso) return "";
+  const d = new Date(iso); if (isNaN(d)) return String(iso).slice(0, 16).replace("T", " ");
+  const sameDay = d.toDateString() === new Date().toDateString();
+  const t = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return sameDay ? t : `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${t}`;
+}
+const dur = ms => ms == null ? "" : ms < 90000 ? `${Math.round(ms / 1000)}s` : `${Math.floor(ms / 60000)}m ${String(Math.round(ms / 1000) % 60).padStart(2, "0")}s`;
+const money = c => c == null ? "" : `$${Number(c).toFixed(2)}`;
+// A turn can cost less than a cent, and $0.00 reads as free, so anything under a cent keeps three places.
+const costText = c => c == null ? "" : (Math.abs(Number(c)) < 0.01 ? `$${Number(c).toFixed(3)}` : `$${Number(c).toFixed(2)}`);
+const kTok = n => `${Math.round(Number(n || 0) / 1000)}K`;
+// The line under an answer: which model ran it, what the CLI says the turn cost, and the conversation's running total.
+// The numbers are the CLI's own (`total_cost_usd` on its result event); when it reports no number, or a basis other than
+// the published prices, the line says so rather than showing a figure as if it were billed.
+function costLine(tc, running) {
+  if (!tc) return "";
+  const u = tc.usage || {};
+  const bits = [tc.model || "", tc.cost_usd == null ? "no cost reported" : `${costText(tc.cost_usd)} this turn`,
+                running ? `${costText(running)} so far` : "", tc.estimate ? "CLI estimate" : ""].filter(Boolean);
+  const tip = [tc.modelIds && tc.modelIds.length ? tc.modelIds.join(", ") : "", tc.steps ? plural(tc.steps, "model call") : "",
+               dur(tc.duration_ms), u.cache_creation_input_tokens ? `${kTok(u.cache_creation_input_tokens)} cache written` : "",
+               u.cache_read_input_tokens ? `${kTok(u.cache_read_input_tokens)} cache read` : "",
+               u.output_tokens ? `${u.output_tokens} out` : "", tc.basis ? `priced at ${tc.basis}` : "the CLI gave no price basis"].filter(Boolean);
+  return `<span class="cost${tc.estimate ? " est" : ""}" title="${esc(tip.join(" · "))}">${esc(bits.join(" · "))}</span>`;
+}
+// One line at the top of a new conversation: what every turn carries before Zak has typed anything (T-0187). Counted from
+// the byte sizes on disk at four characters to the token, so it moves when CLAUDE.md, the hook or the prompt moves.
+function weighLine() {
+  if (!CTX) return "";
+  const per = (CTX.prompts || {})[CUR.project] || 0, cpt = CTX.charsPerToken || 4;
+  const tok = (CTX.chars + per) / cpt;
+  const tok1 = n => Math.round(n) >= 1000 ? `${kTok(n)} tokens` : `${Math.round(n)} tokens`;
+  const tip = (CTX.parts || []).map(x => `${x.what}: ${tok1(x.chars / cpt)}`).concat([`this project's appended prompt: ${tok1(per / cpt)}`,
+    "the CLI's own system prompt and tools sit on top of this and are not counted"]).join(" · ");
+  return `<div class="weigh" title="${esc(tip)}">each turn carries about ${kTok(tok)} tokens of fixed context (CLAUDE.md, the hook, this project's prompt)</div>`;
+}
+const projectOf = id => PROJECTS.find(p => p.id === id);
+const projectName = id => id === "main" ? "Main" : ((projectOf(id) || {}).name || id);
+const openCount = id => { const p = BADGE && BADGE.projects && BADGE.projects[id]; return p ? (p.questions || 0) + (p.zak_tasks || 0) : 0; };
+
+// ---- the left rail: Main, the projects, the past conversations per project (folded) ----
+function renderRail() {
+  const nav = $("#rail"); nav.innerHTML = "";
+  const h2 = document.createElement("h2"); h2.textContent = "talk to"; nav.appendChild(h2);
+  const row = (cls, html, on, onclick) => { const b = document.createElement("button"); b.className = "row" + (on ? " on" : "") + (cls ? " " + cls : ""); b.innerHTML = html; b.onclick = onclick; return b; };
+  nav.appendChild(row("", `<div class="t">Main</div><div class="m"><span>the central agent · routes to every project</span></div>`, CUR.project === "main" && !CUR.chat, () => selectProject("main", true)));
+  const h = document.createElement("h2"); h.textContent = `${plural(PROJECTS.length, "project")} · from the registry`; nav.appendChild(h);
+  for (const p of PROJECTS) {
+    const n = openCount(p.id);
+    nav.appendChild(row("", `<div class="t">${esc(p.name)}${n ? `<span class="navcount" title="${n} open for you">${n}</span>` : ""}</div><div class="m"><span>${esc(p.path || "brain root")}</span></div>`,
+      CUR.project === p.id && !CUR.chat, () => selectProject(p.id, true)));
+  }
+  const h3 = document.createElement("h2"); h3.textContent = CHATS.length ? `${plural(CHATS.length, "past conversation")}` : "no past conversations yet"; nav.appendChild(h3);
+  const groups = ["main", ...PROJECTS.map(p => p.id)];
+  for (const g of groups) {
+    const list = CHATS.filter(c => c.project === g); if (!list.length) continue;
+    const d = document.createElement("details"); d.className = "past"; d.open = !!(CUR.chat && CUR.project === g);
+    d.innerHTML = `<summary>${esc(projectName(g))} · ${list.length}</summary>`;
+    for (const c of list) {
+      d.appendChild(row("", `<div class="t small">${esc(c.title || "(untitled)")}</div><div class="m"><span>${esc(when(c.last || c.created))}</span><span>${plural(c.turns || 0, "turn")}</span>${c.running ? '<span class="badge open">running</span>' : ""}${(c.dispatched || []).length ? `<span class="badge">${(c.dispatched || []).length} on ledgers</span>` : ""}</div>`,
+        CUR.chat === c.id, () => openChat(c.id, true)));
+    }
+    nav.appendChild(d);
+  }
+}
+
+// ---- the conversation pane ----
+function whoBlock() {
+  const p = CUR.project === "main" ? null : projectOf(CUR.project);
+  const title = CUR.project === "main" ? "Main agent" : (p ? p.name : CUR.project);
+  const sub = CUR.project === "main"
+    ? "reads the brain, answers what it can, puts every question that outlives the message on the right ledger with the people it concerns, and dispatches project work to sub-agents"
+    : `fixed to this project: boots from its readme and ledger, writes only to <a href="/projects?id=${encodeURIComponent(CUR.project)}">its ledger</a>${p && p.spec ? ", reads its spec" : ""}${p && p.rules ? " and its rules" : ""}`;
+  const rec = CUR.rec;
+  return `<div class="who"><h2>${esc(title)}</h2><span class="meta">${sub}${rec ? ` · <span title="the Claude Code session behind this conversation">${plural(rec.turns || 0, "turn")}${rec.cost_usd ? ` · ${money(rec.cost_usd)} so far` : ""}</span><a href="#" data-new>new conversation</a>` : ""}</span></div>`;
+}
+function toolRow(t, subs) {
+  const sa = t.name === "Agent" && subs ? subs.find(s => s.toolUseId === t.id) : null;
+  const state = sa ? (sa.running ? "running" : sa.status) : t.done ? (t.error ? "failed" : "done") : "running";
+  const cls = /^(done|completed)$/.test(state) ? "done" : /fail|error|not started/.test(state) ? "missing" : "open";
+  return `<li><span class="name">${esc(t.name)}</span><span class="sum">${esc(t.summary || "")}</span><span class="badge ${cls}">${esc(state)}</span>
+    ${sa && sa.model ? `<span class="badge type">${esc(shortModel(sa.model))}</span>` : ""}${sa && sa.durationMs != null ? `<span>${esc(dur(sa.durationMs))}</span>` : ""}
+    ${sa && (sa.reportFull || sa.report) ? `<details class="rep"><summary>what it came back with</summary><article class="md">${md(sa.reportFull || sa.report)}</article></details>`
+      : t.preview && (t.error || t.name === "Agent") ? `<div class="pv">${esc(t.preview)}</div>` : ""}</li>`;
+}
+function workFold(tools, subs, live) {
+  if (!tools.length) return "";
+  const agents = tools.filter(t => t.name === "Agent").length, open = tools.filter(t => !t.done).length;
+  const label = live && open ? "working…" : "worked";
+  const bits = [plural(tools.length, "tool call"), agents ? plural(agents, "sub-agent") : ""].filter(Boolean).join(" · ");
+  return `<details class="work"><summary>${label} · ${bits}</summary><ul>${tools.map(t => toolRow(t, subs)).join("")}</ul></details>`;
+}
+function chipsFor(items) {
+  if (!items || !items.length) return "";
+  return `<div class="chips">${items.map(i => `<a class="badge ${i.kind === "question" ? "open" : ""}" href="/projects?id=${encodeURIComponent(i.project)}" title="${esc(i.id)} on the ${esc(i.projectName || i.project)} ledger">${esc(i.kind === "question" ? "question" : "task")} · ${esc(i.projectName || projectName(i.project))} · ${esc((i.text || "").slice(0, 70))}${(i.text || "").length > 70 ? "…" : ""}</a>`).join("")}</div>`;
+}
+// the control on every answer: hand this reply to another agent (2026-09-10, T-0094). Zak's words for it: the ability to
+// draw a line from a chat to feed the answer into a higher leveled agent -- the same action, started from the reply itself.
+const sendToBtn = ti => `<button class="btn tiny" type="button" data-sendto="${ti}" title="hand this answer to another agent: Main or a project agent, on opus or fable, with a note">send to</button>`;
+function renderThread() {
+  const th = $("#thread");
+  const turns = CUR.turns || [], subs = CUR.subagents || [], rec = CUR.rec || {};
+  const dispatched = rec.dispatched || [], costs = rec.turns_cost || [];
+  let k = 0;
+  const body = turns.map((t, ti) => {
+    if (t.role === "user") return `<div class="msg user"><div class="bubble"><article class="md">${md(t.text)}</article></div><div class="m"><span>${esc(when(t.ts))}</span></div></div>`;
+    k += 1;
+    const chips = dispatched.filter(d => d.turn === k).map(d => Object.assign({ projectName: projectName(d.project) }, d));
+    const tc = costs.find(c => c.turn === k);
+    const run = costs.filter(c => c.turn <= k).reduce((a, c) => a + (c.cost_usd || 0), 0);
+    return `<div class="msg bot"><article class="md">${md(t.text || "")}</article>${workFold(t.tools || [], subs, false)}${chipsFor(chips)}<div class="m"><span>${esc(when(t.ts))}</span>${tc ? costLine(tc, run) : t.model ? `<span>${esc(shortModel(t.model))}</span>` : ""}${(t.text || "").trim() && CUR.chat ? sendToBtn(ti) : ""}</div></div>`;
+  }).join("");
+  th.innerHTML = whoBlock() + weighLine() + (body || `<div class="empty-thread">${CUR.project === "main"
+    ? "Ask anything about the brain. A question that needs Zak later lands on a ledger, not here; work that belongs to a project gets dispatched to that project's agent."
+    : `Ask this project's agent. It stays inside ${esc(projectName(CUR.project))} and writes only to its ledger.`}</div>`);
+  scrollThread();
+  $("#crumb").textContent = `${projectName(CUR.project)}${CUR.rec ? " · " + (CUR.rec.title || "") : ""}`;
+  popTitle();
+}
+function selectProject(id, moved) {
+  if (LIVE) return;
+  CUR = { project: id, chat: null, turns: [], subagents: [], rec: null };
+  // the rail and the block agree: the project you just picked is the one whose questions and tasks are open (T-0107)
+  WOPEN = id === "main" ? new Set() : new Set([id]);
+  renderWaiting();
+  history.replaceState(null, "", id === "main" ? "/chat" : `/chat?project=${encodeURIComponent(id)}`);
+  if (moved) BV.back.push(`Home · ${projectName(id)}`);   // a deliberate move goes on the app's back trail (T-0061)
+  rememberChat(null);                                     // a fresh conversation: the home stops reopening the old one
+  renderRail(); renderThread(); focusThread(false); $("#box").focus();
+}
+async function openChat(id, moved) {
+  if (LIVE) return;
+  const r = await fetch(`/api/chat?id=${encodeURIComponent(id)}`); const j = await r.json();
+  if (!r.ok) { $("#status").textContent = j.error || ("the server answered " + r.status); return; }
+  CUR = { project: j.chat.project, chat: id, turns: j.turns || [], subagents: j.subagents || [], rec: j.chat };
+  history.replaceState(null, "", `/chat?chat=${encodeURIComponent(id)}`);
+  if (moved) BV.back.push(`Home · ${j.chat.title || "conversation"}`);
+  rememberChat(id);
+  renderRail(); renderThread(); focusThread(true);
+  $("#status").textContent = j.note || (j.chat.running ? "a turn is still running in this conversation (started elsewhere on this machine)" : "");
+}
+
+// ---- one turn on the wire: POST /api/chat/send -> server-sent events ----
+function liveRender() {
+  if (!LIVE) return;
+  const L = LIVE, text = L.segs.join("\n\n");
+  L.msg.querySelector("article.md").innerHTML = md(text) + (L.done ? "" : '<span class="caret"></span>');
+  L.msg.querySelector(".work-slot").innerHTML = workFold(L.tools, null, !L.done);
+  const th = $("#thread"); if (th.scrollHeight - th.scrollTop - th.clientHeight < 160 || !L.scrolled) th.scrollTop = th.scrollHeight;
+}
+async function send() {
+  const box = $("#box"), text = box.value.trim();
+  if (!text || LIVE) return;
+  const th = $("#thread");
+  if (!CUR.turns.length) th.innerHTML = whoBlock();
+  th.insertAdjacentHTML("beforeend", `<div class="msg user"><div class="bubble"><article class="md">${md(text)}</article></div><div class="m"><span>${esc(when(new Date().toISOString()))}</span></div></div>`);
+  const bot = document.createElement("div"); bot.className = "msg bot";
+  bot.innerHTML = `<article class="md"><span class="caret"></span></article><div class="work-slot"></div><div class="chips-slot"></div><div class="m"><span class="live-meta">starting claude…</span></div>`;
+  th.appendChild(bot); th.scrollTop = th.scrollHeight;
+  CUR.turns.push({ role: "user", text, ts: new Date().toISOString() });
+  const turn = { role: "assistant", text: "", tools: [], ts: new Date().toISOString() }; CUR.turns.push(turn);
+  LIVE = { msg: bot, segs: [""], tools: [], done: false, scrolled: false, turn };
+  focusThread(true);                 // the answer streams into a box he can see (T-0100)
+  box.value = ""; box.disabled = true; $("#send").disabled = true; $("#stop").hidden = false;
+  $("#status").textContent = CUR.chat ? "continuing the same session…" : "opening a new session…";
+  const meta = bot.querySelector(".live-meta");
+  try {
+    const r = await fetch("/api/chat/send", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(Object.assign({ chat: CUR.chat, project: CUR.project, text, model: MODEL || undefined }, FROM ? { from: FROM } : {})) });
+    if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})); throw new Error(j.error || ("the server answered " + r.status)); }
+    const reader = r.body.getReader(), dec = new TextDecoder(); let buf = "";
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i; while ((i = buf.indexOf("\n\n")) >= 0) {
+        const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+        for (const line of chunk.split("\n")) if (line.startsWith("data: ")) { let ev; try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; } handle(ev, meta); }
+      }
+    }
+  } catch (err) {
+    bot.insertAdjacentHTML("beforeend", `<div class="err">${esc(err.message)}</div>`);
+  }
+  LIVE.done = true; liveRender();
+  turn.text = LIVE.segs.join("\n\n"); turn.tools = LIVE.tools;
+  FROM = null;                       // a handoff is carried by one message only
+  const meta2 = bot.querySelector(".m");
+  if (meta2 && turn.text.trim() && CUR.chat) meta2.insertAdjacentHTML("beforeend", sendToBtn(CUR.turns.length - 1));
+  LIVE = null; box.disabled = false; $("#send").disabled = false; $("#stop").hidden = true; box.focus();
+  focusThread(false);                // still a conversation, so nothing unfolds; a turn that never opened one restores the home
+  await refreshIndex();
+}
+function handle(ev, meta) {
+  const L = LIVE; if (!L) return;
+  switch (ev.e) {
+    case "start":
+      if (!CUR.chat) { CUR.chat = ev.chat; history.replaceState(null, "", `/chat?chat=${encodeURIComponent(ev.chat)}`); rememberChat(ev.chat); popTitle(); }
+      $("#status").textContent = ev.note || (ev.resumed ? "resumed the session" : "session opened"); break;
+    case "init": meta.textContent = `${shortModel(ev.model) || MODEL || defaultModel()} · thinking…`; break;
+    case "seg": if (L.segs[L.segs.length - 1] !== "") L.segs.push(""); break;
+    case "text": L.segs[L.segs.length - 1] += ev.t || ""; liveRender(); break;
+    case "text_final": L.segs[L.segs.length - 1] = ev.t || L.segs[L.segs.length - 1]; liveRender(); break;
+    case "tool": L.tools.push({ id: ev.id, name: ev.name, summary: ev.summary, done: false, error: false, preview: null, agent: ev.agent }); liveRender();
+      meta.textContent = ev.name === "Agent" ? `dispatched a sub-agent: ${ev.agent && ev.agent.description || ""}` : `${ev.name}: ${ev.summary || ""}`; break;
+    case "tool_done": { const t = L.tools.find(x => x.id === ev.id); if (t) { t.done = true; t.error = !!ev.error; t.preview = ev.preview; } liveRender(); break; }
+    case "done": {
+      const bits = [shortModel(ev.model) || "", dur(ev.duration_ms), ev.turns ? plural(ev.turns, "step") : "", ev.usage && ev.usage.output_tokens ? `${ev.usage.output_tokens} out` : ""].filter(Boolean);
+      meta.textContent = bits.join(" · ");
+      if (!ev.ok) L.msg.insertAdjacentHTML("beforeend", `<div class="err">${esc(ev.text || "the turn ended with an error")}</div>`);
+      if (ev.denials && ev.denials.length) L.msg.insertAdjacentHTML("beforeend", `<div class="err">${plural(ev.denials.length, "tool call")} refused for permissions: ${esc(ev.denials.map(d => d.tool_name || d.name || "?").join(", "))}</div>`);
+      $("#status").textContent = "answered"; break; }
+    case "ledger": L.msg.querySelector(".chips-slot").innerHTML = chipsFor(ev.items); $("#status").textContent = `${plural(ev.items.length, "item")} put on the ledgers`; refreshBadges(); break;
+    case "stopped": L.msg.insertAdjacentHTML("beforeend", `<div class="err">stopped · ${esc(ev.reason || "")}</div>`); $("#status").textContent = "stopped"; break;
+    case "error": L.msg.insertAdjacentHTML("beforeend", `<div class="err">${esc(ev.message || "the turn failed")}</div>`); $("#status").textContent = "failed"; break;
+    case "end": {
+      if (!ev.chat) break;
+      CUR.rec = ev.chat;
+      const arr = ev.chat.turns_cost || [], tc = arr[arr.length - 1], m = L.msg.querySelector(".m");
+      if (tc && m) m.insertAdjacentHTML("beforeend", costLine(tc, ev.chat.cost_usd));
+      break; }
+  }
+}
+async function stop() {
+  if (!LIVE || !CUR.chat) return;
+  $("#status").textContent = "stopping…";
+  await fetch("/api/chat/stop", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat: CUR.chat }) }).catch(() => {});
+}
+function defaultModel() { const d = MODELS.find(m => m.default && m.ok) || MODELS.find(m => m.ok); return d ? d.id : "opus"; }
+function renderModels() {
+  const on = MODEL || defaultModel();
+  $("#models").innerHTML = MODELS.map(m => `<button class="btn ${on === m.id ? "on" : ""}" type="button" data-model="${esc(m.id)}" ${m.ok ? "" : "disabled"}
+    title="${esc([m.when || "", m.ok ? (m.resolves || m.id) : (m.note || "not available"), m.default ? "the default" : ""].filter(Boolean).join(" · "))}">${esc(m.label)}</button>`).join("");
+  if (MODELS.length && !MODELS.some(m => m.id === on && m.ok)) { MODEL = defaultModel(); renderModels(); }
+}
+
+// ---- Waiting on you: the home block, pinned above the conversation (2026-09-09, the filtering rule) ----
+// Every open question and every open task of Zak's, across every ledger the registry names, grouped by project and
+// answerable or checkable right here through the same components /projects and /people use (BV.questionCard / BV.itemRow,
+// each write a PUT /api/tasks -> tasks.py, clock-stamped and logged). GET /api/waiting derives it; nothing is stored.
+// With "showing everything" on, the projects that have nothing open are listed too instead of being left out.
+// Today's calls, first card on the home page (Zak 2026-09-21: the day-of-call prep "SHOULD APPEAR ON THE HOME PAGE").
+// From /api/calls: the calendar as the session recap wrote it to context/today-calendar.json, each call joined to its
+// prep(s) by the server; the call happening now is marked, a call with no prep says so.
+let CALLS = null;
+async function loadCalls() {
+  try {
+    const r = await fetch("/api/calls"); const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    CALLS = j;
+  } catch (e) { CALLS = { error: e.message, events: [] }; }
+  renderCalls();
+}
+function renderCalls() {
+  const box = $("#calls"), sum = $("#callsSum"), body = $("#callsBody");
+  if (!box || !CALLS) return;
+  const E = typeof esc === "function" ? esc : s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  if (CALLS.error) { sum.textContent = "could not read the calendar file: " + CALLS.error; body.innerHTML = ""; return; }
+  const evs = CALLS.events || [], now = new Date();
+  if (!evs.length) { box.open = false; sum.textContent = CALLS.for ? `nothing on the calendar for ${CALLS.for}` : "no calendar has been read today; the session recap writes it"; body.innerHTML = ""; return; }
+  const hhmm = s => { const d = new Date(s); return isNaN(d) ? E(String(s).slice(11, 16)) : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); };
+  const who = e => (e.people || []).filter(w => !w.self).map(w => w.slug ? `<a href="/people?open=${encodeURIComponent(w.slug)}">${E(w.name)}</a>` : E(w.name)).join(", ");
+  const prepLinks = e => (e.preps || []).length
+    ? e.preps.map(p => `<a class="preplink" href="/reader?path=${encodeURIComponent(p.path)}">open the prep${e.preps.length > 1 ? ` (${E(p.key)})` : ""}</a>`).join(" · ")
+    : `<span class="badge open">no prep yet</span>`;
+  const rows = evs.map(e => {
+    const st = new Date(e.start), en = new Date(e.end);
+    const live = !isNaN(st) && !isNaN(en) && st <= now && now <= en, next = !isNaN(st) && st > now;
+    return `<li class="${live ? "live" : next ? "next" : "past"}"><b>${hhmm(e.start)}</b> ${E(e.title)}${live ? ` <span class="badge warn">now</span>` : ""} <span class="meta">${who(e)}</span> ${prepLinks(e)}</li>`;
+  });
+  const withPrep = evs.filter(e => (e.preps || []).length).length;
+  sum.textContent = `${evs.length} on ${CALLS.for || "today"} · ${withPrep} with a prep${CALLS.stale ? " · the file was written for another day" : ""}${CALLS.writtenAt ? ` · calendar read at ${String(CALLS.writtenAt).slice(11, 16)}` : ""}`;
+  body.innerHTML = `<ul class="calls">${rows.join("")}</ul>`;
+  box.open = true;
+}
+
+async function loadWaiting() {
+  try {
+    const r = await fetch("/api/waiting"); const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    WAIT = j;
+  } catch (e) { WAIT = { error: e.message, groups: [], total: 0 }; }
+  renderWaiting();
+}
+function renderWaiting() {
+  const box = $("#waiting"), sum = $("#waitSum"), body = $("#waitBody");
+  if (!WAIT) return;
+  if (WAIT.error) { sum.textContent = "could not read the ledgers: " + WAIT.error; body.innerHTML = ""; return; }
+  const all = showAll("home");
+  const groups = (WAIT.groups || []).filter(g => all || g.questions.length || g.tasks.length || (g.held || []).length);
+  if (!WAIT.total) {
+    box.open = false;
+    sum.textContent = `nothing · no question and no task of yours is open on any of the ${plural((WAIT.groups || []).length, "ledger")}${WAIT.held ? ` (${WAIT.held} on hold)` : ""}`;
+    body.innerHTML = "";
+    return;
+  }
+  sum.textContent = `${plural(WAIT.questions, "question")} · ${plural(WAIT.tasks, "task")} of yours · across ${plural(groups.filter(g => g.questions.length || g.tasks.length).length, "project")}${WAIT.held ? ` · ${WAIT.held} on hold` : ""} · one project at a time, shift-click to keep another open`;
+  // one open at a time: whatever WOPEN holds, and with nothing chosen the project the rail is on, else the first with
+  // something waiting (T-0107)
+  const withItems = groups.filter(g => g.questions.length || g.tasks.length || (g.held || []).length);
+  if (!WOPEN.size && withItems.length) {
+    const onRail = withItems.find(g => g.project === CUR.project);
+    WOPEN = new Set([(onRail || withItems[0]).project]);
+  }
+  body.innerHTML = groups.map(g => {
+    const n = g.questions.length + g.tasks.length;
+    const key = g.project, shut = !WOPEN.has(key);
+    const opts = { project: g.project, today: WAIT.today, showProject: false };
+    return `<details class="pj" data-pj="${esc(key)}"${shut ? "" : " open"}>
+      <summary>${esc(g.name)} <span class="meta">${n ? `${g.questions.length ? plural(g.questions.length, "question") : ""}${g.questions.length && g.tasks.length ? " · " : ""}${g.tasks.length ? plural(g.tasks.length, "task") : ""}` : "nothing open"}</span>
+        <a href="/projects?id=${encodeURIComponent(g.project)}" title="open this project">open</a><a href="/chat?project=${encodeURIComponent(g.project)}" title="talk to this project's agent">chat</a></summary>
+      ${g.questions.map(q => qCard(q, opts)).join("")}
+      ${g.tasks.length ? `<ul class="items">${g.tasks.map(i => row(i, opts)).join("")}</ul>` : ""}
+      ${(g.held || []).length ? `<details class="more"><summary>${plural(g.held.length, "task")} on hold</summary><ul class="items">${g.held.map(i => row(i, opts)).join("")}</ul></details>` : ""}
+      ${n ? "" : `<p class="meta" style="margin:0 0 6px">Nothing on this ledger is waiting on you.${(g.held || []).length ? " What is on hold is behind the line below." : ""}</p>`}</details>`;
+  }).join("");
+}
+// ---- the "today" link on Waiting on you (2026-09-15, ledger T-0150) ----
+// The count is the Today page's own first two sections -- the open questions addressed to Zak, plus everything due
+// today or earlier -- worked out by the same function that page uses (BV.day.model over GET /api/projects), so the
+// number on the link and the page it opens can never disagree. Nothing else on this block moves.
+async function paintTodayLink() {
+  const a = $("#todaylink"); if (!a) return;
+  try {
+    const m = BV.day.model(await BV.day.load());
+    const n = m.counts.total, b = m.counts.blocking;
+    // with a question blocking work, the link says so before it says how much there is (2026-09-16, T-0163): the
+    // blocking count is the questions an open task is blocked by, the waiting count is everything else on that page, so
+    // the two still add up to the number the link carried before.
+    a.textContent = b ? `today · ${b} blocking · ${n - b} waiting` : (n ? `today · ${n}` : "today");
+    a.title = b ? `${plural(b, "question")} blocking work · ${plural(m.counts.waiting - b, "other question")} waiting on you and ${plural(m.counts.due, "item")} due today or earlier · open the day on one page`
+              : n ? `${plural(m.counts.waiting, "question")} waiting on you and ${plural(m.counts.due, "item")} due today or earlier · open the day on one page`
+                : "the day on one page: nothing is waiting and nothing is due";
+  } catch (e) { a.textContent = "today"; a.title = "the day on one page"; }
+}
+$("#todaylink").addEventListener("click", e => e.stopPropagation());   // a link inside a <summary> would fold the block on its way out
+
+// ---- Still to organize (2026-09-15, ledger T-0154) ----
+// The stage line used to sit here. Zak, 9/15: "would it not make more sense to move that to the project that is being
+// worked on and then have the Main page have the ability to see what still needs to get organized?" The build order
+// stays on /projects, on the ledger that carries it; this took its place. Organized means sorted into a milestone, so
+// what is still in a ledger's `Inbox` is the unsorted pile: every open task and open question sitting there, grouped by
+// ledger, newest first inside a group. Composed in the browser from the one read the Today page makes
+// (GET /api/projects), so there is no second copy of the ledgers and nothing new on the server (rules 1 and 2).
+let ORG = null;
+const INBOX = "inbox";
+const MARKNAME = { "?": "an open question", " ": "an open task", "-": "a blocked task" };
+function organizeModel(data) {
+  const groups = [];
+  for (const p of (data && data.projects) || []) {
+    if (!p.exists) continue;
+    const items = [];
+    for (const g of (p.groups || [])) {
+      if (String(g.name || "").trim().toLowerCase() !== INBOX) continue;
+      for (const i of g.items || []) if (i.mark === "?" || i.mark === " " || i.mark === "-") items.push(i);
+    }
+    if (!items.length) continue;            // a ledger with nothing left in its Inbox does not appear
+    items.sort(BV.day.newest);              // newest first: created descending, then id descending
+    groups.push({ id: p.id, name: p.name || p.id, items });
+  }
+  return { groups, total: groups.reduce((n, g) => n + g.items.length, 0) };
+}
+// the same trim the home's own timeline uses: the line stays one line, the whole text is on the hover
+const orgTrim = (s, n) => (s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s);
+function orgLine(i, pid) {
+  const t = String(i.text || "");
+  const who = i.kind === "question"
+    ? `${BV.ownerBadge(i.owner)}<span>asks</span>${BV.ownerBadge(i.to || BV.owner)}`
+    : BV.ownerBadge(i.owner);
+  return `<li class="un"><span class="mk" title="${esc(MARKNAME[i.mark] || "open")}">[${esc(i.mark)}]</span>
+    <div><div class="t" title="${esc(t)}">${esc(orgTrim(t, 90))}</div>
+    <div class="m"><span class="id">${esc(i.id)}</span>${who}<span>${esc(i.created)}</span>${
+      i.mark === "-" && i.blocked ? `<span class="badge blocked">blocked · ${esc(i.blocked)}</span>` : ""
+    }<a href="/projects?id=${encodeURIComponent(pid)}" title="open this ledger on Projects and sort it into a milestone">sort it</a></div></div></li>`;
+}
+function renderOrganize() {
+  const sum = $("#orgSum"), body = $("#orgBody");
+  if (!ORG || !sum) return;
+  if (ORG.error) { sum.textContent = "could not read the ledgers: " + ORG.error; body.innerHTML = ""; return; }
+  if (!ORG.total) {
+    sum.textContent = "nothing unsorted";
+    body.innerHTML = `<p class="meta" style="margin:6px 0 0">Every open item on every ledger is sorted into a milestone.</p>`;
+    return;
+  }
+  sum.textContent = `${plural(ORG.total, "item")} sitting in an Inbox · across ${plural(ORG.groups.length, "ledger")} · each one opens its ledger to be sorted`;
+  body.innerHTML = ORG.groups.map(g => `<details class="og" data-og="${esc(g.id)}">
+    <summary>${esc(g.name)} <span class="meta">${plural(g.items.length, "item")}</span>
+      <a href="/projects?id=${encodeURIComponent(g.id)}" title="open this ledger on Projects">open</a></summary>
+    <ul class="unsorted">${g.items.map(i => orgLine(i, g.id)).join("")}</ul></details>`).join("");
+}
+async function loadOrganize() {
+  try { ORG = organizeModel(await BV.day.load()); }
+  catch (e) { ORG = { error: e.message, groups: [], total: 0 }; }
+  renderOrganize();
+}
+
+// one ledger write from the home block; the item names the ledger it lives on
+async function actWaiting(project, payload) {
+  const res = await ledgerAct(project, payload);
+  $("#status").textContent = res.message;
+  if (res.ok) { await loadWaiting(); refreshBadges(); BV.quests.refresh(); paintTodayLink(); loadOrganize(); }
+  return res;
+}
+
+// ---- send-to: one agent's reply handed to another (2026-09-10, T-0094) ----
+// The sheet is shared with the agents page (BV.sendTo); what differs is that here the target conversation can be opened
+// in place and the turn run without leaving the page. The quoted reply plus the note ARE the next message; the line back
+// to the conversation it came from is recorded by the server on both index rows, which is what /agents draws.
+function openSendTo(ti, target) {
+  const t = CUR.turns[ti]; if (!t || t.role !== "assistant" || !CUR.chat) return;
+  const nth = CUR.turns.slice(0, ti + 1).filter(x => x.role === "assistant").length;
+  BV.sendTo.open({
+    source: { chat: CUR.chat, turn: nth, title: (CUR.rec && CUR.rec.title) || "an answer", project: CUR.project, projectName: projectName(CUR.project), text: t.text },
+    target: target || { project: CUR.project }, projects: PROJECTS, chats: CHATS, models: MODELS, model: MODEL || defaultModel(),
+    onSend: payload => runHandoff(payload),
+  });
+}
+async function runHandoff(payload) {
+  if (LIVE) throw new Error("a turn is running here; wait for it to finish");
+  if (payload.chat && payload.chat !== CUR.chat) await openChat(payload.chat, true);
+  else if (!payload.chat) selectProject(payload.project, true);
+  if (payload.model) { MODEL = payload.model; try { localStorage.setItem("bv.chat.model2", MODEL); } catch (x) {} renderModels(); }
+  FROM = payload.from || null;
+  $("#box").value = payload.text;
+  await send();
+}
+
+// ---- Running now: the Agents panel folded into a strip (sessions active, sub-agents running), from /api/agents ----
+async function running() {
+  try {
+    const r = await fetch("/api/agents"); const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status);
+    const live = (j.sessions || []).filter(s => s.active);
+    const subs = live.reduce((a, s) => a + ((s.counts || {}).running || 0), 0);
+    $("#runSum").textContent = `Running now · ${plural(live.length, "session")} active · ${plural(subs, "sub-agent")} running · read ${when(j.generatedAt)}`;
+    $("#runDot").className = "dot" + (live.length ? " on" : "");
+    // the filtering rule: the strip only opens itself when something is actually running (and never fights a fold Zak
+    // set) -- and never over an open conversation, which is what the page is for (T-0100)
+    const strip = $("#running");
+    if (live.length && !strip.dataset.touched && !talking()) strip.open = true;
+    if (!live.length && !strip.dataset.touched) strip.open = false;
+    // a session that IS one of these conversations opens on click, unless it is the one already on screen (T-0100)
+    const chatFor = s => CHATS.find(c => c.session_id === s.sessionId) || null;
+    const enter = c => c.id === CUR.chat ? `<span class="m">you are in this one</span>`
+      : `<button class="btn" type="button" data-openchat="${esc(c.id)}" title="open this conversation here">open</button>`;
+    // the bubbles first: the same circle the agents page draws, small (T-0101). Double-click one for its history,
+    // one control to enter it. The lines under them stay as the detail, sub-agents included.
+    $("#runbubs").innerHTML = "";
+    const groups = (j.sessions || []).filter(s => s.active).map(s => BV.bubbles.group(s, { maxKids: 6 }))
+      .concat(CHATS.filter(c => c.running && !(j.sessions || []).some(s => s.sessionId === c.session_id)).map(c => BV.bubbles.chatGroup(c)));
+    BV.bubbles.paint($("#runbubs"), groups, j.handoffs || [], {
+      small: true, emptyText: "nothing is running on this machine right now",
+      onHistory: openHistory, onEnter: id => { if (id !== CUR.chat) openChat(id, true); },
+      onHandoff: (from, to) => { $("#status").textContent = "a line is drawn on the agents page; from a reply here, use its send-to control"; },
+    });
+    $("#runBody").querySelector("#runlines").innerHTML = (live.length ? live.map(s => { const c = chatFor(s); return `<div class="rs"><span class="dot on"></span><b>${esc(s.title || "(untitled session)")}</b><span class="m">${esc(shortModel(s.model))} · last ${esc(when(s.lastActive))}${s.userTurns ? " · " + plural(s.userTurns, "turn") : ""}${c ? " · a conversation from this page" : ""}</span>${c ? enter(c) : ""}</div>
+        ${(s.subagents || []).filter(x => x.running).map(x => `<div class="sub">↳ ${esc(x.description)} <span class="badge type">${esc(x.type || "agent")}</span> <span class="m">${esc(shortModel(x.model))} · started ${esc(when(x.started))}</span></div>`).join("")}`; }).join("")
+      : `<div class="rs"><span class="m">nothing is running on this machine right now</span></div>`)
+      + CHATS.filter(c => c.running && !live.some(s => s.sessionId === c.session_id)).map(c => `<div class="rs"><span class="dot on"></span><b>${esc(c.title || "(untitled)")}</b><span class="m">a turn is running · ${esc(projectName(c.project))}</span>${enter(c)}</div>`).join("")
+      + `<div class="rs"><span class="m">every session drawn, with its sub-agents and the handoffs between them, is on <a href="/agents">the agents page</a></span></div>`;
+  } catch (e) { $("#runSum").textContent = "Running now · could not read the sessions: " + e.message; }
+}
+
+// ---- the pane's width, and the conversation in its own window (2026-09-10, T-0080) ----
+// The list of conversations is a rail beside the thread; how much room each gets is Zak's call, so its edge is
+// draggable and the width lives in this browser. "Pop out" opens the same conversation at ?solo=1, which hides the
+// rail and the home blocks: one window, one conversation, so it can sit beside whatever he is working on.
+const RAIL = [180, 640];
+function railWidth(w) {
+  const lay = $("#layout"), g = $("#railgrip");
+  w = Math.max(RAIL[0], Math.min(RAIL[1], Math.round(w)));
+  lay.style.gridTemplateColumns = w + "px minmax(0, 1fr)";
+  g.style.left = w + "px";
+  return w;
+}
+function mountRailGrip() {
+  const g = $("#railgrip");
+  let w = railWidth(parseInt(localStorage.getItem("bv.chat.rail") || "300", 10) || 300);
+  g.addEventListener("pointerdown", e => {
+    e.preventDefault(); g.classList.add("on");
+    const x0 = e.clientX, w0 = w;
+    const move = ev => { w = railWidth(w0 + (ev.clientX - x0)); };
+    const up = () => {
+      g.classList.remove("on");
+      window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up);
+      try { localStorage.setItem("bv.chat.rail", String(w)); } catch (x) {}
+    };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);
+  });
+}
+function popout() {
+  const qs = CUR.chat ? `chat=${encodeURIComponent(CUR.chat)}` : `project=${encodeURIComponent(CUR.project)}`;
+  const name = "bv-chat-" + (CUR.chat || CUR.project);
+  const win = window.open(`/chat?${qs}&solo=1`, name, "width=820,height=940");
+  if (win) win.focus(); else $("#status").textContent = "the browser blocked the new window; allow pop-ups for this page";
+}
+
+// ---- a file named in the conversation, read without leaving it (2026-09-10, T-0079) ----
+// A message can name a brain file; the renderer turns those into file links, and this is where one opens. A .md carries
+// its own "open in Reader" button inside the drawer, so the conversation is never navigated away from by accident.
+async function openFile(path) {
+  const d = $("#drawer"); d.hidden = false;
+  d.innerHTML = `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(path)}</code></div>`;
+  if (!path.includes("/")) { const r = await fetch(`/api/resolve?name=${encodeURIComponent(path)}`); const j = await r.json(); if (j.path) path = j.path; else { d.innerHTML += `<div class="empty">${esc(j.error || "could not resolve " + path)}</div>`; return; } }
+  if (BV.isImage(path)) { d.hidden = true; BV.lightbox(path); return; }
+  const r = await fetch(`/api/file?path=${encodeURIComponent(path)}`); const j = await r.json();
+  let body;
+  if (j.error) body = `<div class="empty">${esc(j.error)}</div>`;
+  else if (path.endsWith(".json")) { let t = j.text; try { t = JSON.stringify(JSON.parse(j.text), null, 1); } catch (e) {} body = `<pre>${esc(t)}</pre>`; }
+  else body = `<article class="md">${md(j.text, { base: path.split("/").slice(0, -1).join("/") })}</article>`;
+  d.innerHTML = `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(path)}</code>${BV.readerLink(path)}${j.mtime ? `<span class="meta">touched ${esc(j.mtime.slice(0, 10))}</span>` : ""}</div>${body}`;
+  d.scrollTop = 0;
+  BV.glossary.scan(d);
+}
+
+// ---- a conversation's history, read-only, from a bubble (2026-09-10, T-0101) ----
+async function openHistory(b) {
+  const d = $("#drawer"); d.hidden = false;
+  const head = `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(b.title || b.id)}</code>${
+    b.chat && b.chat !== CUR.chat ? `<button class="btn" type="button" data-openchat="${esc(b.chat)}">enter it</button>` : ""}</div>`;
+  d.innerHTML = head + `<div class="empty">reading it back…</div>`;
+  try { const j = await BV.history.load(b); d.innerHTML = head + BV.history.html(j); BV.glossary.scan(d); }
+  catch (e) { d.innerHTML = head + `<div class="note">${esc(e.message)}</div>`; }
+  d.scrollTop = 0;
+}
+
+// ---- a picture in a message (2026-09-10, T-0079) ----
+// Pasted or picked, the bytes go to the brain first (POST /api/paste -> thoughts/notepad/) and the message then carries
+// the file's path, so the agent can read the same picture Zak is looking at and the message stays plain text.
+async function attach(file) {
+  if (!file) return;
+  if (!/^image\//.test(file.type || "")) { $("#status").textContent = "that is not a picture; only images can be added to a message"; return; }
+  $("#status").textContent = `saving ${file.name || "the picture"}…`;
+  try {
+    const data = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(",")[1]); fr.onerror = () => rej(new Error("could not read the file")); fr.readAsDataURL(file); });
+    const r = await fetch("/api/paste", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: file.name || "pasted.png", type: file.type, data, kind: "chat" }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { $("#status").textContent = "the picture was not saved: " + (j.error || r.status); return; }
+    const box = $("#box"), tag = `![${String(file.name || "picture").replace(/[[\]()]/g, "")}](${j.path})`;
+    box.value = (box.value ? box.value.replace(/\s*$/, "") + "\n" : "") + tag + "\n";
+    $("#status").textContent = `kept as ${j.path} · it travels with your message`;
+    box.focus();
+  } catch (err) { $("#status").textContent = "could not add the picture: " + err.message; }
+}
+
+// ---- wiring ----
+async function refreshIndex() {
+  const r = await fetch("/api/chats"); const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.status);
+  PROJECTS = j.projects || []; CHATS = j.chats || []; MODELS = j.models || []; CTX = j.context || null;
+  if (CUR.chat) { const rec = CHATS.find(c => c.id === CUR.chat); if (rec) CUR.rec = rec; }
+  renderRail(); renderModels();
+  const th = $("#thread"); const who = th.querySelector(".who"); if (who) who.outerHTML = whoBlock();
+}
+document.addEventListener("click", async e => {
+  const m = e.target.closest("[data-model]"); if (m && !m.disabled) { MODEL = m.dataset.model; try { localStorage.setItem("bv.chat.model2", MODEL); } catch (x) {} renderModels(); return; }
+  if (e.target.closest("#stop")) { stop(); return; }
+  const st = e.target.closest("[data-sendto]"); if (st) { openSendTo(Number(st.dataset.sendto)); return; }
+  if (e.target.closest("#attach")) { $("#pick").click(); return; }
+  if (e.target.closest("#popout")) { popout(); return; }
+  const oc = e.target.closest("[data-openchat]");   // a running conversation in the strip, opened here (T-0100)
+  if (oc) { const id = oc.dataset.openchat; if (id !== CUR.chat) await openChat(id, true); return; }
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  // a file named in a message opens beside the conversation; a wikilink is resolved to its path first (T-0079)
+  const w = e.target.closest("a.wikilink");
+  if (w) { e.preventDefault(); const t = w.dataset.wikilink.split("#")[0].trim(); if (t.endsWith(".canvas")) location.href = BV.forgeHref(t); else openFile(t); return; }
+  const of = e.target.closest(".filelink[data-open]"); if (of) { openFile(of.dataset.open); return; }
+  const nw = e.target.closest("[data-new]"); if (nw) { e.preventDefault(); selectProject(CUR.project); return; }
+  // the Waiting-on-you block: a box checked, a question reopened, a person chip, a project fold remembered
+  const cb = e.target.closest("input[type=checkbox][data-id]");
+  if (cb) {
+    e.preventDefault();
+    // a box ticked with words in its reply box carries them along: the reply is written first, then the item closes (T-0078)
+    const pend = BV.replies.pending(cb);
+    if (pend && cb.checked) { const r = await BV.replies.act(pend.project, pend.id, pend.text, pend.ledger); if (r.ok) pend.form.querySelector("textarea").value = ""; }
+    await actWaiting(cb.dataset.project, { action: cb.checked ? "done" : "reopen", id: cb.dataset.id }); return;
+  }
+  const ro = e.target.closest("[data-reopen]"); if (ro) { await actWaiting(ro.dataset.project, { action: "reopen", id: ro.dataset.reopen }); return; }
+  const pc = e.target.closest(".badge.person"); if (pc) { location.href = `/people?open=${encodeURIComponent(pc.dataset.person)}`; return; }
+  const fl = e.target.closest(".filelink");   // no drawer on the home page: a linked file opens on the project's own page
+  // ...unless it is a SECTION ASK (2026-09-09): a "file.md#slug" link renders as a real <a> to the Reader, so it is left
+  // to follow its own href and Zak lands on the portion of the document that needs him, not on the ledger it came from.
+  if (fl && fl.tagName !== "A") { const d = fl.closest("details.pj"); if (d) location.href = `/projects?id=${encodeURIComponent(d.dataset.pj)}`; return; }
+  if (e.target.closest("#running > summary")) { $("#running").dataset.touched = "1"; return; }
+  const pj = e.target.closest("details.pj > summary");
+  // one project open at a time (T-0107): a plain press opens this one and closes the rest, shift keeps them
+  if (pj && !e.target.closest("a")) {
+    e.preventDefault();
+    const k = pj.parentElement.dataset.pj;
+    if (e.shiftKey) { if (WOPEN.has(k)) WOPEN.delete(k); else WOPEN.add(k); }
+    else WOPEN = WOPEN.has(k) && WOPEN.size === 1 ? new Set() : new Set([k]);
+    renderWaiting(); return;
+  }
+});
+document.addEventListener("submit", async e => {
+  const f = e.target;
+  if (f.dataset.reply) return;                 // the reply box is wired once, in viewer-common (BV.replies.wire)
+  if (!f.dataset.q) return;                    // the composer wires itself; this is a question answered in the waiting block
+  e.preventDefault();
+  await actWaiting(f.dataset.project, { action: "answer", id: f.dataset.q, text: f.querySelector("textarea").value, by: BV.owner });
+});
+$("#composer").addEventListener("submit", e => { e.preventDefault(); send(); });
+$("#box").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+// paste a screenshot straight into the message (T-0079); the file input is the same path for one picked by hand
+$("#box").addEventListener("paste", e => {
+  const items = [...((e.clipboardData && e.clipboardData.items) || [])].filter(i => i.kind === "file" && /^image\//.test(i.type || ""));
+  if (!items.length) return;
+  e.preventDefault();
+  for (const i of items) attach(i.getAsFile());
+});
+$("#pick").addEventListener("change", e => { for (const f of e.target.files || []) attach(f); e.target.value = ""; });
+document.addEventListener("keydown", e => { if (BV.typing(e)) return; if (e.key === "Escape" && !$("#drawer").hidden) $("#drawer").hidden = true; });
+// the strip's lines are measured off real boxes, so they are drawn again when the fold opens (T-0101)
+$("#running").addEventListener("toggle", () => {
+  const el = $("#runbubs"); if (el && el._bubs && $("#running").open) BV.bubbles.wires(el, el._bubs.groups, el._bubs.handoffs || []);
+});
+$("#thread").addEventListener("scroll", () => { if (LIVE) { const th = $("#thread"); LIVE.scrolled = th.scrollHeight - th.scrollTop - th.clientHeight > 160; } });
+
+async function start() {
+  if (mode().propose) {
+    document.querySelector("header.bar h1").textContent = "Chat";
+    $("#crumb").textContent = "team copy";
+    $("#layout").innerHTML = `<div></div><div class="stage"><div class="empty-thread" style="margin:60px auto"><p>Chat runs on the owner's machine; in a team copy, use your own Claude Code in this folder.</p></div></div>`;
+    return;
+  }
+  // popped out (?solo=1): the conversation alone in its own window, the rail and the home blocks out of the way (T-0080)
+  if (new URLSearchParams(location.search).get("solo") === "1") { document.body.classList.add("solo"); $("#popout").hidden = true; }
+  else mountRailGrip();
+  mountShowAll("home", () => renderWaiting());
+  // the reply boxes inside Waiting on you: an item Zak answers in words instead of ticking (T-0078)
+  BV.replies.wire(document, { status: m => { $("#status").textContent = m; },
+                              onDone: async () => { await loadWaiting(); refreshBadges(); BV.quests.refresh(); } });
+  // hold / bring back on any task of Zak's in the block (T-0108)
+  BV.holds.wire(document, { status: m => { $("#status").textContent = m; },
+                            onDone: async () => { await loadWaiting(); BV.quests.refresh(); } });
+  const qs = new URLSearchParams(location.search);
+  try { BADGE = await badges(); } catch (e) {}
+  await refreshIndex();
+  // the home reopens this browser's last conversation; an explicit ?project= or a conversation that is gone starts fresh
+  const proj = qs.get("project"), want = qs.get("chat") || (proj ? null : rememberedChat());
+  if (want && CHATS.some(c => c.id === want)) await openChat(want);
+  else { if (want) rememberChat(null); selectProject(proj && PROJECTS.some(p => p.id === proj) ? proj : "main"); }
+  loadCalls();      // Today's calls first, each joined to its prep (2026-09-21)
+  loadWaiting();
+  paintTodayLink();   // the count on the "today" link, from the Today page's own model (T-0150)
+  // a send-to started on the agents page (dragging one bubble onto another) arrives here as the next message (T-0094)
+  try {
+    const raw = sessionStorage.getItem("bv.handoff");
+    if (raw) {
+      sessionStorage.removeItem("bv.handoff");
+      const payload = JSON.parse(raw);
+      if (payload && payload.text) runHandoff(payload).catch(err => { $("#status").textContent = err.message; });
+    }
+  } catch (e) {}
+  loadOrganize();   // Still to organize, where the stage line was: what is left in the ledgers' Inboxes (T-0154)
+  // the timeline, folded: the same rows the quest log's Done tab shows, from GET /api/quests (step 2c, T-0059)
+  BV.quests.timeline($("#recentBody"), { onPaint: d => {
+    const n = (d && d.done || []).length, tot = (d && d.doneTotal) || n;
+    $("#recentSum").textContent = d && d.error ? "could not read the ledgers: " + d.error
+      : `${plural(tot, "item")} closed across the projects · newest first · each links to what it produced`;
+  } });
+  running(); setInterval(() => { if (!document.hidden) running(); }, 30000);
+}
+start().catch(e => { $("#thread").innerHTML = `<div class="note">Could not load the chat: ${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

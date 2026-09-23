@@ -1,0 +1,11 @@
+{
+  "name": "brain-viewer-widget-harness",
+  "private": true,
+  "description": "jsdom for skills/brain-viewer/widgets/harness.py, which mounts one home widget against canned responses (T-0217). Install with npm install here; node_modules is git-ignored.",
+  "scripts": {
+    "harness": "python widgets/harness.py --all"
+  },
+  "dependencies": {
+    "jsdom": "^29.1.1"
+  }
+}

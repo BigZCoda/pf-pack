@@ -2,7 +2,7 @@
   "pack": "prospectforge-base",
   "manifestVersion": 2,
   "updatedAt": "2026-09-23",
-  "manifestChangelog": "2026-09-23 release: update 1.1.0 (folder components: install-component.py replaces a component folder whole; the Brain Viewer ships as one). 2026-09-03 release: ferryman 1.3.0 (push.py was sending a `source` key the import schema rejects 422, so every 1.2.0 push failed at validate -- removed; --participants ships as a frontmatter YAML list; --base flag; runbook example corrected; participants matrix row LIVE). 2026-08-28 release: ferryman 1.2.0 (PATCH correction path, API catalog, owner rules, Topics trap, participants gap documented), transcript-processor 1.2.1 (owner rules + corrected push facts + verbatim check), people-adapter 1.0.1 (career-arc facet), shell v0.2 (standing reminders folded into current-focus, dispatcher-cursor dropped, Ferret reference removed). v2 (2026-07-28): per-skill files[] mappings (src in this repo -> dest in a brain) so the assembler can build a new brain straight from the registry; shell component versioned; update-skill + ferryman-adapter-contract now bundled. All v1 fields unchanged — /update keeps working.",
+  "manifestChangelog": "2026-09-23 release: brain-viewer 0.48.0 (The viewer is now a pf-pack component, replaced whole on update, and what you make lives outside it. Your settings, board layouts, looks and widgets live in viewer/ at the brain root, which no update). 2026-09-23 release: update 1.1.0 (folder components: install-component.py replaces a component folder whole; the Brain Viewer ships as one). 2026-09-03 release: ferryman 1.3.0 (push.py was sending a `source` key the import schema rejects 422, so every 1.2.0 push failed at validate -- removed; --participants ships as a frontmatter YAML list; --base flag; runbook example corrected; participants matrix row LIVE). 2026-08-28 release: ferryman 1.2.0 (PATCH correction path, API catalog, owner rules, Topics trap, participants gap documented), transcript-processor 1.2.1 (owner rules + corrected push facts + verbatim check), people-adapter 1.0.1 (career-arc facet), shell v0.2 (standing reminders folded into current-focus, dispatcher-cursor dropped, Ferret reference removed). v2 (2026-07-28): per-skill files[] mappings (src in this repo -> dest in a brain) so the assembler can build a new brain straight from the registry; shell component versioned; update-skill + ferryman-adapter-contract now bundled. All v1 fields unchanged — /update keeps working.",
   "shell": {
     "component": "brain-shell",
     "version": "0.2",
@@ -101,6 +101,499 @@
         {
           "src": "files/update-1.1.0/install-component.py",
           "dest": "skills/update/install-component.py"
+        }
+      ]
+    },
+    {
+      "skill": "brain-viewer",
+      "version": "0.48.0",
+      "installedAs": "0.48.0",
+      "changelog": "The viewer is now a pf-pack component, replaced whole on update, and what you make lives outside it. Your settings, board layouts, looks and widgets live in viewer/ at the brain root, which no update touches; on first start the viewer creates that folder and copies in any settings, layouts and looks it finds from before. You can write your own widgets in viewer/widgets/: each declares contract: 1, loads after the viewer's own, and cannot take the name of one the viewer ships. A brain with no holon registry or content manifest now shows empty pages instead of errors, and the owner defaults to @me until viewer/settings.json names you. Install or update with python skills/update/install-component.py brain-viewer (or /update).",
+      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/brain-viewer-0.48.0.md",
+      "blurb": "the Brain Viewer: a local app over your brain (home board of widgets, today, projects, people, the reader, canvases and maps). An application, replaced whole on update; what you make for it lives in viewer/ and is never touched.",
+      "specPath": "skills/brain-viewer/brain-viewer-skill.md",
+      "update": "replace-folder",
+      "installRoot": "skills/brain-viewer",
+      "userLayer": "viewer/",
+      "start": "python skills/brain-viewer/serve.py",
+      "keepBeforeReplace": [
+        {
+          "glob": "viewer-settings.json",
+          "to": "viewer/settings.json"
+        },
+        {
+          "glob": "home-layout-*.json",
+          "to": "viewer/layouts/*.json"
+        },
+        {
+          "glob": "looks/*.css",
+          "to": "viewer/looks/*.css",
+          "except": [
+            "default.css",
+            "paper.css"
+          ]
+        }
+      ],
+      "files": [
+        {
+          "src": "files/brain-viewer-0.48.0/adapter.py",
+          "dest": "skills/brain-viewer/adapter.py",
+          "sha256": "bb137f8875779eb7471298f29ef4504cbb81b7d524387e5491281211b2ec2ccc"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/adapter.test.py",
+          "dest": "skills/brain-viewer/adapter.test.py",
+          "sha256": "9c3bde0a65429a21034b6a337ec4153e21ac32bbd1df46f6eb25b0ee20cd4d8f"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/adapters.json",
+          "dest": "skills/brain-viewer/adapters.json",
+          "sha256": "173364a7fc0ca8d12ae34120e54b2787ef6ad09364829f3435cdd961c1426725"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/agents.html",
+          "dest": "skills/brain-viewer/agents.html",
+          "sha256": "628c4b80ed5ab71a521def2aa15ce379e3d47b6876bfb1b4d06f5223591ea610"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/attach.js",
+          "dest": "skills/brain-viewer/attach.js",
+          "sha256": "728ba3d5fdd91ffc916a398cc1219268970ef32862e741594703283c6730a305"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/attach.test.py",
+          "dest": "skills/brain-viewer/attach.test.py",
+          "sha256": "5e18409ca364884f196acc2f0287ffe841b478c84bacde6f50ce6546dff2f3eb"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/brain-viewer-plugin-contract.md",
+          "dest": "skills/brain-viewer/brain-viewer-plugin-contract.md",
+          "sha256": "d8d6df16b00decea733ff9f41ab0dbbe7c31934a6cf767e3053fdac57c8669b5"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/brain-viewer-releases.md",
+          "dest": "skills/brain-viewer/brain-viewer-releases.md",
+          "sha256": "1efc71b7be3223bedd86697217679e31b5805c1b68fa91d19ac3b71a0808bc51"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/brain-viewer-skill.md",
+          "dest": "skills/brain-viewer/brain-viewer-skill.md",
+          "sha256": "693e10da3805f898ef8093c6a3a4314df97847872fb7863a00fad711badf5eb2"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/call.html",
+          "dest": "skills/brain-viewer/call.html",
+          "sha256": "082c7221927cb242be6eb828e5f143723471bc59ebf449a63d5c9e6d624ee11b"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/call.test.py",
+          "dest": "skills/brain-viewer/call.test.py",
+          "sha256": "1cddf100d4b4cce38372b6faa7ef121237a522b3f72ccec05fcecb1f8d8c28ec"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/canvas-viewer.html",
+          "dest": "skills/brain-viewer/canvas-viewer.html",
+          "sha256": "6b23a52bf85ab374d3c567f919a813f95379453b16d82e92c9f94e46e082899a"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/chat-prompts/main.md",
+          "dest": "skills/brain-viewer/chat-prompts/main.md",
+          "sha256": "a973d0d405fc15fd71d864eec1344e8f1dcc69557ea38ae6601a4a740b481add"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/chat-prompts/project.md",
+          "dest": "skills/brain-viewer/chat-prompts/project.md",
+          "sha256": "d73094b457fc14264b81ee1849d0e375b5d58abe8db267cf0f9ed460864ad5b4"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/chat.html",
+          "dest": "skills/brain-viewer/chat.html",
+          "sha256": "37b21b52248d8b14aa77bb7ff4474c5cb828cd889a71d71367c89069df4200fb"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/component.json",
+          "dest": "skills/brain-viewer/component.json",
+          "sha256": "ecadfdea6aaaa29592f8916865924a6a51680963ee9e026cda019cd9d66ca339"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/findings.html",
+          "dest": "skills/brain-viewer/findings.html",
+          "sha256": "e6c16ce2d6a6321caefbbb164d0e873c96d2a101be2e4720606f4f077428028e"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/forge-browser-checks.py",
+          "dest": "skills/brain-viewer/forge-browser-checks.py",
+          "sha256": "355e2e5e2e7afa998c342123983ea321114f05b983ef0cdf8b121ad5db06eeab"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/forge-edge.test.js",
+          "dest": "skills/brain-viewer/forge-edge.test.js",
+          "sha256": "e6946631f26b5d45cff991ed1e1f7a0325c50753a17b101afd456fda00c67623"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/forge-routing.js",
+          "dest": "skills/brain-viewer/forge-routing.js",
+          "sha256": "13221dbfc8b700e20a39c1004703b43ba8352267a44ab790cde37607b45dd9e5"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/forge-routing.test.js",
+          "dest": "skills/brain-viewer/forge-routing.test.js",
+          "sha256": "9fe2eb9b5f610ae3f2c1242bdd83ace4fb23f00b54f0bf5534f9e964fdd63bc1"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/forge.html",
+          "dest": "skills/brain-viewer/forge.html",
+          "sha256": "e3e0c7f55ee369208431e5424c6f051e1601e9d31ba8f6eba7805e76d72609de"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/freehand.test.py",
+          "dest": "skills/brain-viewer/freehand.test.py",
+          "sha256": "b7189153502c58384bf51a29436446ac1dfc5d7bedcb8171907cbb7f890f463d"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/glossary.html",
+          "dest": "skills/brain-viewer/glossary.html",
+          "sha256": "59ad1608afcab3277d4c7e1810e87b1fec4a0992e9b5e4a691f8bbd38d2534a4"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/graph-physics.js",
+          "dest": "skills/brain-viewer/graph-physics.js",
+          "sha256": "a3cc596a1656148cecf405f5ca293f358872519f9efc1da8191acd089215ebe9"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/help.json",
+          "dest": "skills/brain-viewer/help.json",
+          "sha256": "09994604a548a3b357131b0c8f8bd6039106a0f667ce5a99657b01cc010d34e9"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/holons.html",
+          "dest": "skills/brain-viewer/holons.html",
+          "sha256": "3114fd0e286a7655f518543001ffc00c5a0d35c2eb166d18304ac72a6a838f10"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/home.html",
+          "dest": "skills/brain-viewer/home.html",
+          "sha256": "10636999dcb3f28249f308d616bc272f3f1c81abfc61b1a4949dbede11d0b906"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/home.test.py",
+          "dest": "skills/brain-viewer/home.test.py",
+          "sha256": "5e3545a42df2f862bbb8f6bf72928b93384f6ea205e694b13320f40f46495a20"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/looks/default.css",
+          "dest": "skills/brain-viewer/looks/default.css",
+          "sha256": "f23a931fdb598ae48ab8e6d100697ab2dcf7319bae72dc9d12c60458657d34c6"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/looks/paper.css",
+          "dest": "skills/brain-viewer/looks/paper.css",
+          "sha256": "3a40bf25db7d86792508e832a2a8f0b1f6f8974445d20190eb556070043d91a3"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/looks/readme.md",
+          "dest": "skills/brain-viewer/looks/readme.md",
+          "sha256": "2cdefd8e3f33bc4bf03720291aac719248a2e6df87fdd2a9209671b7004b3d49"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/map.html",
+          "dest": "skills/brain-viewer/map.html",
+          "sha256": "19e8e17e6894acb18c6b790da2790f0804ff4137a67fee8dc9537ddacd38b4ba"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/maps.html",
+          "dest": "skills/brain-viewer/maps.html",
+          "sha256": "3f67a07b79a22b2581b46b1244d5e2087ff263191ac87a98c86d52faf64213f3"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/mentee-dashboard.html",
+          "dest": "skills/brain-viewer/mentee-dashboard.html",
+          "sha256": "754eaae3d04111da5da1092240f20514172747f72e1a6195a3ccc69cca1177db"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/package-lock.json",
+          "dest": "skills/brain-viewer/package-lock.json",
+          "sha256": "a61f48ff0d2bbcb35356d12a26d6691fca47be0d91b60cce03d6701b2471be18"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/package.json",
+          "dest": "skills/brain-viewer/package.json",
+          "sha256": "9b6c4ec46f4a531aeaf9b38d92cfd9523b465e0905f3f574559b1208b23b09d5"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/people.html",
+          "dest": "skills/brain-viewer/people.html",
+          "sha256": "0d952ef6e80f80d9796e56d72067077bb3ce0098a24afc5bf163ae3cf07d2114"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/prep-v3.test.py",
+          "dest": "skills/brain-viewer/prep-v3.test.py",
+          "sha256": "166d22b68dca6b36aab6d2ec06af34381d798720db7a40d8ecea3d9dccee0c75"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/projects.html",
+          "dest": "skills/brain-viewer/projects.html",
+          "sha256": "811eb2bd9b58216d757a3cd0bb7d7f31a39d678314e0070c0dbc986eb1447f42"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/providers/fal_image.py",
+          "dest": "skills/brain-viewer/providers/fal_image.py",
+          "sha256": "5cf57349776c19214612bf83dea491b145c12a271cfda5ab2ccf999421c4a2b7"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/providers/gemini_image.py",
+          "dest": "skills/brain-viewer/providers/gemini_image.py",
+          "sha256": "2f9c59edc4acb76f158bbf7bde6775eb3119859fe4229ab9be757a7606f8a1e8"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/providers/openai_image.py",
+          "dest": "skills/brain-viewer/providers/openai_image.py",
+          "sha256": "fe9ee94c90cc34256571e0ba4fbb9766e341bf81e537f8e09eb248384359eba0"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/providers/readme.md",
+          "dest": "skills/brain-viewer/providers/readme.md",
+          "sha256": "e65734973ab03d73858907a04f3ce830c1a037d96d38ffd48e0b563d28a67b2e"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/reader-write.test.py",
+          "dest": "skills/brain-viewer/reader-write.test.py",
+          "sha256": "6cfc35a30b307ba1a8633044b004f6284d053196e249c53f780596dbb7c16cea"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/reader.html",
+          "dest": "skills/brain-viewer/reader.html",
+          "sha256": "ba2625bf00fe410c01de5848c9cec4cd214011e7c3c0b0035942543ed073ba60"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/readme.md",
+          "dest": "skills/brain-viewer/readme.md",
+          "sha256": "c129d66b2a5cde1a0a69fbcd8c53d091ec20127c11859638069f5d713c819305"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/requests.html",
+          "dest": "skills/brain-viewer/requests.html",
+          "sha256": "9bde26d946e0ae0398e4fc1bf3850be62f6be94332c9c75d542f83fee5aa411b"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/review.html",
+          "dest": "skills/brain-viewer/review.html",
+          "sha256": "0474cf7785f317cd1abb4767e0ac74811281c396d7dc04a73c50410dffb232de"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/serve.py",
+          "dest": "skills/brain-viewer/serve.py",
+          "sha256": "23b1724a6ee0c7a8b0b8c3ccf56f2fc2ede129c293c18fa9fb97150c6c677acd"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/split.test.py",
+          "dest": "skills/brain-viewer/split.test.py",
+          "sha256": "612ea0c633bcc3f8d4b15167cb6802805c8ed60a133268d08ecde64d35d362db"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/studio.html",
+          "dest": "skills/brain-viewer/studio.html",
+          "sha256": "65e7da4eb3c2c38b4ace4b3842b6dfbd19d8d3e4a9bb40810f2edfe3a274f9f8"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/studio.test.py",
+          "dest": "skills/brain-viewer/studio.test.py",
+          "sha256": "378c323696c79c7bdf71e28dd3e830a5d1e3dbaefc42bf98b26f2d074cbffd23"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/sun-favicon.png",
+          "dest": "skills/brain-viewer/sun-favicon.png",
+          "sha256": "c57f698727085a292b7571ff2cb95b246ff1ddecd45e4b2abca7cb27ba55e273"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/sun-mark.png",
+          "dest": "skills/brain-viewer/sun-mark.png",
+          "sha256": "cefdac55d04261f843fd2d7479ea47271246542d8761cb58238e1d5600a011e7"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/today.html",
+          "dest": "skills/brain-viewer/today.html",
+          "sha256": "3d27385ee7c2780733d2105c7558f6373d8c609010ff5c219480781b060cc1e5"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/vendor/force-graph.min.js",
+          "dest": "skills/brain-viewer/vendor/force-graph.min.js",
+          "sha256": "5e28f9cad10fa9731ed746a16fd006106d6f7f2bac05fe28598b9f87c0fd6e6a"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/viewer-common.js",
+          "dest": "skills/brain-viewer/viewer-common.js",
+          "sha256": "0f87c68ba3fc604c969fe4de2cbb6e927956e7f58af9b92dfac477047c218efc"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/viewer-tokens.css",
+          "dest": "skills/brain-viewer/viewer-tokens.css",
+          "sha256": "6c9112abfda35846e405c8579c869d829463579c3efb566cf994c6326ea5fba5"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/chat.js",
+          "dest": "skills/brain-viewer/widgets/chat.js",
+          "sha256": "0f614c8f0d2475020bdaf233af0a56b1f362dc041f5666b6ba7bde0cacd4901d"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/command.js",
+          "dest": "skills/brain-viewer/widgets/command.js",
+          "sha256": "4b8b16affce2db80a2d2e485e24453c86ad81b1b0f9265bbf14542014011593a"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/curriculum.md",
+          "dest": "skills/brain-viewer/widgets/curriculum.md",
+          "sha256": "f930f01927ea9c88e6d0555f5b688d2424b6ca0c44f99797fe963803e464d875"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/decide.js",
+          "dest": "skills/brain-viewer/widgets/decide.js",
+          "sha256": "24c1c26b181dbcab794384582f16fd86f41c2ec3de6b89d002d55ef1e4a627bb"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/deck.js",
+          "dest": "skills/brain-viewer/widgets/deck.js",
+          "sha256": "b82cdce7bdf286b8f3e533c31deaf3c7f30dccea73d91cf7ab7ba7089a21c2b5"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/dial.js",
+          "dest": "skills/brain-viewer/widgets/dial.js",
+          "sha256": "29c44253853819b67f428a546c7a528cccf0a1a8c362ef245966754a598ecaa5"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/flow.js",
+          "dest": "skills/brain-viewer/widgets/flow.js",
+          "sha256": "8e553ccfac24cfe2b240703f04feabed68f42776d6db906c80a62695d9a330c9"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/glossary.js",
+          "dest": "skills/brain-viewer/widgets/glossary.js",
+          "sha256": "8faf0fd3dea0f2953d9568d755210b3dfa183de6d08c4951a7ac68c724fb207b"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/harness.py",
+          "dest": "skills/brain-viewer/widgets/harness.py",
+          "sha256": "c2efc9769da420a21819ebd197f7658dd1b6c13491b40355afb6dc31a1a07713"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/holons.js",
+          "dest": "skills/brain-viewer/widgets/holons.js",
+          "sha256": "560701579a1503e6d33f817cc570ee609218875a28b0c965cc1dfd41cea87bdb"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/horizon.js",
+          "dest": "skills/brain-viewer/widgets/horizon.js",
+          "sha256": "c8010b5ffccb011ba1efc1e7b7a9ac29c3307eb8aa8042b2573b2a55af8f78f4"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/landed.js",
+          "dest": "skills/brain-viewer/widgets/landed.js",
+          "sha256": "9b943f64cbfbe569b6986ed9da2bd24192eaea031c39262ac01908a5ba2b60af"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/live.js",
+          "dest": "skills/brain-viewer/widgets/live.js",
+          "sha256": "5d63b7da8e97bf13f8494480b3d446bf1525592088e751427d6e979292bc3214"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/mantra.js",
+          "dest": "skills/brain-viewer/widgets/mantra.js",
+          "sha256": "c7ebd8800ac6467d5c2417d6f934eeb89f388aaf53c703a7b34f7f2c9ea6c645"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/maps.js",
+          "dest": "skills/brain-viewer/widgets/maps.js",
+          "sha256": "d523a8714388b9cc5472a8b07c6ae21e4d120bed0b045fb7d7c4eee76ff01bae"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/masthead.js",
+          "dest": "skills/brain-viewer/widgets/masthead.js",
+          "sha256": "5ccacde41d7cbadb823befb9a75f627098fc79492a4190f8707468dadb8d8e28"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/mentee.js",
+          "dest": "skills/brain-viewer/widgets/mentee.js",
+          "sha256": "3f78c0f28850ef79f9a3de0c78deee4624b8e6ca6fe3d8d17c2131e4b54babb1"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/minimap.js",
+          "dest": "skills/brain-viewer/widgets/minimap.js",
+          "sha256": "563f4f0bb380db3ead501d955e8db8340bc1f4864f20910410a84de96949466b"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/moved.js",
+          "dest": "skills/brain-viewer/widgets/moved.js",
+          "sha256": "cdd4f768457f8064df85d522f501b16ea3807a1c69b90a365fbdaf83e36986e0"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/next.js",
+          "dest": "skills/brain-viewer/widgets/next.js",
+          "sha256": "6676067d42ee80159faf49dab615017570859dff0b29fc891050ac64a53b20f5"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/notepad.js",
+          "dest": "skills/brain-viewer/widgets/notepad.js",
+          "sha256": "a1d06fdc3809d94581d59ce46221f7984e16c22974700ae6fc891d11f35f5556"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/organize.js",
+          "dest": "skills/brain-viewer/widgets/organize.js",
+          "sha256": "fb4dea34caf9779fef4b2c2ae2785cb3bde4503a7ef79127038ec9966ecebded"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/people.js",
+          "dest": "skills/brain-viewer/widgets/people.js",
+          "sha256": "b905b9e27b7bbf8f7f9749730e4e24cb432230367722d46a6e414bc1503c3eec"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/readme.md",
+          "dest": "skills/brain-viewer/widgets/readme.md",
+          "sha256": "3f08076e79498096d7bd213024d47b82bff40da5d82eda6b19882a628d0e91a6"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/review.js",
+          "dest": "skills/brain-viewer/widgets/review.js",
+          "sha256": "5f03a1fc91de4a1910c57f6c6459600cec9ebcebeaaac6056004d8d9a0eabf6b"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/running.js",
+          "dest": "skills/brain-viewer/widgets/running.js",
+          "sha256": "9b1ba1e9c8daec0ab9da54a2eba35ff4abdd733a2d1130a5281bb81bbcdcc371"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/search.js",
+          "dest": "skills/brain-viewer/widgets/search.js",
+          "sha256": "566c21dda9c42a7dabce6632ffb64132f6067c3503459157da47405be9ef132d"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/space.js",
+          "dest": "skills/brain-viewer/widgets/space.js",
+          "sha256": "48e33ba9b90bc27fb6a15deb5337ca92d2b0c1e51dd1c4244b437985c4d99f38"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/stages.js",
+          "dest": "skills/brain-viewer/widgets/stages.js",
+          "sha256": "6f96dd914b1d7e42efefc8f8a1d240815007eca3f546c178a4f0965ba3271733"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/status.js",
+          "dest": "skills/brain-viewer/widgets/status.js",
+          "sha256": "8b65776cd199b10f85bae3a23d643750f7db1ca0fcc679625ca67a76f7903ae1"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/system.js",
+          "dest": "skills/brain-viewer/widgets/system.js",
+          "sha256": "607330e39dab8392dd6433db1b366c863d3c7305fe673df99a2929c5777c321f"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/tally.js",
+          "dest": "skills/brain-viewer/widgets/tally.js",
+          "sha256": "e687fe063f61eb7b8f9fc6524c399d05f4f974b04d75d4e7fe2b8937d5832cdd"
+        },
+        {
+          "src": "files/brain-viewer-0.48.0/widgets/threads.js",
+          "dest": "skills/brain-viewer/widgets/threads.js",
+          "sha256": "16898a34bd50987bcd3985e6ef3bd4e823be8f6fbed2e9447c8029125e4f39dd"
         }
       ]
     }

@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>People</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { flex: 1; position: relative; min-height: 0; overflow: hidden; display: flex; }
+  main { flex: 1; overflow: auto; padding: 26px 34px 80px; }
+  .hh { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .hh h2 { margin: 0; font-size: 30px; line-height: 1.1; }
+  .desc { color: var(--ink-soft); max-width: 84ch; margin: 6px 0 6px; }
+  .offer { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+  .card { padding: 6px 4px 8px; margin: 0 0 16px; overflow-x: auto; }
+  table.people { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.people th, table.people td { text-align: left; padding: 7px 10px; border-top: 1px solid var(--rule-soft); vertical-align: top; }
+  table.people th { border-top: 0; font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+  table.people tr[data-slug] { cursor: pointer; }
+  table.people tr[data-slug]:hover td { background: var(--hover); }
+  table.people tr.on td { background: var(--selected); }
+  td.who .n { font-family: var(--font-display); font-size: 15px; }
+  td.who .r { color: var(--muted); margin-top: 1px; }
+  td.st { color: var(--ink-soft); max-width: 46ch; }
+  td.num, td.when { white-space: nowrap; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+  .filelink { cursor: pointer; color: var(--accent); border-bottom: 1px dotted var(--accent); }
+  .drawer .prepbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 10px; }
+  .drawer .preplist { list-style: none; padding: 0; margin: 0 0 14px; }
+  .drawer .preplist li { padding: 5px 0; border-top: 1px solid var(--rule-soft); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  /* a prep a transcript holds (frontmatter status: held) is past -- dimmed, not hidden. call-prep-format.md */
+  .drawer .preplist li.past { opacity: .58; }
+  /* the live prep, first thing in a drawer (Zak 9/21) */
+  .drawer details.liveprep { margin: 0 0 14px; }
+  .drawer details.liveprep > summary { cursor: pointer; font-size: 17px; font-weight: 700; padding: 8px 12px; background: var(--surface); border: 1px solid var(--rule-soft); border-left: 4px solid var(--accent); border-radius: var(--radius); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .drawer details.liveprep > summary .meta { font-weight: 400; }
+  .drawer details.liveprep > summary .preplink { margin-left: auto; font-size: 13px; font-weight: 600; }
+  .drawer details.liveprep > article.md { padding: 8px 0 0; }
+  .drawer .newprep { margin: 0 0 14px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--rule-soft); border-left: 3px solid var(--open); border-radius: var(--radius); }
+  .drawer .newprep summary { cursor: pointer; color: var(--muted); }
+  .drawer .newprep form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .drawer .newprep input { padding: 5px 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); }
+  .drawer .newprep input[name=purpose] { flex: 1; min-width: 200px; }
+  .drawer textarea.edit { width: 100%; min-height: 60vh; padding: 10px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); font-family: var(--font-mono); font-size: 12.5px; resize: vertical; }
+  /* the standing call threads, above the individuals */
+  .secthead { display: flex; align-items: baseline; gap: 12px; margin: 0 0 4px; }
+  .secthead h3 { margin: 0; font-size: 20px; font-family: var(--font-display); }
+  table.people tr.grp td { border-top: 1px solid var(--rule); }
+  td.mem { max-width: 40ch; }
+  td.mem .m { color: var(--ink-soft); }
+  .drawer .members { list-style: none; padding: 0; margin: 0 0 14px; }
+  .drawer .members li { padding: 5px 0; border-top: 1px solid var(--rule-soft); }
+  .drawer .members .n { font-family: var(--font-display); font-size: 14.5px; }
+  .drawer .members .r { color: var(--muted); }
+  /* questions on top (Zak 9/09), and everything under them folded */
+  .drawer h2.pname { font-family: var(--font-display); font-size: 22px; margin: 0 0 10px; }
+  .openblock { margin: 0 0 14px; }
+  .openblock .secthead { margin: 0 0 8px; }
+  .openblock .secthead h3 { font-size: 17px; }
+  .openblock ul.items { border-top: 1px solid var(--rule-soft); margin-top: 6px; }
+  details.fold { border-top: 1px solid var(--rule-soft); padding: 6px 0; }
+  details.fold > summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; font-family: var(--font-display); font-size: 15px; padding: 3px 0; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary::before { content: "▸"; color: var(--muted); font-size: 11px; font-family: var(--font-ui); }
+  details.fold[open] > summary::before { content: "▾"; }
+  details.fold > summary:hover { color: var(--accent); }
+  details.fold.sub { margin-left: 10px; border-top: 1px dotted var(--rule-soft); }
+  details.fold.sub > summary { font-size: 14px; }
+  details.fold article.md { padding: 2px 0 8px; }
+  details.askbox { margin: 0 0 14px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--rule-soft); border-left: 3px solid var(--accent); border-radius: var(--radius); }
+  details.askbox summary { cursor: pointer; color: var(--muted); }
+  details.askbox form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  details.askbox input[name=text] { flex: 1; min-width: 220px; }
+  details.askbox input, details.askbox select { padding: 5px 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); }
+  details.askbox input:focus, details.askbox select:focus { outline: none; border-color: var(--accent); }
+  /* card format v2: the one dated status line, and the computed facts under it */
+  /* the list row shows two lines of the status; the whole text is on the card in the drawer (Zak 9/21: "the entire document is shown on each name") */
+  td.st { max-width: 46ch; }
+  td.st .stx { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  /* today's calls, first thing on the page, each joined to its prep (Zak 9/21: "put the call prep at the top ... especially if it is currently the day of the call") */
+  .todaycalls { margin: 0 0 16px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--rule-soft); border-left: 4px solid var(--accent); border-radius: var(--radius); }
+  .todaycalls ul.calls { list-style: none; margin: 6px 0 0; padding: 0; }
+  .todaycalls li { padding: 7px 0; border-top: 1px solid var(--rule-soft); font-size: 15px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .todaycalls li.past { opacity: .6; }
+  .todaycalls li.live { font-weight: 600; }
+  .todaycalls .preplink { font-weight: 700; text-decoration: underline; }
+  /* a file in the drawer folds by its headings, like the Reader (Zak 9/21). On a prep the question and per-person sections are open, the rest closed. */
+  .drawer details.sec { margin: 0 0 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); }
+  .drawer details.sec > summary { cursor: pointer; padding: 8px 12px; font-weight: 600; font-size: 16px; list-style: none; }
+  .drawer details.sec > summary::before { content: "▸ "; color: var(--muted); }
+  .drawer details.sec[open] > summary::before { content: "▾ "; }
+  .drawer details.sec > summary .meta { font-weight: 400; font-size: 12px; margin-left: 6px; }
+  .drawer details.sec > :not(summary) { margin-left: 12px; margin-right: 12px; }
+  .drawer details.sec.l3 { margin: 6px 0 6px 8px; border-color: transparent; background: transparent; }
+  .drawer details.sec.l3 > summary { font-size: 15px; padding: 6px 8px; }
+  .drawer details.sec.l3[open] > summary { border-bottom: 1px solid var(--rule-soft); }
+  .drawer .stands { margin: 0 0 12px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--rule-soft); border-left: 3px solid var(--accent); border-radius: var(--radius); }
+  .drawer .stands.isstale { border-left-color: var(--open); }
+  .drawer .stands .sd { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-right: 8px; }
+  .drawer .facts { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; margin: 0 0 14px; }
+  .drawer .facts dt { margin: 0; font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }
+  .drawer .facts dd { margin: 0; color: var(--ink-soft); }
+  td.st .sd { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-right: 6px; }
+  /* the list grouped by organization (the card's own org: / placed_at: tags) */
+  .orghead { display: flex; align-items: baseline; gap: 12px; margin: 16px 0 4px; }
+  .orghead h4 { margin: 0; font-size: 16.5px; font-family: var(--font-display); font-weight: 400; }
+  .orghead .meta code { font-family: var(--font-mono); font-size: 11.5px; }
+  table.people tr.subhead td { border-top: 1px solid var(--rule); padding-top: 11px; color: var(--muted);
+                               font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>People</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <input type="search" id="q" placeholder="filter people ( / )" autocomplete="off">
+  <nav class="panels" data-page="people"></nav>
+</header>
+<div class="stage">
+  <main id="main"><div class="empty"></div></main>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /people -- WHAT IS OPEN FOR ZAK ABOUT A PERSON FIRST, then the card and the preps.
+// Zak, 2026-09-09 (ideas E16): "the people section is the one with the questions on top... The biggest thing is just making
+// sure that questions go to the specific areas that they need to" and "it all needs to be collapseable, all of this is
+// really really hard to follow along with." So: open a person and the first thing on screen is every open question and open
+// @zak task across the ledgers that concerns them, answerable and checkable right there (the same components /projects uses,
+// BV.questionCard / BV.itemRow, writing through tasks.py); then a small Ask form that files a new question against a project
+// carrying this person; then the front of the card and the preps, with the history behind one fold.
+//
+// Card format v2 (2026-09-11, ledger T-0015, people/readme.md). Zak asked for two sides and a status that cannot go stale
+// unnoticed, after an agent read Ria Raheja's card on 9/10, whose Status section stopped on 2026-06-23, and reported the June
+// state as current. So a card carries ONE status -- `**Where it stands (YYYY-MM-DD):**` under its title -- the page draws it
+// first with its date, composes the front from the standard sections in a fixed order plus the fields it computes (last
+// contact, call frequency, next call), and folds everything else, an old `## Status` section included, into History. A card
+// whose line is missing, over 30 days old, or older than a [status] fold on the same card is marked stale in both places.
+// Routing comes from the ledger's `people:` field; an untagged item still shows up if it names the person (serve.py item_people).
+// Groups are DECLARED in skills/call-prep/call-prep-groups.json -- Zak confirms them, this page only renders them.
+// Format: skills/call-prep/call-prep-format.md. In a team copy the whole panel is off: people/ never travels with a copy.
+const { esc, inline, md, isImage, lightbox, mode, itemRow: row, questionCard: qCard, ledgerAct, refreshBadges, badges, showAll, mountShowAll } = BV;
+const $ = s => document.querySelector(s);
+let DATA = null, GROUPS = null, BADGES = null, Q = "", OPEN = null, OPENG = null;
+
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const link = (path, label) => `<span class="filelink" data-open="${esc(path)}" title="${esc(path)}">${esc(label || path.split("/").pop())}</span>`;
+
+function matches(p) {
+  if (!Q) return true;
+  const hay = [p.name, p.slug, p.role, (p.stands && p.stands.text) || "", p.status, p.category, p.location,
+               p.org, p.placedAt, orgName(p.org || p.placedAt || "")].join(" ").toLowerCase();
+  return Q.toLowerCase().split(/\s+/).filter(Boolean).every(t => hay.includes(t));
+}
+function gmatches(g) {
+  if (!Q) return true;
+  const hay = [g.id, g.name, g.cadence, g.notes, ...g.members.map(m => m.name + " " + m.slug)].join(" ").toLowerCase();
+  return Q.toLowerCase().split(/\s+/).filter(Boolean).every(t => hay.includes(t));
+}
+
+const GHEAD = `<tr><th>thread</th><th>open for you</th><th>who</th><th>cadence</th><th>last call</th><th>preps</th></tr>`;
+const gRow = g => `<tr data-group="${esc(g.id)}" class="grp${OPENG === g.id ? " on" : ""}">
+        <td class="who"><div class="n">${esc(g.name)}${g.confirmed ? "" : ` <span class="badge open">confirm</span>`}</div><div class="r">${esc(g.id)}${g.unknownMembers.length ? ` · no card for ${g.unknownMembers.map(esc).join(", ")}` : ""}</div></td>
+        <td class="num">${g.open ? `<span class="badge open">${g.open}</span>` : ""}</td>
+        <td class="mem"><span class="m">${g.members.map(m => esc(m.name)).join(" · ")}</span></td>
+        <td class="st">${esc(g.cadence || "—")}</td>
+        <td class="when">${g.lastCall ? esc(g.lastCall.date) : "none on file"}</td>
+        <td class="num">${g.preps ? `${g.preps}${g.lastPrep ? ` · ${esc(g.lastPrep)}` : ""}` : ""}</td>
+      </tr>`;
+
+// The filtering rule (2026-09-09): threads with something open for Zak are on screen, the quiet ones behind one fold.
+// A search or "showing everything" shows them all -- searching is already a deliberate act.
+function groupsBlock() {
+  if (!GROUPS) return "";
+  if (GROUPS.error) return `<div class="note">No standing groups yet: ${esc(GROUPS.error)}</div>`;
+  const gs = (GROUPS.groups || []).filter(gmatches);
+  if (!gs.length) return Q ? "" : `<div class="note">No standing call threads declared in ${esc(GROUPS.file)} yet.</div>`;
+  const flat = Q || showAll("people");
+  const live = flat ? gs : gs.filter(g => g.open || OPENG === g.id), quiet = gs.filter(g => !live.includes(g));
+  return `
+    <div class="secthead"><h3>Groups</h3><span class="meta">${link(GROUPS.file, "call-prep-groups.json")} · ${gs.length} standing call thread${gs.length === 1 ? "" : "s"} declared${quiet.length ? ` · ${live.length} with something open` : ""}</span></div>
+    <p class="offer">A prep is keyed to a call, so a call with several people gets one prep for the set. A follow-up starts from the previous prep for the same thread and carries its open <em>Bring</em> items forward. Seeded threads say <span class="badge open">confirm</span> until Zak edits or confirms them in that file.</p>
+    ${live.length ? `<div class="card"><table class="people">${GHEAD}${live.map(gRow).join("")}</table></div>` : ""}
+    ${quiet.length ? `<details class="fold"><summary>${quiet.length} more thread${quiet.length === 1 ? "" : "s"} <span class="meta">nothing waiting on you</span></summary>
+      <div class="card"><table class="people">${GHEAD}${quiet.map(gRow).join("")}</table></div></details>` : ""}`;
+}
+
+// card format v2 (people/readme.md): the ONE status a card carries is `**Where it stands (YYYY-MM-DD):**` under its title.
+// A card whose line is missing, more than 30 days old, or older than a [status] fold on the same card is marked stale here and
+// in the drawer — the whole point of the format is that a status which stopped cannot pass for a current one.
+const staleMark = p => p.stale ? `<span class="badge warn" title="${esc(p.staleWhy || "")}">stale</span>` : "";
+const standsCell = p => p.stands
+  ? `<span class="sd">${esc(p.stands.date)}</span><span class="stx" title="${esc(p.stands.text)}">${inline(p.stands.text)}</span> ${staleMark(p)}`
+  : `${staleMark(p)} ${inline(p.status || "no status on the card")}`;
+const contactCell = p => {
+  const c = p.contact || {};
+  if (!c.last) return "none on file";
+  return `${esc(c.last)}${c.days != null ? ` · ${c.days}d` : ""}${c.cadenceDays ? ` · ~${c.cadenceDays}d apart` : ""}`;
+};
+
+const PHEAD = `<tr><th>person</th><th>open for you</th><th>where it stands</th><th>last contact</th><th>flags</th><th>preps</th></tr>`;
+const pRow = p => `<tr data-slug="${esc(p.slug)}" class="${OPEN === p.slug ? "on" : ""}">
+        <td class="who"><div class="n">${esc(p.name)}${p.weekly ? ` <span class="badge weekly" title="you speak to them about weekly: ${p.contact && p.contact.cadenceDays != null ? `about every ${p.contact.cadenceDays} days` : `${(p.contact && p.contact.calls90) || 0} calls in the last 90`}. This is what puts them at the top of the list">weekly</span>` : ""}</div><div class="r">${inline(p.role || "no Role & Relationship line")}</div></td>
+        <td class="num">${p.open ? `<span class="badge open">${p.open}</span>` : ""}</td>
+        <td class="st">${standsCell(p)}</td>
+        <td class="when">${contactCell(p)}</td>
+        <td class="num">${p.flags || ""}</td>
+        <td class="num">${p.preps ? `${p.preps}${p.lastPrep ? ` · ${esc(p.lastPrep)}` : ""}` : ""}</td>
+      </tr>`;
+
+// ---- the list grouped by organization (2026-09-16) ----
+// Zak, answering whether to make a card for Hassan: "do we have any way to group everyone at Asprey together with a good
+// tag/organizer? Since the group is getting quite large now and we are building more context on them." The tag is the card's
+// own frontmatter and nothing else: `org:` is the organization a person belongs to, `placed_at:` is where a ProspectForge
+// mentee was placed — they work inside that company without belonging to it, so they sit under it on a "placed here" line
+// rather than among its own people (people/readme.md, card format v2). Organizations sort by how many cards they hold, and
+// the order inside a group is the server's: whoever Zak owes something about first, then the newest fold.
+// A NAMED ORGANIZATION RENDERS WHOLE — seeing the set together is the whole point, and the sets are small. "Everyone else"
+// keeps the older rule (2026-09-09): the ones with something open are on screen, the quiet rest behind one fold.
+const ORG_NAMES = { "asprey-group": "The Asprey Group", "prospectforge": "ProspectForge",
+                    "wfservices": "WFServices", "genius-network": "Genius Network" };
+const orgName = id => ORG_NAMES[id] || String(id || "").split("-").filter(Boolean)
+                                        .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+
+function orgSplit(rows) {
+  const by = new Map(), rest = [];
+  const cell = id => (by.has(id) || by.set(id, { id, members: [], placed: [] }), by.get(id));
+  rows.forEach(p => p.org ? cell(p.org).members.push(p)
+                          : (p.placedAt ? cell(p.placedAt).placed.push(p) : rest.push(p)));
+  const size = g => g.members.length + g.placed.length;
+  // ACROSS groups, the same rule as inside one (2026-09-17, T-0157): the rows arrive from the server already in use
+  // order, so an organization is placed by its BEST row — the first of its people in that order — and only then by how
+  // many cards it holds. An organization holding someone Zak speaks to weekly, or with something open, comes first.
+  const best = g => { const all = g.members.concat(g.placed); return all.length ? Math.min(...all.map(p => rows.indexOf(p))) : 1e9; };
+  const orgs = [...by.values()].sort((a, b) => best(a) - best(b) || size(b) - size(a) || orgName(a.id).localeCompare(orgName(b.id)));
+  return { orgs, rest };
+}
+
+function orgBlock(g) {
+  const all = g.members.concat(g.placed), open = all.filter(p => p.open).length;
+  const placedHead = `<tr class="subhead"><td colspan="6">placed here · ${g.placed.map(p => esc(p.name)).join(" · ")}</td></tr>`;
+  return `<div class="secthead orghead"><h4>${esc(orgName(g.id))}</h4><span class="meta">${plural(all.length, "card")}${g.placed.length ? ` · ${g.placed.length} placed here` : ""}${open ? ` · ${open} with something open for you` : ""} · <code>${esc(g.members.length ? "org" : "placed_at")}: ${esc(g.id)}</code></span></div>
+    <div class="card"><table class="people">${PHEAD}${g.members.map(pRow).join("")}${g.placed.length ? placedHead + g.placed.map(pRow).join("") : ""}</table></div>`;
+}
+
+// ---- the order of this list, written down rather than guessed (2026-09-17, ledger T-0157) ----
+// Zak: "the people he speaks to weekly and anyone with an open item on top, then by role, so the person he talks to most
+// is never behind a scroll; the order rule written in the page, not guessed per load." The sort runs once on the server
+// (people_api) and the rule it used rides back on the same answer as `order`, so what is printed here IS what sorted the
+// rows — there is no second copy of the rule to fall out of step with the first.
+function orderRule() {
+  const o = DATA.order;
+  if (!o) return "";
+  return `<details class="fold order"><summary>The order of this list <span class="meta">${DATA.weeklyCount ? `${DATA.weeklyCount} weekly · ` : ""}why these are in this order</span></summary>
+    <p><strong>${esc(o.rule)}.</strong></p>
+    <p><em>Weekly</em> means ${esc(o.weekly)}.</p>
+    <p><em>By role</em> is this ladder, read off each card's <code>Role &amp; Relationship</code> line: ${(o.roles || []).map((r, i) => `${i + 1}. ${esc(r)}`).join(" · ")}.</p>
+    <p>${esc(o.groups)}.</p></details>`;
+}
+
+// Today's calls, the first thing on the page (Zak 2026-09-21: "put the call prep at the top ... ESPECIALLY IF IT IS CURRENTLY THE
+// DAY OF THE CALL"). From /api/calls: the calendar as the session recap wrote it to context/today-calendar.json, each call
+// joined to its prep(s) by the server. The call happening now is marked; a call with no prep says so instead of hiding.
+function callsBlock() {
+  const c = window.CALLS;
+  if (!c) return "";
+  const evs = c.events || [], now = new Date();
+  const hhmm = s => { const d = new Date(s); return isNaN(d) ? esc(String(s).slice(11, 16)) : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); };
+  const who = e => (e.people || []).filter(w => !w.self).map(w => w.slug ? `<a href="/people?open=${encodeURIComponent(w.slug)}">${esc(w.name)}</a>` : esc(w.name)).join(", ");
+  const prepLinks = e => (e.preps || []).length
+    ? e.preps.map(p => `<a class="preplink" href="/reader?path=${encodeURIComponent(p.path)}">open the prep${e.preps.length > 1 ? ` (${esc(p.key)})` : ""}</a>`).join(" · ")
+    : `<span class="badge open">no prep yet</span>`;
+  const rows = evs.map(e => {
+    const st = new Date(e.start), en = new Date(e.end);
+    const live = !isNaN(st) && !isNaN(en) && st <= now && now <= en, next = !isNaN(st) && st > now;
+    return `<li class="${live ? "live" : next ? "next" : "past"}"><b>${hhmm(e.start)}</b> ${esc(e.title)}${live ? ` <span class="badge warn">now</span>` : ""} <span class="meta">${who(e)}</span> ${prepLinks(e)}</li>`;
+  });
+  const when = c.for ? `${esc(c.for)}${c.stale ? ` <span class="badge warn">written for another day</span>` : ""}` : "no calendar file";
+  return `<section class="todaycalls">
+    <div class="secthead"><h3>Today's calls</h3><span class="meta">${when}${c.writtenAt ? ` · calendar read at ${esc(String(c.writtenAt).slice(11, 16))}` : ""}</span></div>
+    ${evs.length ? `<ul class="calls">${rows.join("")}</ul>` : `<p class="offer">${c.error ? esc(c.error) : "No calendar has been read today. The session recap writes it."}</p>`}
+  </section>`;
+}
+
+function render() {
+  const rows = DATA.people.filter(matches);
+  const { orgs, rest } = orgSplit(rows);
+  const flat = Q || showAll("people");
+  const live = flat ? rest : rest.filter(p => p.open || OPEN === p.slug), quiet = rest.filter(p => !live.includes(p));
+  $("#crumb").textContent = `${plural(DATA.count, "card")} · ${GROUPS && GROUPS.count ? plural(GROUPS.count, "group") + " · " : ""}${DATA.openTotal ? DATA.openTotal + " open for you · " : ""}${plural(DATA.prepCount, "prep")} in ${DATA.prepFolder}/`;
+  $("#main").innerHTML = `
+    <div class="hh"><h2>People</h2><span class="meta">${link(DATA.folder + "/readme.md", DATA.folder + "/")} · ${rows.length} of ${DATA.count} cards${flat ? " · all of them" : " · organizations whole, the rest open-first"}</span></div>
+    ${callsBlock()}
+    <p class="desc">A card has two sides. The <strong>front</strong> is where they stand today, dated: that line, what is open for you about them, when you last spoke and how often, the next call, what they are building, how to reach them. The <strong>back</strong> is the history it was written from, behind one fold. A status line older than 30 days, or one a newer status fold has passed, is marked <span class="badge warn">stale</span> here and on the card. Format: ${link(DATA.folder + "/readme.md", "card format v2")} · prep format: ${link(DATA.format, "call-prep-format.md")}</p>
+    ${DATA.staleCount ? `<p class="offer">${plural(DATA.staleCount, "card")} of ${DATA.count} have no current status line. They are being moved to the new format a card at a time.</p>` : ""}
+    <p class="offer">Preps are offered at session start for calendar events in the next 7 days with a carded attendee.</p>
+    ${DATA.errors && DATA.errors.length ? `<div class="note">${DATA.errors.length} card${DATA.errors.length === 1 ? "" : "s"} would not parse: ${DATA.errors.map(e => `<code>${esc(e.path)}</code> (${esc(e.error)})`).join(", ")}</div>` : ""}
+    ${groupsBlock()}
+    <div class="secthead"><h3>Individuals</h3><span class="meta">${orgs.length ? `${plural(orgs.length, "organization")} · ` : ""}grouped by the card's <code>org:</code> tag${orgs.length ? "" : " — no card carries one yet"}${DATA.topCount ? ` · ${DATA.topCount} on top` : ""}</span></div>
+    ${orderRule()}
+    <p class="offer">A card carries <code>org:</code> for the organization the person belongs to; a PF mentee placed inside a company carries <code>placed_at:</code> and shows under that organization on its <em>placed here</em> line. A named organization is listed whole. Convention: ${link(DATA.folder + "/readme.md", "people/readme.md")}</p>
+    ${orgs.map(orgBlock).join("")}
+    <div class="secthead orghead"><h4>Everyone else</h4><span class="meta">${plural(rest.length, "card")} with no organization on it${live.length ? ` · ${live.length} with something open` : ""}${quiet.length ? ` · ${quiet.length} folded` : ""}</span></div>
+    ${live.length ? `<div class="card"><table class="people">${PHEAD}${live.map(pRow).join("")}</table></div>`
+      : `<div class="card"><div class="empty">${Q ? `Nothing matches “${esc(Q)}”${orgs.length ? " outside the organizations above" : ""}.` : "Nothing is open for you about anyone without an organization."}</div></div>`}
+    ${quiet.length ? `<details class="fold"><summary>${quiet.length} more ${quiet.length === 1 ? "person" : "people"} <span class="meta">nothing waiting on you</span></summary>
+      <div class="card"><table class="people">${PHEAD}${quiet.map(pRow).join("")}</table></div></details>` : ""}`;
+}
+
+// ---- the drawer: a person (card + preps + New prep), or any file ----
+// "open in Reader" rides in the header of any .md the drawer shows (2026-09-09, T-0046): the same file by its headings,
+// where its list items can be struck and moved. BV.readerLink returns "" for anything that is not a .md.
+const dh = (path, extra = "") => `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(path)}</code>${BV.readerLink(path)}${extra}</div>`;
+
+// One row in a Call preps list. A prep whose frontmatter says `status: held` is PAST -- a transcript holds that call
+// (call-prep-format.md, 2026-09-16) -- so it renders dimmed with a muted badge; `used` is the older spelling of the same
+// state. A person's live prep is the one no transcript holds, and that one stays at full weight.
+const prepHeld = p => p && (p.status === "held" || p.status === "used");
+const prepRow = p => `<li${prepHeld(p) ? ' class="past"' : ""}>${link(p.path, p.call)}<span class="meta">${esc(p.purpose || "no purpose stated")}</span>${p.status ? `<span class="badge ${prepHeld(p) ? "held" : "draft"}">${esc(p.status)}</span>` : ""}</li>`;
+
+// a New prep form, wired to POST /api/prep with whatever keys identify this call (a slug, or a group id)
+function prepForm(body) {
+  return `<details class="newprep" open><summary>New prep from ${body.group ? "this thread" : "this card"}</summary>
+      <form id="newprep"><input type="date" name="call_date" value="${esc(DATA.today)}" required>
+        <input type="text" name="purpose" placeholder="what this call is for (optional)" maxlength="200">
+        <button class="btn primary" type="submit">Write it</button></form>
+      <p class="status-line" id="prepstatus"></p></details>`;
+}
+function wirePrepForm(d, body) {
+  d.querySelector("#newprep").addEventListener("submit", async e => {
+    e.preventDefault();
+    const f = e.target, btn = f.querySelector("button"), out = $("#prepstatus");
+    btn.disabled = true; out.textContent = "writing…";
+    try {
+      const res = await fetch("/api/prep", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.assign({}, body, { call_date: f.call_date.value, purpose: f.purpose.value })) });
+      const jj = await res.json();
+      if (!res.ok) { out.textContent = "refused: " + (jj.error || res.status); }
+      else { out.textContent = jj.note; await load(); openFile(jj.path); }
+    } catch (err) { out.textContent = "could not write: " + err.message; }
+    btn.disabled = false;
+  });
+}
+
+// The live prep FIRST in a drawer (Zak 2026-09-21: "call prep is still at the bottom of the group meeting file on the side
+// viewer"). The live prep is the newest one no transcript holds; it renders inline, folded by the prep rule, the Reader a click away.
+async function livePrepBlock(preps) {
+  const live = (preps || []).filter(p => !prepHeld(p)).sort((a, b) => String(b.call || "").localeCompare(String(a.call || "")))[0];
+  if (!live) return "";
+  try {
+    const r = await fetch(`/api/file?path=${encodeURIComponent(live.path)}`); const j = await r.json();
+    if (j.error) return `<div class="note">The prep ${esc(live.path)} would not open: ${esc(j.error)}</div>`;
+    return `<details class="fold liveprep" open><summary>Call prep · ${esc(live.call)} <span class="meta">${esc(live.purpose || "")}</span> <a class="preplink" href="/reader?path=${encodeURIComponent(live.path)}">open in Reader</a></summary>
+      <article class="md">${sectionize(md(j.text, { base: live.path.split("/").slice(0, -1).join("/") }), live.path)}</article></details>`;
+  } catch (e) { return `<div class="note">The prep ${esc(live.path)} would not open: ${esc(e.message)}</div>`; }
+}
+
+async function openGroup(id) {
+  const d = $("#drawer"); d.hidden = false; OPENG = id; OPEN = null; render();
+  const g = (GROUPS && GROUPS.groups || []).find(x => x.id === id);
+  if (!g) { d.innerHTML = dh(id) + `<div class="empty">No group “${esc(id)}” in ${esc(GROUPS ? GROUPS.file : "the groups file")}.</div>`; return; }
+  const ps = g.prepList || [];
+  const lp = await livePrepBlock(ps);                                          // the live prep FIRST (2026-09-21)
+  d.innerHTML = dh(GROUPS.file, `<span class="meta">${esc(g.id)}</span>`) + `
+    <article class="md"><h2>${esc(g.name)}</h2></article>
+    ${lp}
+    <details class="fold"><summary>Call preps <span class="meta">${ps.length ? plural(ps.length, "on file") : "none yet"}</span></summary>
+      <ul class="preplist">${ps.map(prepRow).join("") || `<li class="meta">no prep for this thread yet</li>`}</ul>
+      ${prepForm({ group: g.id })}</details>
+    ${g.confirmed ? "" : `<div class="note">Seeded from the transcripts, not confirmed by Zak yet — check the membership before trusting the set. Edit ${link(GROUPS.file, "call-prep-groups.json")}${g.evidence && g.evidence.calls != null ? ` · evidence: ${plural(g.evidence.calls, "call")} in the window${g.evidence.window ? ` ${esc(g.evidence.window)}` : ""}` : ""}.</div>`}
+    ${openBlock(g.name, g.openItems || [])}
+    <div class="prepbar"><span class="kicker">who</span><span class="meta">${esc(g.cadence || "no cadence on record")}</span></div>
+    <ul class="members">${g.members.map(m => `<li><div class="n">${m.path ? `<span class="filelink" data-slug="${esc(m.slug)}">${esc(m.name)}</span>` : esc(m.name)}</div><div class="r">${m.path ? esc(m.path) : "no card in people/ — the prep will refuse until there is one"}</div></li>`).join("")}</ul>
+    ${g.notes ? `<p class="desc">${inline(g.notes)}</p>` : ""}
+    <div class="prepbar"><span class="kicker">last call with all of them</span><span class="meta">${g.lastCall ? `${esc(g.lastCall.date)} · ${link(g.lastCall.path, g.lastCall.title || g.lastCall.path.split("/").pop())}` : "no transcript in the brain has all of them on it"}</span></div>
+`;
+  d.scrollTop = 0;
+  wirePrepForm(d, { group: g.id });
+}
+
+// ---- one ledger write from this page: the same PUT /api/tasks the Projects panel uses, on whichever ledger the item lives in ----
+async function act(project, payload, statusEl) {
+  const res = await ledgerAct(project, payload);
+  if (statusEl) statusEl.textContent = res.message;
+  if (res.ok) { await load(); refreshBadges(); if (OPEN) await openPerson(OPEN, { keepStatus: res.message }); else if (OPENG) openGroup(OPENG); }
+  return res;
+}
+
+// "Open for Zak about <name>": every open question and open @zak task across the ledgers that concerns this person.
+// The routing is the ledger's people: field; an item that merely names them shows up too, marked, until someone tags it.
+function openBlock(name, items, held = []) {
+  const opts = { showProject: true, today: DATA.today, hidePeople: true };
+  // on hold: open, owed, and not asked for until its day; it sits behind one line (2026-09-10, T-0108)
+  const heldFold = held.length ? `<details class="more"><summary>${plural(held.length, "task")} on hold</summary><ul class="items">${held.map(i => row(i, opts)).join("")}</ul></details>` : "";
+  if (!items.length) return `<div class="note" style="margin:0 0 14px">Nothing is open for you about ${esc(name)} right now.${held.length ? ` ${plural(held.length, "task")} of yours about ${esc(name)} ${held.length === 1 ? "is" : "are"} on hold.` : ""}</div>${heldFold}`;
+  const qs = items.filter(i => i.kind === "question"), ts = items.filter(i => i.kind !== "question");
+  const named = items.filter(i => i.peopleSource === "named").length;
+  return `<div class="openblock">
+    <div class="secthead"><h3>Open for you about ${esc(name)}</h3><span class="meta">${qs.length ? plural(qs.length, "question") : "no questions"}${ts.length ? ` · ${plural(ts.length, "task")} of yours` : ""}${held.length ? ` · ${held.length} on hold` : ""}${named ? ` · ${named} matched by name, not tagged` : ""}</span></div>
+    ${qs.map(q => qCard(q, opts)).join("")}
+    ${ts.length ? `<ul class="items">${ts.map(i => row(i, opts)).join("")}</ul>` : ""}
+    ${heldFold}
+  </div>`;
+}
+
+// The card's one status, first on the front, with the date of the fact it states. A card that has not been moved to format v2
+// says so plainly instead of showing whatever its old Status section stopped on.
+function standsBlock(j) {
+  if (!j.stands) return `<div class="note" style="margin:0 0 12px">This card has no <strong>Where it stands</strong> line yet, so there is no current status on its front. Its old Status section is in the history below, and it may have stopped: ${esc(j.staleWhy || "")}. Format: ${link("people/readme.md", "people/readme.md")}</div>`;
+  return `<p class="stands${j.stale ? " isstale" : ""}"><span class="sd">${esc(j.stands.date)}</span>${inline(j.stands.text)}${j.stale ? ` <span class="badge warn" title="${esc(j.staleWhy || "")}">stale · ${esc(j.staleWhy || "")}</span>` : ""}</p>`;
+}
+
+// Last contact, call frequency and the next call: computed on every read from the dated folds, the transcripts that name them
+// and the preps on file. None of it is typed on a card (people/readme.md, front items 3 and 5).
+function factsBlock(j) {
+  const c = j.contact || {}, n = j.nextCall;
+  const last = c.last
+    ? `${esc(c.last)}${c.days != null ? ` · ${plural(c.days, "day")} ago` : ""} · ${c.kind === "call" ? "a call on file" : "the newest dated fold on the card"}`
+    : "nothing dated on file";
+  const freq = c.cadenceDays
+    ? `about every ${plural(c.cadenceDays, "day")} · ${plural(c.calls90, "call")} in the last 90 days, ${plural(c.calls365, "call")} in the last year`
+    : `${plural(c.calls365 || 0, "call")} on file in the last year, not enough for a frequency`;
+  const next = n ? `${esc(n.call)} · ${link(n.path, "the prep")}${n.purpose ? ` <span class="meta">${esc(n.purpose)}</span>` : ""}` : "none with a prep on file";
+  return `<dl class="facts">
+    <dt>last contact</dt><dd>${last}</dd>
+    <dt>call frequency</dt><dd>${freq}</dd>
+    <dt>next call</dt><dd>${next}</dd></dl>`;
+}
+
+function askForm(slug, name) {
+  const ps = (BADGES && BADGES.projects) || {};
+  const ids = Object.keys(ps), def = (BADGES && BADGES.defaultProject) || ids[0] || "";
+  if (!ids.length) return "";
+  return `<details class="askbox"><summary>Ask about ${esc(name)}</summary>
+    <form id="askform">
+      <select name="project">${ids.map(id => `<option value="${esc(id)}"${id === def ? " selected" : ""}>${esc(ps[id].name || id)}</option>`).join("")}</select>
+      <select name="from"><option value="${BV.owner}">you ask</option><option value="@claude">Claude asks</option></select>
+      <select name="to"><option value="@claude">Claude</option><option value="${BV.owner}">you</option></select>
+      <input name="text" placeholder="the question, about ${esc(name)}…" required>
+      <button class="btn primary" type="submit">Ask</button></form>
+    <p class="status-line" id="askstatus"></p>
+    <p class="meta" style="margin:4px 0 0">It lands on that project's ledger carrying <code>people:${esc(slug)}</code>, so it comes back here and in the viewer at <code>/projects</code>.</p></details>`;
+}
+
+async function openPerson(slug, opts = {}) {
+  const d = $("#drawer"); d.hidden = false; OPEN = slug; OPENG = null; render();
+  if (!opts.keepStatus) d.innerHTML = `<div class="empty">reading the card…</div>`;
+  const r = await fetch(`/api/person?slug=${encodeURIComponent(slug)}`); const j = await r.json();
+  if (j.error) { d.innerHTML = dh(slug) + `<div class="empty">${esc(j.error)}</div>`; return; }
+  const preps = j.preps || [], items = j.openItems || [], held = j.heldItems || [];
+  const front = j.front || [], back = j.back || [];
+  const lp = await livePrepBlock(preps);                                        // the live prep FIRST (2026-09-21)
+  d.innerHTML = dh(j.path, `<span class="meta">touched ${esc(j.mtime)}</span>`) + `
+    <h2 class="pname">${esc(j.name)} ${staleMark(j)}</h2>
+    ${lp}
+    <details class="fold"><summary>Call preps <span class="meta">${preps.length ? plural(preps.length, "on file") : "none yet"}</span></summary>
+      <ul class="preplist">${preps.map(prepRow).join("") || `<li class="meta">no prep written for ${esc(j.name)} yet</li>`}</ul>
+      ${prepForm({ slug })}</details>
+    ${standsBlock(j)}
+    ${openBlock(j.name, items, held)}
+    ${factsBlock(j)}
+    ${front.map(sec => `<details class="fold" open><summary>${esc(sec.title)}</summary><article class="md">${md(sec.text)}</article></details>`).join("")}
+    ${askForm(slug, j.name)}
+    <details class="fold"><summary>History <span class="meta">${plural(back.length, "section")} · everything the front was written from · ${esc(j.path)}</span></summary>
+      ${back.map(sec => sec.title
+        ? `<details class="fold sub"><summary>${esc(sec.title)} <span class="meta">${sec.chars > 900 ? "long" : ""}</span></summary><article class="md">${md(sec.text)}</article></details>`
+        : `<article class="md">${md(sec.text)}</article>`).join("")}</details>`;
+  d.scrollTop = 0;
+  wirePrepForm(d, { slug });
+  const af = d.querySelector("#askform");
+  if (af) af.addEventListener("submit", async e => {
+    e.preventDefault();
+    const f = e.target, out = $("#askstatus"), btn = f.querySelector("button");
+    btn.disabled = true; out.textContent = "asking…";
+    await act(f.project.value, { action: "ask", text: f.text.value, from: f.from.value, to: f.to.value, people: [slug] }, out);
+    btn.disabled = false;
+  });
+  if (opts.keepStatus) { const el = document.createElement("p"); el.className = "status-line"; el.textContent = opts.keepStatus; d.querySelector(".dh").after(el); }
+}
+
+// Fold a rendered .md into sections by heading, the way the Reader does (Zak 2026-09-21: "sections be able to close on
+// the side viewer ... it should really be similar to the reader"). A call prep opens on what is used DURING the call:
+// the question groups and the per-person points (section 4's h3 groups, 5 Watch for, 7 Your notes); the who, the why and
+// the facts stay in the file, closed ("that can be there, but it should be closed"). Any other .md folds with everything open.
+// 2026-09-21, T-0203: the words of BOTH shapes, because the skeleton writes v3 from today while the v2 preps on disk stay
+// valid as held records. v3 (format sections 1 to 4): Questions, Points per person, Decide before, Your notes.
+const PREP_OPEN_H2 = /\b(questions|points per person|decide before|bring|watch for|your notes|carried)\b/i;
+const PREP_CLOSED_H3 = /facts and documents/i;
+function sectionize(html, path) {
+  const t = document.createElement("template"); t.innerHTML = html;
+  const kids = [...t.content.childNodes].filter(n => n.nodeType === 1 || (n.nodeType === 3 && n.textContent.trim()));
+  if (!kids.some(n => n.nodeType === 1 && /^H[23]$/.test(n.tagName))) return html;
+  const isPrep = /call-prep\//.test(path);
+  const count = nodes => { const c = nodes.reduce((n, el) => n + (el.nodeType === 1 ? el.querySelectorAll("li").length + (el.tagName === "LI" ? 1 : 0) : 0), 0); return c ? `${c} item${c === 1 ? "" : "s"}` : ""; };
+  const wrap = (label, body, level, open) => {
+    const d = document.createElement("details"); d.className = `sec l${level}`; d.open = open;
+    const s = document.createElement("summary"); s.innerHTML = `${label} <span class="meta">${count(body)}</span>`; d.appendChild(s);
+    body.forEach(n => d.appendChild(n)); return d;
+  };
+  const groups = []; let cur = null;                                         // split at h2
+  kids.forEach(n => {
+    if (n.nodeType === 1 && n.tagName === "H2") { cur = { h: n, body: [] }; groups.push(cur); }
+    else if (cur) cur.body.push(n); else groups.push({ h: null, body: [n] });
+  });
+  const out = document.createDocumentFragment();
+  const head = groups.filter(g => !g.h).flatMap(g => g.body);              // before the first h2: the title stays up
+  head.filter(n => n.nodeType === 1 && n.tagName === "H1").forEach(n => out.appendChild(n));
+  const rest = head.filter(n => !(n.nodeType === 1 && n.tagName === "H1"));
+  if (rest.length) { if (isPrep) out.appendChild(wrap("Header", rest, 2, false)); else rest.forEach(n => out.appendChild(n)); }
+  groups.filter(g => g.h).forEach(g => {
+    const subs = []; let sc = null;                                          // split each h2 body at h3
+    g.body.forEach(n => {
+      if (n.nodeType === 1 && n.tagName === "H3") { sc = { h: n, body: [] }; subs.push(sc); }
+      else if (sc) sc.body.push(n); else subs.push({ h: null, body: [n] });
+    });
+    const body = subs.flatMap(s => s.h ? [wrap(s.h.innerHTML, s.body, 3, !isPrep || !PREP_CLOSED_H3.test(s.h.textContent))] : s.body);
+    out.appendChild(wrap(g.h.innerHTML, body, 2, !isPrep || PREP_OPEN_H2.test(g.h.textContent)));
+  });
+  const box = document.createElement("div"); box.appendChild(out); return box.innerHTML;
+}
+
+async function openFile(path) {
+  const d = $("#drawer"); d.hidden = false;
+  if (path.endsWith(".canvas")) { location.href = `/canvases?open=${encodeURIComponent(path)}`; return; }
+  if (isImage(path)) { d.hidden = true; lightbox(path); return; }
+  d.innerHTML = `<div class="empty">reading…</div>`;
+  const r = await fetch(`/api/file?path=${encodeURIComponent(path)}`); const j = await r.json();
+  if (j.error) { d.innerHTML = dh(path) + `<div class="empty">${esc(j.error)}</div>`; return; }
+  const head = dh(path, `${j.editable ? `<button class="btn" id="editBtn">edit</button>` : ""}${j.mtime ? `<span class="meta">touched ${esc(j.mtime.slice(0, 10))}</span>` : ""}<span class="status-line" id="saveStatus" style="margin:0"></span>`);
+  const body = path.endsWith(".json")
+    ? `<pre>${esc((() => { try { return JSON.stringify(JSON.parse(j.text), null, 1); } catch (e) { return j.text; } })())}</pre>`
+    : `<article class="md">${sectionize(md(j.text, { base: path.split("/").slice(0, -1).join("/") }), path)}</article>`;
+  d.innerHTML = head + body; d.scrollTop = 0;
+  const edit = d.querySelector("#editBtn");
+  if (edit) edit.addEventListener("click", () => {
+    d.innerHTML = dh(path, `<button class="btn primary" id="saveBtn">save</button><button class="btn" id="cancelBtn">cancel</button><span class="status-line" id="saveStatus" style="margin:0"></span>`)
+      + `<textarea class="edit" id="editor"></textarea>`;
+    d.querySelector("#editor").value = j.text;
+    d.querySelector("#cancelBtn").addEventListener("click", () => openFile(path));
+    d.querySelector("#saveBtn").addEventListener("click", async ev => {
+      const out = d.querySelector("#saveStatus"); ev.target.disabled = true; out.textContent = "saving…";
+      try {
+        const res = await fetch(`/api/file?path=${encodeURIComponent(path)}`, { method: "PUT", headers: { "Content-Type": "text/plain; charset=utf-8" }, body: d.querySelector("#editor").value });
+        const jj = await res.json();
+        if (!res.ok) out.textContent = "refused: " + (jj.error || res.status);
+        else if (jj.proposed) out.textContent = BV.proposedText(jj);
+        else { out.textContent = `saved · ${jj.bytes} bytes · ${jj.log}`; await load(); setTimeout(() => openFile(path), 700); }
+      } catch (err) { out.textContent = "could not save: " + err.message; }
+      ev.target.disabled = false;
+    });
+  });
+}
+
+document.addEventListener("click", async e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; OPEN = OPENG = null; render(); return; }
+  // a ledger item, answered or checked where it is shown -- the write goes to the ledger the item names
+  const cb = e.target.closest("input[type=checkbox][data-id]");
+  if (cb) {
+    e.preventDefault();
+    // a box ticked with words in its reply box carries them along: the reply is written first, then the item closes (T-0078)
+    const pend = BV.replies.pending(cb);
+    if (pend && cb.checked) { const r = await BV.replies.act(pend.project, pend.id, pend.text, pend.ledger); if (r.ok) pend.form.querySelector("textarea").value = ""; }
+    await act(cb.dataset.project, { action: cb.checked ? "done" : "reopen", id: cb.dataset.id }); return;
+  }
+  const ro = e.target.closest("[data-reopen]"); if (ro) { await act(ro.dataset.project, { action: "reopen", id: ro.dataset.reopen }); return; }
+  const pc = e.target.closest(".badge.person"); if (pc) { openPerson(pc.dataset.person); return; }
+  if (e.target.closest("form")) return;          // a click inside a form belongs to that form; re-rendering here would kill its submit
+  const s = e.target.closest("[data-slug]:not(tr)"); if (s) { openPerson(s.dataset.slug); return; }
+  const o = e.target.closest(".filelink[data-open]"); if (o) { openFile(o.dataset.open); return; }   // a real file link only (T-0065)
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); openFile(w.dataset.wikilink.split("#")[0].trim()); return; }
+  const gr = e.target.closest("tr[data-group]"); if (gr) { openGroup(gr.dataset.group); return; }
+  const tr = e.target.closest("tr[data-slug]"); if (tr) openPerson(tr.dataset.slug);
+});
+document.addEventListener("submit", async e => {
+  const f = e.target;
+  if (!f.dataset.q) return;                       // the prep and ask forms wire themselves
+  e.preventDefault();
+  await act(f.dataset.project, { action: "answer", id: f.dataset.q, text: f.querySelector("textarea").value, by: BV.owner });
+});
+document.addEventListener("keydown", e => {
+  if (BV.typing(e)) return;                                  // no hotkey while he is typing (T-0112)
+  if (e.key === "Escape") { $("#drawer").hidden = true; OPEN = OPENG = null; render(); }
+  if (e.key === "/") { e.preventDefault(); $("#q").focus(); }
+});
+$("#q").addEventListener("input", e => { Q = e.target.value.trim(); render(); });
+mountShowAll("people", () => render());
+// the reply boxes on every task of Zak's about a person: one wiring for the page (T-0078)
+BV.replies.wire(document, { status: m => { const st = $("#status") || $("#prepstatus"); if (st) st.textContent = m; },
+                            onDone: async () => { await load(); refreshBadges(); if (OPEN) await openPerson(OPEN); } });
+// hold / bring back on a task of Zak's about this person (T-0108)
+BV.holds.wire(document, { status: m => { const st = $("#status") || $("#prepstatus"); if (st) st.textContent = m; },
+                          onDone: async () => { await load(); if (OPEN) await openPerson(OPEN, { keepStatus: true }); } });
+
+async function load() {
+  const [r, rg, rb, rc] = await Promise.all([fetch("/api/people"), fetch("/api/groups"), fetch("/api/badges"), fetch("/api/calls").catch(() => null)]);
+  try { window.CALLS = rc && rc.ok ? await rc.json() : null; } catch (e) { window.CALLS = null; }
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || `/api/people returned ${r.status}`);
+  DATA = j;
+  GROUPS = rg.ok ? await rg.json() : { groups: [], count: 0, error: `/api/groups returned ${rg.status}` };
+  BADGES = rb.ok ? await rb.json() : null;      // the project list the Ask form offers, and the counts on the rows
+  render();
+}
+
+// /people?open=<slug> deep-links a card open, ?group=<id> a thread, ?file=<path> a prep, the way /holons?id= and /agents?open= do
+const params = new URLSearchParams(location.search);
+const deepLink = params.get("open"), deepGroup = params.get("group"), deepFile = params.get("file");
+if (mode().propose) {
+  $("#main").innerHTML = `<div class="hh"><h2>People</h2></div><p class="desc">People cards are not part of a team copy. The cards, and the call preps derived from them, stay on Zak's machine.</p>`;
+} else {
+  load().then(() => { if (deepFile) openFile(deepFile); else if (deepGroup) openGroup(deepGroup); else if (deepLink) openPerson(deepLink); })
+        .catch(e => { $("#main").innerHTML = `<div class="note">Could not load the people: ${esc(e.message)}</div>`; });
+}
+</script>
+</body>
+</html>

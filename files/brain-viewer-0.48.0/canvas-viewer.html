@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Canvas Viewer</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout + the canvas surface; every color and font comes from viewer-tokens.css */
+  body { height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+  .tools { display:flex; gap:6px; align-items:center; }
+  .layout { flex:1; display:grid; grid-template-columns: 300px minmax(0,1fr); min-height:0; }
+  nav.side { border-right:1px solid var(--rule); background:var(--surface); overflow:auto; padding:8px 0 24px; }
+  nav.side .row .t { font-size:15px; } nav.side .row .m { font-size:11.5px; display:block; }
+  #stage { position:relative; overflow:hidden; cursor:grab; background:
+      linear-gradient(color-mix(in srgb, var(--rule) 45%, var(--bg)) 1px, transparent 1px) 0 0/40px 40px,
+      linear-gradient(90deg, color-mix(in srgb, var(--rule) 45%, var(--bg)) 1px, transparent 1px) 0 0/40px 40px, var(--bg); }
+  #stage.dragging { cursor:grabbing; }
+  #stage.nogrid { background: var(--bg); }
+  #world { position:absolute; left:0; top:0; transform-origin:0 0; }
+  /* level of detail: below 60% zoom a node shows only its title, and titles, group labels, edge labels and edge weights hold SCREEN size (world units / scale) */
+  .node .lodtitle { display:none; }
+  #world.far .node:not(.group) { overflow:visible; }
+  #world.far .node:not(.group) .body { visibility:hidden; }
+  #world.far .node .lodtitle { display:flex; position:absolute; inset:0; align-items:center; justify-content:center; text-align:center; padding:0 4px; font-family:var(--font-display); font-weight:700; line-height:1.1; font-size:min(calc(13px / var(--s, 1)), 72px); color:var(--ink); }
+  #world.far .node.group .glabel { font-size:min(calc(12px / var(--s, 1)), 56px); top:auto; bottom:100%; margin-bottom:6px; }
+  #world.far svg#edges path { stroke-width:min(calc(2px / var(--s, 1)), 14px); }
+  #world.far svg#edges text { font-size:min(calc(12px / var(--s, 1)), 56px); stroke-width:min(calc(5px / var(--s, 1)), 30px); }
+  .node { position:absolute; border:1.5px solid var(--rule); border-radius:var(--radius); background:var(--surface); padding:10px 12px; overflow:auto; font-size:13px; line-height:1.4; box-shadow:var(--shadow); }
+  .node.group { border-style:dashed; background:rgba(34,48,42,.03); padding:0; overflow:visible; z-index:0; }
+  .node.group .glabel { position:absolute; top:-22px; left:8px; font-size:12px; font-weight:600; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; }
+  .node.text { z-index:2; } .node.file { z-index:2; cursor:pointer; }
+  .node.file .fname { font-family:var(--font-display); font-weight:500; font-size:15px; } .node.file .fkind { font-size:11px; color:var(--muted); }
+  .node h1,.node h2,.node h3,.node h4 { margin:.2em 0 .35em; line-height:1.25; } .node h1{font-size:18px} .node h2{font-size:16px} .node h3{font-size:14.5px} .node h4{font-size:13px; font-family:var(--font-ui); font-weight:600}
+  .node p { margin:.3em 0; } .node ul,.node ol { padding-left:1.2em; margin:.3em 0; } .node li { margin:.1em 0; }
+  .node code { font-size:.9em; } .node pre { padding:8px; }
+  .node table { border-collapse:collapse; font-size:12px; } .node th,.node td { border:1px solid var(--rule); padding:3px 6px; }
+  .node blockquote { border-left:3px solid var(--rule); margin:.3em 0; padding:.1em 8px; color:var(--ink-soft); }
+  .node a.wikilink { color:var(--accent); border-bottom:1px dotted var(--accent); text-decoration:none; }
+  .node del { color:var(--muted); } .node .fm { font-size:11px; color:var(--muted); }
+  nav.side details.fam > summary { cursor:pointer; list-style:none; font-family:var(--font-ui); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:10px 18px 2px; padding:3px 0; }
+  nav.side details.fam > summary::-webkit-details-marker { display:none; }
+  nav.side details.fam > summary::before { content:"▸ "; }
+  nav.side details.fam[open] > summary::before { content:"▾ "; }
+  nav.side details.fam > summary .m { text-transform:none; letter-spacing:0; }
+  /* the Forge (2026-09-09): a small link at the right of every row opens the drawing on the design surface */
+  nav.side .rowwrap { position:relative; }
+  nav.side .rowwrap > a.fbtn { position:absolute; right:10px; top:8px; font-size:11px; color:var(--muted); text-decoration:none; border:1px solid var(--rule-soft); border-radius:var(--radius); padding:1px 6px; background:var(--surface); opacity:0; }
+  nav.side .rowwrap:hover > a.fbtn, nav.side .rowwrap > .row.active + a.fbtn { opacity:1; }
+  nav.side .rowwrap > a.fbtn:hover { color:var(--ink); background:var(--hover); }
+  nav.side .rowwrap > .row { padding-right:56px; }
+  svg#edges { position:absolute; left:0; top:0; overflow:visible; z-index:1; pointer-events:none; }
+  svg#edges path { fill:none; stroke-width:2.2; }
+  svg#edges text { font-size:12px; font-weight:600; fill:var(--ink-soft); paint-order:stroke; stroke:var(--bg); stroke-width:5px; stroke-linejoin:round; }
+  #info { position:absolute; left:12px; bottom:46px; font-size:12px; color:var(--muted); background:color-mix(in srgb, var(--surface) 88%, transparent); border:1px solid var(--rule); padding:4px 9px; border-radius:6px; z-index:4; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Canvas Viewer</h1>
+  <span class="sub" id="crumb">the architecture canvases, drawn where they sit</span>
+  <span class="spacer"></span>
+  <div class="tools">
+    <a class="btn" id="forgeLink" href="/forge" title="open this drawing in the Forge: move, add, connect, rename, save">open in the Forge</a>
+    <button class="btn" id="zoomOut">−</button><button class="btn" id="zoomIn">+</button><button class="btn" id="fit">fit</button><button class="btn on" id="grid" title="grid on / off  (g)">grid</button>
+  </div>
+  <nav class="panels" data-page="canvases"></nav>
+</header>
+<div class="layout">
+  <nav class="side" id="nav"></nav>
+  <div id="stage">
+    <div id="world"><svg id="edges"></svg></div>
+    <div id="info"></div>
+    <aside class="drawer" id="drawer" hidden></aside>
+  </div>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+const { esc, md, color, tint, soften, isImage, lightbox, showAll, mountShowAll } = BV;
+const NEUTRAL = (getComputedStyle(document.documentElement).getPropertyValue("--muted").trim() || "#6f7468");
+const $ = s => document.querySelector(s);
+let CANVASES = [], CURRENT = null, HIST = [];
+let view = { s: 1, tx: 0, ty: 0 }, bounds = null;
+const stage = $("#stage"), world = $("#world"), svg = $("#edges");
+
+function applyView() { world.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.s})`; world.style.setProperty("--s", view.s); world.classList.toggle("far", view.s < 0.6); $("#info").textContent = CURRENT ? `${CURRENT.name} · ${Math.round(view.s*100)}%${view.s < 0.6 ? " · titles only, zoom in for text" : ""}` : ""; }
+function fit() {
+  if (!bounds) return;
+  const W = stage.clientWidth, H = stage.clientHeight, pad = 60;
+  const s = Math.min((W - pad*2) / bounds.w, (H - pad*2) / bounds.h, 1.25);
+  view.s = s; view.tx = (W - bounds.w * s) / 2 - bounds.x * s; view.ty = (H - bounds.h * s) / 2 - bounds.y * s; applyView();
+}
+function zoomAt(f, cx, cy) { const ns = Math.min(4, Math.max(0.05, view.s * f)); view.tx = cx - (cx - view.tx) * (ns / view.s); view.ty = cy - (cy - view.ty) * (ns / view.s); view.s = ns; applyView(); }
+stage.addEventListener("wheel", e => { e.preventDefault(); const r = stage.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.12 : 1/1.12, e.clientX - r.left, e.clientY - r.top); }, { passive:false });
+let drag = null;
+stage.addEventListener("mousedown", e => { if (e.target.closest(".node") || e.target.closest("#drawer")) return; drag = { x:e.clientX, y:e.clientY, tx:view.tx, ty:view.ty }; stage.classList.add("dragging"); });
+window.addEventListener("mousemove", e => { if (!drag) return; view.tx = drag.tx + (e.clientX - drag.x); view.ty = drag.ty + (e.clientY - drag.y); applyView(); });
+window.addEventListener("mouseup", () => { drag = null; stage.classList.remove("dragging"); });
+$("#zoomIn").onclick = () => zoomAt(1.25, stage.clientWidth/2, stage.clientHeight/2);
+$("#zoomOut").onclick = () => zoomAt(1/1.25, stage.clientWidth/2, stage.clientHeight/2);
+$("#fit").onclick = fit;
+// grid on / off, remembered per browser (Zak, 9/04: "the grid needs to be disableable")
+function setGrid(on) { stage.classList.toggle("nogrid", !on); $("#grid").classList.toggle("on", on); try { localStorage.setItem("bv.grid", on ? "1" : "0"); } catch (e) {} }
+$("#grid").onclick = () => setGrid(stage.classList.contains("nogrid"));
+try { setGrid(localStorage.getItem("bv.grid") !== "0"); } catch (e) { setGrid(true); }
+document.addEventListener("keydown", e => { if (BV.typing(e)) return; if (e.key === "g") setGrid(stage.classList.contains("nogrid")); });
+// ONE back button on this page (2026-09-17, ledger T-0159). The bar used to carry two: this page's own "← back", and
+// the app-wide "‹ back" that BV.nav mounts on every bar. The page's button is gone and its meaning — step back to the
+// canvas you drilled through from — is registered as a back HOOK, so the one button in the bar does both jobs in order:
+// close what is on top, walk the canvas trail, then walk the app's trail.
+BV.back.on(() => { const prev = HIST.pop(); if (prev) { openCanvas(prev, false); return true; } return false; });
+window.addEventListener("resize", fit);
+
+function anchor(n, side) {
+  switch (side) { case "left": return [n.x, n.y + n.height/2]; case "right": return [n.x + n.width, n.y + n.height/2]; case "top": return [n.x + n.width/2, n.y]; default: return [n.x + n.width/2, n.y + n.height]; }
+}
+function outward(side, d) { return side === "left" ? [-d, 0] : side === "right" ? [d, 0] : side === "top" ? [0, -d] : [0, d]; }
+function bez(p0, p1, p2, p3, t) { const u = 1-t; return [u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0], u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1]]; }
+
+// the one line a node keeps when zoomed out: its first heading or line, a file's name, a link's url
+function lodTitle(n) {
+  if (n.type === "file") return (n.file || "").split("/").pop().replace(/\.(md|canvas)$/, "");
+  if (n.type === "link") return n.url || "";
+  const line = String(n.text || "").split("\n").map(s => s.trim()).find(s => s && !/^[-*_]{3,}$/.test(s)) || "";
+  return line.replace(/^#+\s*/, "").replace(/^🧭\s*/, "").replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (m, a, b) => b || a).replace(/[*_`]/g, "").slice(0, 80);
+}
+function render(canvas) {
+  const nodes = canvas.nodes || [], edges = canvas.edges || [];
+  world.querySelectorAll(".node").forEach(n => n.remove());
+  svg.innerHTML = "";
+  if (!nodes.length) { bounds = null; $("#info").textContent = "empty canvas"; return; }
+  const minX = Math.min(...nodes.map(n => n.x)), minY = Math.min(...nodes.map(n => n.y));
+  const maxX = Math.max(...nodes.map(n => n.x + n.width)), maxY = Math.max(...nodes.map(n => n.y + n.height));
+  bounds = { x: minX - 40, y: minY - 40, w: (maxX - minX) + 80, h: (maxY - minY) + 80 };
+  svg.setAttribute("width", bounds.x + bounds.w + 2000); svg.setAttribute("height", bounds.y + bounds.h + 2000);
+  svg.style.left = "0"; svg.style.top = "0";
+  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const sorted = nodes.slice().sort((a, b) => (a.type === "group" ? 0 : 1) - (b.type === "group" ? 0 : 1));
+  for (const n of sorted) {
+    const el = document.createElement("div");
+    el.className = "node " + (n.type || "text");
+    el.style.left = n.x + "px"; el.style.top = n.y + "px"; el.style.width = n.width + "px"; el.style.height = n.height + "px";
+    const c = soften(color(n.color), .3);   // the brain's six canvas colors, desaturated to sit on the ground
+    if (c) { el.style.borderColor = c; el.style.background = n.type === "group" ? tint(c, .08) : tint(c, .12); }
+    if (n.type === "group") { el.innerHTML = `<div class="glabel">${esc(n.label || "")}</div>`; }
+    else {
+      let body;
+      if (n.type === "file") {
+        const f = n.file || ""; const isCanvas = f.endsWith(".canvas");
+        body = `<div class="fkind">${isCanvas ? "canvas" : "file"} · click to open</div><div class="fname">${esc(f.split("/").pop())}</div><div class="fkind">${esc(f)}</div>`;
+        el.onclick = (e) => { e.stopPropagation(); if (isCanvas) openByPath(f); else openFile(f); };
+      } else if (n.type === "link") { body = `<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.url)}</a>`; }
+      else { body = md(n.text || ""); }
+      el.innerHTML = `<div class="body">${body}</div><div class="lodtitle">${esc(lodTitle(n))}</div>`;
+    }
+    world.appendChild(el);
+  }
+  // defs + edges
+  const NS = "http://www.w3.org/2000/svg";
+  const defs = document.createElementNS(NS, "defs");
+  const colorsUsed = new Set(edges.map(e => soften(color(e.color), .25) || NEUTRAL));
+  for (const c of colorsUsed) {
+    const m = document.createElementNS(NS, "marker"); m.setAttribute("id", "arr-" + c.replace("#", "")); m.setAttribute("markerWidth", "10"); m.setAttribute("markerHeight", "10"); m.setAttribute("refX", "8"); m.setAttribute("refY", "5"); m.setAttribute("orient", "auto"); m.setAttribute("markerUnits", "userSpaceOnUse");
+    const p = document.createElementNS(NS, "path"); p.setAttribute("d", "M0,0 L10,5 L0,10 z"); p.setAttribute("fill", c); m.appendChild(p); defs.appendChild(m);
+  }
+  svg.appendChild(defs);
+  for (const e of edges) {
+    const a = byId[e.fromNode], b = byId[e.toNode]; if (!a || !b) continue;
+    const c = soften(color(e.color), .25) || NEUTRAL;
+    const p0 = anchor(a, e.fromSide || "right"), p3 = anchor(b, e.toSide || "left");
+    const dist = Math.max(60, Math.hypot(p3[0]-p0[0], p3[1]-p0[1]) * 0.35);
+    const o0 = outward(e.fromSide || "right", dist), o3 = outward(e.toSide || "left", dist);
+    const p1 = [p0[0] + o0[0], p0[1] + o0[1]], p2 = [p3[0] + o3[0], p3[1] + o3[1]];
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", `M${p0[0]},${p0[1]} C${p1[0]},${p1[1]} ${p2[0]},${p2[1]} ${p3[0]},${p3[1]}`);
+    path.setAttribute("stroke", c); path.setAttribute("marker-end", `url(#arr-${c.replace("#","")})`);
+    if (e.fromEnd === "arrow") path.setAttribute("marker-start", `url(#arr-${c.replace("#","")})`);
+    svg.appendChild(path);
+    if (e.label) { const [mx, my] = bez(p0, p1, p2, p3, 0.5); const t = document.createElementNS(NS, "text"); t.setAttribute("x", mx); t.setAttribute("y", my - 6); t.setAttribute("text-anchor", "middle"); t.textContent = e.label; svg.appendChild(t); }
+  }
+  fit();
+}
+
+// wikilinks inside node text: canvases open here, .md files open in the drawer
+world.addEventListener("click", e => {
+  const a = e.target.closest("a.wikilink"); if (!a) return; e.preventDefault(); e.stopPropagation();
+  const target = a.dataset.wikilink.split("#")[0].trim();
+  if (target.endsWith(".canvas")) openByName(target); else openFile(target);
+});
+
+async function openFile(nameOrPath) {
+  const drawer = $("#drawer"); drawer.hidden = false; drawer.innerHTML = `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(nameOrPath)}</code></div><div class="empty">loading…</div>`;
+  $("#closeDrawer").onclick = () => { drawer.hidden = true; };
+  let path = nameOrPath;
+  if (!path.includes("/")) { const r = await fetch(`/api/resolve?name=${encodeURIComponent(path)}`); const j = await r.json(); if (j.path) path = j.path; else { drawer.querySelector(".empty").textContent = j.error || "could not resolve " + nameOrPath; return; } }
+  if (path.endsWith(".canvas")) { drawer.hidden = true; return openByPath(path); }
+  if (isImage(path)) { drawer.hidden = true; return lightbox(path); }
+  const r = await fetch(`/api/file?path=${encodeURIComponent(path)}`); const j = await r.json();
+  drawer.innerHTML = `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(path)}</code>${BV.readerLink(path)}</div>` + (j.error ? `<div class="empty">${esc(j.error)}</div>` : `<article class="md">${md(j.text, { base: path.split("/").slice(0, -1).join("/") })}</article>`);
+  $("#closeDrawer").onclick = () => { drawer.hidden = true; };
+}
+function openByName(leaf) { const hit = CANVASES.find(c => c.path.endsWith("/" + leaf) || c.name === leaf.replace(/\.canvas$/, "")); if (hit) openCanvas(hit); else $("#info").textContent = "no canvas named " + leaf; }
+function openByPath(path) { const hit = CANVASES.find(c => c.path === path || c.path.endsWith("/" + path.split("/").pop())); if (hit) openCanvas(hit); else openFile(path); }
+
+async function openCanvas(c, push = true) {
+  if (CURRENT && push && CURRENT.path !== c.path) HIST.push(CURRENT);
+  CURRENT = c; $("#drawer").hidden = true;
+  document.querySelectorAll("nav button.cv").forEach(b => { const on = b.dataset.path === c.path; b.classList.toggle("active", on); if (on) { const fam = b.closest("details.fam"); if (fam) fam.open = true; } });
+  $("#crumb").innerHTML = `${esc(c.family)} / <strong>${esc(c.name)}</strong> · ${c.nodes} nodes · ${c.edges} edges · touched ${esc(c.mtime)} · <code>${esc(c.path)}</code>`;
+  history.replaceState(null, "", `/canvases?open=${encodeURIComponent(c.path)}`);
+  $("#forgeLink").href = BV.forgeHref(c.path);
+  const r = await fetch(`/api/canvas?path=${encodeURIComponent(c.path)}`); const j = await r.json();
+  if (j.error) { $("#info").textContent = j.error; return; }
+  render(j);
+}
+
+// The filtering rule (2026-09-09): the families are folds, and only the one that changed most recently opens itself --
+// plus whichever family holds the canvas on screen. Every row leads with the date its file was last touched.
+function renderNav(openPath) {
+  const nav = $("#nav"); nav.innerHTML = "";
+  const everything = showAll("canvases");
+  const fams = [...new Set(CANVASES.map(c => c.family))];
+  fams.sort((a, b) => (a === "zak-brain" ? -1 : b === "zak-brain" ? 1 : a.localeCompare(b)));
+  const newest = f => CANVASES.filter(c => c.family === f).reduce((a, c) => (c.mtime || "") > a ? (c.mtime || "") : a, "");
+  const freshest = fams.slice().sort((a, b) => newest(b).localeCompare(newest(a)))[0];
+  const holds = f => CANVASES.some(c => c.family === f && c.path === openPath);
+  for (const f of fams) {
+    const rows = CANVASES.filter(c => c.family === f);
+    const d = document.createElement("details"); d.className = "fam";
+    d.open = everything || f === freshest || holds(f);
+    d.innerHTML = `<summary>${esc(f)} <span class="m">${rows.length} · changed ${esc(newest(f) || "?")}</span></summary>`;
+    for (const c of rows) {
+      const wrap = document.createElement("div"); wrap.className = "rowwrap";
+      const b = document.createElement("button"); b.className = "row cv"; b.dataset.path = c.path;
+      b.innerHTML = `<div class="t">${c.home ? "🏠 " : ""}${esc(c.name)}</div><div class="m">${esc(c.mtime || "no date")} · ${c.nodes} nodes · ${c.edges} edges${c.header ? " · " + esc(c.header.slice(0, 60)) : ""}</div>`;
+      b.onclick = () => openCanvas(c);
+      const f = document.createElement("a"); f.className = "fbtn"; f.href = BV.forgeHref(c.path); f.textContent = "forge"; f.title = "open in the Forge";
+      wrap.appendChild(b); wrap.appendChild(f); d.appendChild(wrap);
+    }
+    nav.appendChild(d);
+  }
+  if (!fams.length) nav.innerHTML = `<div class="empty">no canvases found</div>`;
+  nav.querySelectorAll("button.cv").forEach(b => b.classList.toggle("active", b.dataset.path === openPath));
+}
+
+async function load() {
+  const r = await fetch("/api/canvases"); const j = await r.json(); CANVASES = j.canvases || [];
+  const want = new URLSearchParams(location.search).get("open");
+  const start = (want && CANVASES.find(c => c.path === want)) || CANVASES.find(c => c.home) || CANVASES[0];
+  renderNav(start ? start.path : null);
+  mountShowAll("canvases", () => renderNav(CURRENT ? CURRENT.path : null));
+  if (start) openCanvas(start, false);
+}
+load().catch(e => { $("#nav").innerHTML = `<div class="empty">${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

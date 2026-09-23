@@ -1,0 +1,374 @@
+{
+  "_about": "What each page of the Brain Viewer is for, in plain words. One entry per route in serve.py's PAGES. The question mark button on every page shows its own entry; the home page shows this one plus a line per widget it is carrying. Written for a person who has just opened the app, so no ids, no codes, no jargon.",
+  "updated": "2026-09-21",
+  "pages": {
+    "/": {
+      "what": "The page you land on. The date is across the top with the day's line under it; beside it the slot you choose an instrument for, which draws either the day as a flat band with today's calls on it, one project as the track of its stages, or the week as seven columns. On the right the sun carries the sessions running right now and the moon says whether the night agent ran. Under that: the call in front of you with the chat under it, the questions waiting on you one card at a time beside them, what of yours is due today, the people your week is made of, the countdowns, what moved in the brain, the brain wired to everything it exchanges anything with, and a lamp for every part that runs on its own. The edit button in the top right rearranges all of it: drag an instrument, make it a third, a half, two thirds or the full width, let it stand two rows tall, switch one off, or add one that is off. What you set, and every choice you make inside an instrument, is saved for you and comes back on any browser.",
+      "parts": [
+        {
+          "name": "The header",
+          "line": "The date, a clock, the sessions running right now as dots going round the sun, and the moon beside it: lit when the night agent ran last night, and as full as the number of the last seven nights it ran. The middle of the header is yours to choose: press day, project or week in its corner. Day is a band from seven in the morning to seven at night with each call a block on it and a gold line where the hour is. Project draws one project as a track of its stages, the done ones filled and the one you are on lit, with a chooser for which project. Week is seven narrow columns with the calls on them and today marked."
+        },
+        {
+          "name": "Mantra",
+          "line": "One line a day under the date, picked from the date itself so it is the same all day and changes at midnight. Hover it for next, which shows another of today's lines, and add, which puts a line of your own into the pool everyone on the team draws from."
+        },
+        {
+          "name": "Next",
+          "line": "The call in front of you: its name, how long until it starts, everyone on it as a circle of initials, and one button into it. Once the prep for that call has been written the button opens the prep itself, whatever day the call falls on. The quiet line under it is the call after that."
+        },
+        {
+          "name": "Chat",
+          "line": "The conversation, under Next. The last thing you asked and the answer it gave, the box to send the next message with Enter, a new one on a press, a chooser in its corner for which conversation you are in, and a lit dot for each one with a turn running when more than one is. The whole thread, with its tool calls, is one link away."
+        },
+        {
+          "name": "Answer",
+          "line": "The questions waiting on you, one card at a time, the ones holding up work first. Write the answer, press send, and the next card comes up. The head filters to the blocking ones, all of them, or one project."
+        },
+        {
+          "name": "Decide",
+          "line": "Only what is due today or already behind, each one in full, with the day on a pill beside it: red once it is late. Under them, the way to the day page to answer the rest, and the last line is what the ProspectForge app is holding for review."
+        },
+        {
+          "name": "People",
+          "line": "Everyone on your calendar between today and seven days out together with everyone the open items still name, in one of two forms you press for in its corner. In graph they are bubbles around the mark of the brain, moving under the same physics as the bubbles on the map: the line to the middle is heavier the more calls and open items tie a person there, two people sitting on the same call are threaded to each other, and anyone you speak to inside two days is in the burgundy. Drag a bubble and the rest answer, drag the ground to move the view, wheel to zoom, hover for when you next speak and how much is open, press to open the prep for that call or their card. The three words beside the forms choose what stands in the middle: the sun, Saturn or Venus. In list they are a roll of names that drifts upward on its own, with the next call beside each one, and it stops the moment you put the pointer on it."
+        },
+        {
+          "name": "Moved",
+          "line": "What changed in the brain, newest first, grouped by the hour, in the words of whoever changed it."
+        },
+        {
+          "name": "Horizon",
+          "line": "Days left to Genius and days left to the revenue gate, in one of two forms you press for in its corner: numerals, the two counts with a bar for how far through the run today is, or road, the whole run drawn as one track from July to the end of November with Genius marked on it, every milestone the ledgers give a day set where its day falls, and a marker at today with the count above it."
+        },
+        {
+          "name": "Flow",
+          "line": "The brain in the middle and the eight things it exchanges anything with around it: the ProspectForge app, the onboarding API, the calendar, GitHub, Obsidian Sync, Dani's copy, the scheduled agents and your Claude Code sessions. A wire is bright when it carried something in the last day, and a gold dot runs along it the moment something crosses, because it is watching the brain's log as it is written. Hover a node for the last thing that moved there, press one to open its page, or expand it to the full width."
+        },
+        {
+          "name": "System",
+          "line": "A lamp for every part of this brain that runs on its own, with the last time each one ran under it: the calendar read, the week file, the sync with the ProspectForge app, the night agent, the weekly librarian, git, and this app. Green is inside its rhythm, gold has missed a turn, red is overdue or has never run."
+        },
+        {
+          "name": "Space, the command line, the sundial, the constellation and the rest",
+          "line": "Off the board and waiting in the add strip when you press edit, which becomes a small window of its own once you scroll past it: carry it anywhere by the bar across its top, pull the bottom right corner to make it bigger, and it opens where you left it next time. Space is a blank one: it draws nothing and holds a gap open wherever you put it. The command line is one message to the main agent with no conversation around it. Tally is the three counts of the day in a form you choose. The sundial is the older drawing of the day as an arc, and the constellation is the brain drawn as projects, threads and people around the sun."
+        }
+      ]
+    },
+    "/index.html": {
+      "what": "The same page, reached by its other address: answer the question in front of you, see the next call and open its prep, read what moved, and arrange the whole board with the edit button.",
+      "parts": [
+        {
+          "name": "The instruments",
+          "line": "The header, the day, Answer, Decide, Moved, Horizon, the brain, Wrong and Command, in that order until you move them."
+        },
+        {
+          "name": "The edit button",
+          "line": "Drag to move, set a width, switch one off, add one that is off, or put everything back to default."
+        }
+      ]
+    },
+    "/today": {
+      "what": "The day on one page. Every open question addressed to you across the projects, with the ones blocking work first, everything due today or earlier, the items you put on hold that come back today, every open task of yours grouped by project, what the ProspectForge app is holding for review, today's calls with their prep, and the transcripts that landed today. You answer a question, tick a task or push one out from here.",
+      "parts": [
+        {
+          "name": "Questions to you",
+          "line": "Each one with a box to answer it; the answer goes straight onto the project's list."
+        },
+        {
+          "name": "Due and coming back",
+          "line": "Everything dated today or earlier, plus what you held until today."
+        },
+        {
+          "name": "Your open tasks",
+          "line": "All of them by project, whatever the date, with done and not-today on each row."
+        },
+        {
+          "name": "Calls and transcripts",
+          "line": "Today's calls with the prep for each, and what landed in the transcript folders."
+        }
+      ]
+    },
+    "/projects": {
+      "what": "Every project's list of work, read straight off the files that hold it. One project at a time: its milestones, the tasks and questions under each, who owns them, what is blocked and what closed. This is where an item gets sorted into a milestone, answered, ticked off or reopened.",
+      "parts": [
+        {
+          "name": "The project picker",
+          "line": "One row per project with how much is open on it."
+        },
+        {
+          "name": "Milestones",
+          "line": "The work grouped the way the project groups it; an Inbox group means not yet sorted."
+        },
+        {
+          "name": "An item",
+          "line": "Its text, its owner, its date, and the controls to answer, tick, block or hold it."
+        }
+      ]
+    },
+    "/findings": {
+      "what": "What the automatic passes have filed for you. The nightly agent, the file linter, the dispatcher and the handoffs all write onto the project lists, and every one of those items carries a tag saying which pass filed it. This page gathers them, most repeated and oldest first, so a thing that keeps being flagged is visible.",
+      "parts": [
+        {
+          "name": "The source chips",
+          "line": "Filter to one pass, one project or one owner."
+        },
+        {
+          "name": "A finding",
+          "line": "Where it came from, which project it sits on, how old it is, how many times it has repeated."
+        }
+      ]
+    },
+    "/studio": {
+      "what": "The image studio: write a prompt, pick OpenAI or Gemini and a model, and the pictures land in a job folder under deliverables/studio where you mark the ones worth keeping as candidates."
+    },
+    "/review": {
+      "what": "Claude's proposals as cards you rate with one press. Each card says what it proposes, what would change and the evidence behind it. Good, off or wrong, with a line of your own only if you want one. Rating a closure as good ticks the item off; rating it off leaves it open and files a rewrite.",
+      "parts": [
+        {
+          "name": "A card",
+          "line": "The proposal in one sentence, what changes, the evidence, who proposed it and how old it is."
+        },
+        {
+          "name": "The three verdicts",
+          "line": "Good, off, wrong. A note with no verdict just writes the note."
+        },
+        {
+          "name": "Already rated",
+          "line": "The fold at the bottom: what you rated, when, and where the item stands now."
+        }
+      ]
+    },
+    "/people": {
+      "what": "The people in your world, one card each. What the card says about them, what is open that concerns them, the calls you have had, and the prep for the next one. A prep can be written and edited here.",
+      "parts": [
+        {
+          "name": "The list",
+          "line": "Everyone with a card, with how much is waiting on you about them."
+        },
+        {
+          "name": "A person",
+          "line": "Their card read back, the items naming them, their transcripts and their preps."
+        },
+        {
+          "name": "The prep editor",
+          "line": "Write or edit the dated prep for a call, saved where the preps live."
+        }
+      ]
+    },
+    "/chat": {
+      "what": "Talk to the brain's agents. The main agent reads the brain and answers, puts a question that outlives the message onto the right project list, and hands project work to sub-agents. A conversation fixed to a project boots from that project's notes and writes only to its list. Each conversation is a real session on this machine, so it can be picked up again later.",
+      "parts": [
+        {
+          "name": "The rail",
+          "line": "The main agent, one entry per project, and the conversations you have already had."
+        },
+        {
+          "name": "The thread",
+          "line": "The answer as it arrives, with the tool calls and sub-agents folded behind one line."
+        },
+        {
+          "name": "The composer",
+          "line": "Your message, the model to run it on, and what the turn cost."
+        }
+      ]
+    },
+    "/agents": {
+      "what": "Every conversation and session on this machine drawn as a bubble, with its sub-agents attached. What is running right now, what each one came back with, and the lines where one agent handed its answer to another. Read only: nothing here changes the brain.",
+      "parts": [
+        {
+          "name": "The bubbles",
+          "line": "One per session; the small ones around it are its sub-agents."
+        },
+        {
+          "name": "A handoff",
+          "line": "A line between two bubbles: one conversation's reply carried into another."
+        },
+        {
+          "name": "Open it",
+          "line": "A session that is one of your conversations can be opened in the chat."
+        }
+      ]
+    },
+    "/reader": {
+      "what": "Read a document by its headings, and work it as a list. Strike an item, reorder it, ask a question about one section. The change is written back to the real file. Opens the build document when no file is named.",
+      "parts": [
+        {
+          "name": "The headings",
+          "line": "The document's own structure down the side, to jump by."
+        },
+        {
+          "name": "The list controls",
+          "line": "Strike and reorder items in place; the file is rewritten."
+        },
+        {
+          "name": "Ask about a section",
+          "line": "Files a question against that heading on the right project list."
+        }
+      ]
+    },
+    "/maps": {
+      "what": "The picker for the live maps. A map is an existing drawing read against what is actually happening: each part of it bound to the real file, project or service it stands for, and lit by what moved in the last two weeks. Pick a map here and it opens in its live view.",
+      "parts": [
+        {
+          "name": "By purpose",
+          "line": "The maps grouped by what they are for, each with how much of it moved recently."
+        },
+        {
+          "name": "Other canvases",
+          "line": "Every drawing that is not declared a map, by family."
+        }
+      ]
+    },
+    "/live": {
+      "what": "One map, live. The drawing as it is, with every part bound to the real thing it stands for and lit by evidence: what the log has said about it lately, when the file last changed, whether a session ran today. Read only, except for the one button that saves the bindings back to the drawing.",
+      "parts": [
+        {
+          "name": "A bound part",
+          "line": "Hover it for what it is bound to and the last few log lines that named it."
+        },
+        {
+          "name": "The lines",
+          "line": "A line is active when both of its ends moved recently."
+        },
+        {
+          "name": "Save bindings",
+          "line": "Writes the worked-out bindings into the drawing's own sidecar file."
+        }
+      ]
+    },
+    "/forge": {
+      "what": "Design a system before it exists. Cells with typed parts and labelled lines between them, drawn on a canvas and saved back to the same file Obsidian reads. A cell carries a stage, from concept through prototype and built to stable, so the drawing says how far along each piece is.",
+      "parts": [
+        {
+          "name": "A cell",
+          "line": "One piece of the system: its outer band is what people see, its core is what runs."
+        },
+        {
+          "name": "A part",
+          "line": "Typed, and able to carry the document that specifies it."
+        },
+        {
+          "name": "Stages",
+          "line": "Concept, prototype, built, stable. The colour and the weight say which."
+        }
+      ]
+    },
+    "/canvases": {
+      "what": "The architecture drawings shown where they sit: pan, zoom, follow an edge, drill through into the drawing a node points at. This is the reading view of the canvas files, not the editing one.",
+      "parts": [
+        {
+          "name": "The canvas",
+          "line": "Drawn as it is, with its colours and its groups."
+        },
+        {
+          "name": "Drill through",
+          "line": "A node that points at another drawing opens it."
+        }
+      ]
+    },
+    "/map": {
+      "what": "The moving graph of the brain, retired in September 2026 and kept at this address only so old links still answer. The live maps replaced it.",
+      "parts": [
+        {
+          "name": "Where it went",
+          "line": "Use the maps picker instead."
+        }
+      ]
+    },
+    "/mentee": {
+      "what": "Every mentee-facing piece of the programme in the order a mentee meets it, each one editable in place. What the stage is for, what pieces belong to it, whether each piece exists yet and when it last changed.",
+      "parts": [
+        {
+          "name": "A stage",
+          "line": "One step of the programme, with why it is there."
+        },
+        {
+          "name": "A piece",
+          "line": "The document a mentee actually gets, openable and editable."
+        },
+        {
+          "name": "Mark reviewed",
+          "line": "Saves the manifest back after a pass through it."
+        }
+      ]
+    },
+    "/requests": {
+      "what": "The shared folder between copies of this brain. What another person's viewer sent you, and every change a team copy has proposed rather than made. A team copy never edits in place, so this is where its work arrives to be looked at.",
+      "parts": [
+        {
+          "name": "A request",
+          "line": "Who sent it, what it wants changed, and the file it touches."
+        },
+        {
+          "name": "Proposals",
+          "line": "The edits a team copy made, waiting to be replayed on the real files."
+        }
+      ]
+    },
+    "/holons": {
+      "what": "The registry of the brain's parts. Every holon the brain declares, whether its folder and its notes are really there, what it shares with whom, what its status file says and how old that is.",
+      "parts": [
+        {
+          "name": "A holon",
+          "line": "Its name, its folder, its list, its sharing tier and its parent."
+        },
+        {
+          "name": "The checks",
+          "line": "Whether the folder exists, whether its header is stamped, whether its agent is there."
+        }
+      ]
+    },
+    "/status": {
+      "what": "Every status file the registry names, read back exactly as it was written, with how old each one is. The viewer never works a status out for itself: it shows what the thing that owns the status said about itself.",
+      "parts": [
+        {
+          "name": "A status file",
+          "line": "Who generated it, when, and everything it declared."
+        },
+        {
+          "name": "Age",
+          "line": "How long since it was written, so a stale one is obvious."
+        }
+      ]
+    },
+    "/glossary": {
+      "what": "Every word this app uses, with a definition, an example and a picture where there is one. The same definitions appear as dotted underlines across all the other pages, so a word you do not know can be hovered wherever it appears.",
+      "parts": [
+        {
+          "name": "A term",
+          "line": "Its definition, what else it is called, and an example."
+        },
+        {
+          "name": "Keys",
+          "line": "The keyboard shortcuts, per page, named in the corner of that page."
+        }
+      ]
+    },
+    "/call": {
+      "what": "One call on one flat page, for while you are on it: the call's name and time with a press to join it, a card for everyone on it that opens their page, what is due on this call, the questions grouped as the prep writes them with a box to tick each one, the points per person, and your notes. Nothing is folded. Reached from Next on the board, or from a prep in the Reader.",
+      "parts": [
+        {
+          "name": "Join the call",
+          "line": "Opens the meeting link from the calendar in a new tab."
+        },
+        {
+          "name": "The cards",
+          "line": "One per person on the call, with their role and where it stands; press one for their page."
+        },
+        {
+          "name": "The questions",
+          "line": "Tick a question when it is asked. The tick is written into the prep itself, and ticked ones move to the bottom of their group."
+        },
+        {
+          "name": "Your notes",
+          "line": "Saved into the prep's notes section when you click away from the box."
+        },
+        {
+          "name": "A code in the text",
+          "line": "Shows the item's first words beside it; press it to open that item on Projects."
+        }
+      ]
+    }
+  }
+}

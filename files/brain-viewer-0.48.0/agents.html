@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agents</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { flex: 1; position: relative; min-height: 0; overflow: hidden; display: flex; }
+  main { flex: 1; overflow: auto; padding: 26px 34px 90px; }
+  .hh { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .hh h2 { margin: 0; font-size: 30px; line-height: 1.1; }
+  .desc { color: var(--ink-soft); max-width: 82ch; margin: 6px 0 16px; }
+  .filters { display: flex; gap: 4px; margin: 0 0 16px; flex-wrap: wrap; align-items: center; }
+  h3.section { font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+               color: var(--muted); font-weight: 400; margin: 30px 0 10px; }
+
+  /* a session card */
+  article.sess { padding: 14px 18px 12px; margin: 0 0 12px; }
+  article.sess .top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  article.sess h4 { font-family: var(--font-display); font-weight: 400; font-size: 17px; margin: 0; }
+  article.sess .line { color: var(--muted); font-size: 12.5px; margin: 5px 0 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  article.sess .line code { background: transparent; padding: 0; font-size: 12px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rule); flex: none; display: inline-block; }
+  .dot.on { background: var(--open); box-shadow: 0 0 0 3px var(--open-tint); }
+
+  /* the sub-agents inside a card */
+  details.subs { margin: 10px 0 0; }
+  details.subs > summary { cursor: pointer; color: var(--muted); font-size: 12.5px; list-style: none; }
+  details.subs > summary::-webkit-details-marker { display: none; }
+  details.subs > summary::before { content: "▸ "; }
+  details.subs[open] > summary::before { content: "▾ "; }
+  .sub { border-top: 1px solid var(--rule-soft); padding: 10px 0 8px; }
+  .sub:first-of-type { margin-top: 8px; }
+  .sub .sh { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .sub .sh b { font-family: var(--font-display); font-weight: 400; font-size: 14.5px; }
+  .sub .m { color: var(--muted); font-size: 12px; }
+  .sub details { margin: 6px 0 0; }
+  .sub details > summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
+  .sub details > summary:hover { color: var(--accent-deep); }
+  .sub article.md { border: 0; box-shadow: none; background: transparent; padding: 2px 0 4px 14px;
+                    border-left: 2px solid var(--rule-soft); margin: 6px 0 0; font-size: 13.5px; }
+  .sub pre.ask { margin: 6px 0 0; white-space: pre-wrap; font-size: 12px; max-height: 240px; overflow: auto; }
+  .sub .harness { margin: 6px 0 0; font-size: 11.5px; }
+  .sub details > summary .m { font-weight: 400; }
+
+  /* the drawn field, above the list: layout only -- the bubble itself is the shared component in viewer-tokens.css */
+  .field { margin: 0 0 6px; min-height: 40px; }
+  .fieldcap { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; margin: 0 0 4px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin: 2px 0 18px; }
+  .legend span { display: flex; gap: 5px; align-items: center; }
+  .legend i { width: 11px; height: 11px; border-radius: 50%; border: 1px solid var(--rule); display: inline-block; }
+  .legend i.live { border-color: var(--open); box-shadow: 0 0 0 2px var(--open-tint); }
+  .legend i.hand { border-radius: 0; height: 0; width: 16px; border: 0; border-top: 1.4px dashed var(--accent); }
+  aside.drawer .hist { padding: 0 2px; }
+
+  table.grid { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.grid th, table.grid td { text-align: left; padding: 6px 10px; border-top: 1px solid var(--rule-soft); vertical-align: top; }
+  table.grid th { border-top: 0; font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+  table.grid td.when, table.grid td.id { white-space: nowrap; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+  .filelink { cursor: pointer; color: var(--accent); border-bottom: 1px dotted var(--accent); }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Agents</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="agents"></nav>
+</header>
+<div class="stage">
+  <main id="main"><div class="empty">reading the sessions…</div></main>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /agents -- the orchestration view (ledger T-0001 / T-0022, ideas E15). Read-only.
+// /agents?open=<session id> opens that card expanded.
+// Every card is a Claude Code session on this machine, read from its transcript: the orchestrator that ran it, the sub-agents
+// it spawned, and the answer each one came back with. Nothing here is recomputed and nothing is written.
+const { esc, md, mode } = BV;
+const $ = s => document.querySelector(s);
+let DATA = null, SCOPE = "all", SIG = "", OPEN = new Set(), TIMER = null;
+
+const shortModel = m => String(m || "").replace(/^claude-/, "") || "unknown model";
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+function when(iso) {
+  if (!iso) return "";
+  const d = new Date(iso); if (isNaN(d)) return String(iso).slice(0, 16).replace("T", " ");
+  const today = new Date(), sameDay = d.toDateString() === today.toDateString();
+  const t = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return sameDay ? t : `${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${t}`;
+}
+function dur(ms) {
+  if (ms == null) return "";
+  const s = Math.round(ms / 1000);
+  return s < 90 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
+}
+// the first line of a report, flattened, as the one-line preview on the collapsed summary
+const preview = t => { const s = String(t || "").replace(/[*#`>_]/g, "").replace(/\s+/g, " ").trim(); return s.length > 96 ? "— " + s.slice(0, 96) + "…" : s ? "— " + s : ""; };
+const idle = m => m == null ? "" : m < 1 ? "just now" : m < 90 ? `${Math.round(m)} min ago` : m < 2880 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+const statusClass = s => ({ completed: "done", running: "open", "not started": "missing", stopped: "missing", error: "missing", failed: "missing" }[s] || "");
+
+// Expansion survives a refresh: every <details> carries a key and reports its own state.
+const det = (key, summary, body, cls = "") =>
+  `<details data-key="${esc(key)}" class="${cls}"${OPEN.has(key) ? " open" : ""}><summary>${summary}</summary>${body}</details>`;
+
+function subRow(sa, sid) {
+  const k = sa.toolUseId || sa.agentId || (sid + sa.description);
+  const bits = [shortModel(sa.model), sa.background ? "background" : "foreground", dur(sa.durationMs),
+                sa.toolUses != null ? plural(sa.toolUses, "tool call") : "", sa.tokens != null ? `${Math.round(sa.tokens / 1000)}k tokens` : "",
+                sa.started ? `started ${when(sa.started)}` : ""].filter(Boolean);
+  return `<div class="sub">
+    <div class="sh">
+      ${sa.running ? '<span class="dot on" title="running"></span>' : ""}
+      <b>${esc(sa.description)}</b>
+      <span class="badge type">${esc(sa.type || "agent")}</span>
+      <span class="badge ${statusClass(sa.status)}">${esc(sa.status)}</span>
+    </div>
+    <div class="m">${esc(bits.join(" · "))}</div>
+    ${sa.harnessNote ? `<div class="m harness" title="${esc(sa.harnessNote)}">⚑ ${esc(sa.harnessNote.slice(0, 110))}${sa.harnessNote.length > 110 ? "…" : ""}</div>` : ""}
+    ${sa.report ? det(k + ":a", `the answer <span class="m">${esc(preview(sa.report))}</span>`, `<article class="md">${md(sa.reportFull || sa.report)}</article>`)
+      : sa.running ? `<div class="m">no answer yet — still working</div>` : `<div class="m">nothing came back</div>`}
+    ${sa.ask ? det(k + ":q", "the ask", `<pre class="ask">${esc(sa.ask)}</pre>`) : ""}
+  </div>`;
+}
+
+function sessionCard(s) {
+  const n = s.counts || { subagents: 0, running: 0 };
+  const bits = [shortModel(s.model), s.branch ? `branch ${s.branch}` : "", s.started ? `started ${when(s.started)}` : "",
+                s.lastActive ? `last ${when(s.lastActive)}${s.active ? "" : " · " + idle(s.minutesIdle)}` : "",
+                s.userTurns ? plural(s.userTurns, "turn") : ""].filter(Boolean);
+  return `<article class="card sess">
+    <div class="top">
+      <span class="dot ${s.active ? "on" : ""}" title="${s.active ? "active in the last 10 minutes" : "idle"}"></span>
+      <h4>${esc(s.title || "(untitled session)")}</h4>
+      <code class="meta">${esc(s.id)}</code>
+      ${s.active ? '<span class="badge open">running</span>' : ""}
+      ${n.subagents ? `<span class="badge">${plural(n.subagents, "sub-agent")}</span>` : ""}
+      ${n.running ? `<span class="badge open">${n.running} still going</span>` : ""}
+      ${s.error ? `<span class="badge missing">unreadable</span>` : ""}
+      ${s.chat ? `<a class="btn tiny" href="/chat?chat=${encodeURIComponent(s.chat)}">enter</a>`
+        : s.adopt && s.adopt.ok ? `<button class="btn tiny" type="button" data-adopt="${esc(s.sessionId)}" title="take this session into the chat and resume it there">open in chat</button>`
+        : `<span class="meta" title="${esc((s.adopt || {}).reason || "")}">cannot be opened yet</span>`}
+    </div>
+    <div class="line">${esc(bits.join(" · "))}${s.error ? ` <span class="badge missing">${esc(s.error)}</span>` : ""}</div>
+    ${n.subagents ? det("s:" + s.id, `${plural(n.subagents, "sub-agent")}`, s.subagents.map(x => subRow(x, s.id)).join(""), "subs") : ""}
+  </article>`;
+}
+
+function render() {
+  const m = mode();
+  const all = DATA.sessions || [];
+  const rows = all.filter(s => SCOPE === "all" || (SCOPE === "running" ? s.active : (s.counts || {}).subagents > 0));
+  const live = all.filter(s => s.active).length, subs = all.reduce((a, s) => a + (s.counts || {}).subagents, 0);
+  $("#crumb").textContent = `${plural(all.length, "session")} · ${live} running · ${plural(subs, "sub-agent")} · read ${when(DATA.generatedAt)}`;
+  $("#main").innerHTML = `
+    <div class="hh"><h2>Agents</h2><span class="meta">${esc(DATA.source.window)}${DATA.source.note ? " · " + esc(DATA.source.note) : ""}</span></div>
+    <p class="desc">What is running and what it answered. Each card is one Claude Code session on this machine, read from its own
+      transcript: the orchestrator model that ran it, every sub-agent it spawned with the model and type it ran as, and the report
+      that came back. Below, the last action of every agent id in the log, and the open <code>@claude</code> tasks across the
+      ledgers — what agents are on. This panel only reads; launching a run from here is a later task.</p>
+    <div class="fieldcap"><span>${esc(fieldCaption())}</span></div>
+    <div class="field bubs" id="field"></div>
+    <div class="legend">
+      <span><i class="live"></i> running now</span><span><i></i> finished</span>
+      <span>${BV.glyph("message")} a conversation in this app</span><span>${BV.glyph("agent")} a session or a sub-agent</span>
+      <span><i class="hand"></i> an answer handed to another agent</span>
+      <span>double-click a bubble for its history · drag one onto another to hand its answer over</span>
+    </div>
+
+    <h3 class="section">The detail</h3>
+    <div class="filters">
+      <span class="kicker">show</span>
+      ${[["all", "all sessions"], ["running", "running"], ["subs", "with sub-agents"]].map(([k, l]) =>
+        `<button class="btn ${SCOPE === k ? "on" : ""}" data-scope="${k}">${l}</button>`).join("")}
+      <button class="btn" id="refresh" style="margin-left:14px">refresh</button>
+    </div>
+    ${rows.length ? rows.map(sessionCard).join("") : `<div class="empty">No session matches this filter.</div>`}
+
+    <h3 class="section">Brain agents (from the log)</h3>
+    <div class="card">${(DATA.brain_agents || []).length ? `<table class="grid">
+      <tr><th>agent</th><th>last action</th><th>what</th><th>when</th></tr>
+      ${DATA.brain_agents.map(a => `<tr>
+        <td class="id">${esc(a.agent_id)}</td>
+        <td><span class="badge type">${esc(a.last_action)}</span></td>
+        <td>${esc(a.last_text)}</td>
+        <td class="when">${esc(a.at)}</td></tr>`).join("")}
+      </table><div class="meta" style="padding:8px 10px">the last line each agent id wrote in <span class="filelink" data-open="context/log.md">context/log.md</span></div>`
+      : `<div class="empty">no agent lines in the log</div>`}</div>
+
+    <h3 class="section">What agents are on (ledgers)</h3>
+    <div class="card">${(DATA.on_ledgers || []).length ? `<table class="grid">
+      <tr><th>project</th><th>id</th><th>task</th><th>milestone</th><th>state</th></tr>
+      ${DATA.on_ledgers.map(t => `<tr>
+        <td>${esc(t.project)}</td>
+        <td class="id"><span class="filelink" data-open="${esc(t.path)}">${esc(t.id)}</span></td>
+        <td>${esc(t.text)}</td>
+        <td class="meta">${esc(t.milestone)}</td>
+        <td><span class="badge ${t.state === "blocked" ? "blocked" : "open"}">${esc(t.state)}${t.blocked ? " by " + esc(t.blocked) : ""}</span></td></tr>`).join("")}
+      </table><div class="meta" style="padding:8px 10px">open <code>@claude</code> tasks · answer or check them on <a href="/projects">projects</a></div>`
+      : `<div class="empty">no open @claude tasks in any ledger</div>`}</div>`;
+  paintField();
+}
+
+// ---- the field: every conversation and session as a bubble, its sub-agents attached (2026-09-10, T-0117) ----
+// Grouped by the conversation or session that spawned them, newest first, running ones lit. The filtering rule (rules 4b):
+// what is live is drawn -- running now, or touched today -- and the rest is one click away behind the bar's own toggle.
+// live = running now, or worked inside the last twelve hours (minutes since, not a calendar day: a session at 5 pm
+// local and "today" in UTC are not the same day, and the transcript stamps are UTC)
+const liveish = s => s.active || (s.counts || {}).running || (s.minutesIdle != null && s.minutesIdle < 720);
+function fieldSessions() {
+  const all = DATA.sessions || [];
+  return BV.showAll("agents") ? all : (all.filter(liveish).length ? all.filter(liveish) : all.slice(0, 8));
+}
+function fieldCaption() {
+  const all = DATA.sessions || [], shown = fieldSessions();
+  const live = all.filter(s => s.active).length;
+  return BV.showAll("agents")
+    ? `every session in the window: ${plural(all.length, "bubble")}, ${live} running`
+    : `${plural(shown.length, "bubble")} drawn: what is running, or worked in the last twelve hours · ${plural(all.length, "session")} in the window`;
+}
+function paintField() {
+  const el = $("#field"); if (!el) return;
+  const shown = fieldSessions();
+  const groups = shown.map(s => BV.bubbles.group(s, { maxKids: 10 }));
+  // a conversation the index knows about that has no transcript on this machine still gets its bubble
+  const seen = new Set(shown.map(s => s.sessionId));
+  for (const c of (DATA.chats || [])) if (!seen.has(c.session_id) && (BV.showAll("agents") || c.running)) groups.push(BV.bubbles.chatGroup(c));
+  BV.bubbles.paint(el, groups, DATA.handoffs || [], {
+    adopt: true, emptyText: "no session has run in this brain inside the window",
+    onHistory: openHistory, onEnter: id => { location.href = `/chat?chat=${encodeURIComponent(id)}`; },
+    onAdopt: adopt, onWhy: why => { say(why); }, onHandoff: handoff,
+  });
+}
+function say(m) { const c = $("#crumb"); if (c) c.textContent = m; }
+
+// double-click a bubble: its history, read-only, in the drawer (the turns, the tool work folded)
+async function openHistory(b) {
+  const d = $("#drawer"); d.hidden = false;
+  const head = `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(b.title || b.id)}</code>${
+    b.chat ? `<a class="btn" href="/chat?chat=${encodeURIComponent(b.chat)}">enter this conversation</a>` : ""}</div>`;
+  d.innerHTML = head + `<div class="empty">reading it back…</div>`;
+  if (b.sub) {   // a sub-agent bubble: the ask and the answer it came back with, as the card below shows them
+    d.innerHTML = head + `<div class="hist"><div class="m">${esc([b.meta, b.sub.type].filter(Boolean).join(" · "))}</div>
+      ${b.sub.report ? `<article class="md">${md(b.sub.reportFull || b.sub.report)}</article>` : `<div class="empty">nothing came back from this one</div>`}
+      ${b.sub.ask ? `<details><summary>the ask</summary><pre class="ask">${esc(b.sub.ask)}</pre></details>` : ""}</div>`;
+    return;
+  }
+  try {
+    const j = await BV.history.load(b);
+    d.innerHTML = head + BV.history.html(j);
+    BV.glossary.scan(d);
+  } catch (e) { d.innerHTML = head + `<div class="note">${esc(e.message)}</div>`; }
+  d.scrollTop = 0;
+}
+
+// open in chat: a Claude Code session (CLI or app) adopted into the rail and resumed by session id (T-0102)
+async function adopt(sid) {
+  say("taking that session into the chat…");
+  const r = await fetch("/api/chat/adopt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session: sid }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { say(j.error || ("the server answered " + r.status)); return; }
+  location.href = `/chat?chat=${encodeURIComponent(j.chat.id)}`;
+}
+
+// the drawn form of send-to: a line dragged from one conversation's bubble onto another agent's (T-0094)
+async function handoff(from, to) {
+  if (!from.chat) { say("only a conversation from this app carries an answer that can be handed over; open the session in the chat first"); return; }
+  let text = "";
+  try {
+    const j = await BV.history.load(from);
+    const last = (j.turns || []).filter(t => t.role === "assistant" && (t.text || "").trim()).pop();
+    text = last ? last.text : "";
+  } catch (e) { say(e.message); return; }
+  if (!text) { say("that conversation has no answer in it yet"); return; }
+  const target = to.chat ? { chat: to.chat } : { project: to.chatProject || to.project || "main" };
+  BV.sendTo.open({
+    source: { chat: from.chat, title: from.title, project: from.project, projectName: projectName(from.project), text },
+    target, projects: DATA.projects || [], chats: DATA.chats || [], models: DATA.models || [],
+    onSend: async payload => {
+      sessionStorage.setItem("bv.handoff", JSON.stringify(payload));
+      location.href = payload.chat ? `/chat?chat=${encodeURIComponent(payload.chat)}` : `/chat?project=${encodeURIComponent(payload.project)}`;
+    },
+  });
+}
+const projectName = id => id === "main" || !id ? "Main" : ((DATA.projects || []).find(p => p.id === id) || {}).name || id;
+
+// ---- the read drawer (same shape as the other panels) ----
+async function openFile(path) {
+  const d = $("#drawer"); d.hidden = false;
+  d.innerHTML = `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(path)}</code></div>`;
+  if (path.endsWith(".canvas")) { location.href = `/canvases?open=${encodeURIComponent(path)}`; return; }
+  if (BV.isImage(path)) { d.hidden = true; BV.lightbox(path); return; }
+  const r = await fetch(`/api/file?path=${encodeURIComponent(path)}`); const j = await r.json();
+  let body;
+  if (j.error) body = `<div class="empty">${esc(j.error)}</div>`;
+  else if (path.endsWith(".json")) { let t = j.text; try { t = JSON.stringify(JSON.parse(j.text), null, 1); } catch (e) {} body = `<pre>${esc(t)}</pre>`; }
+  else body = `<article class="md">${md(j.text, { base: path.split("/").slice(0, -1).join("/") })}</article>`;
+  d.innerHTML = `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(path)}</code>${BV.readerLink(path)}${j.mtime ? `<span class="meta">touched ${esc(j.mtime.slice(0, 10))}</span>` : ""}</div>${body}`;
+  d.scrollTop = 0;
+}
+
+document.addEventListener("click", e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  if (e.target.closest("#refresh")) { load(true); return; }
+  const sc = e.target.closest("[data-scope]"); if (sc) { SCOPE = sc.dataset.scope; render(); return; }
+  const ad = e.target.closest("[data-adopt]"); if (ad && !ad.closest(".bubs")) { adopt(ad.dataset.adopt); return; }
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); openFile(w.dataset.wikilink.split("#")[0].trim()); return; }
+  const o = e.target.closest(".filelink[data-open]"); if (o) openFile(o.dataset.open);   // a real file link only (T-0065)
+});
+document.addEventListener("toggle", e => {   // remember which panels are open, so a refresh does not close them
+  const k = e.target.dataset && e.target.dataset.key; if (!k) return;
+  e.target.open ? OPEN.add(k) : OPEN.delete(k);
+}, true);
+document.addEventListener("keydown", e => { if (BV.typing(e)) return; if (e.key === "Escape") $("#drawer").hidden = true; });
+
+// A live view: re-read every 30 s while the tab is visible, and only re-render when something actually moved (no flicker).
+async function load(force) {
+  const r = await fetch("/api/agents");
+  const j = await r.json();
+  if (!r.ok || j.error) throw new Error(j.error || ("the server answered " + r.status));
+  const sig = JSON.stringify((j.sessions || []).map(s => [s.id, s.lastActive, s.counts, s.chat, (s.adopt || {}).ok, (s.subagents || []).map(x => x.status)]))
+    + JSON.stringify((j.chats || []).map(c => [c.id, c.last, c.turns, c.running])) + JSON.stringify(j.handoffs)
+    + JSON.stringify(j.brain_agents) + JSON.stringify(j.on_ledgers);
+  if (!force && sig === SIG) return;
+  SIG = sig; DATA = j; render();
+}
+function start() {
+  // /agents?open=<session id> opens that session's sub-agents on load (the same deep-link shape as /holons?id= and /canvases?open=)
+  const want = new URLSearchParams(location.search).get("open");
+  if (want) OPEN.add("s:" + want);
+  if (mode().propose) {
+    $("#crumb").textContent = "team copy";
+    $("#main").innerHTML = `<div class="hh"><h2>Agents</h2></div>
+      <div class="note" style="max-width:70ch">Not available in a team copy. This panel reads the Claude Code session
+      transcripts on the machine that ran them, and those never travel with an export.</div>`;
+    return;
+  }
+  BV.mountShowAll("agents", () => { if (DATA) render(); });
+  load(true).then(() => {
+    TIMER = setInterval(() => { if (!document.hidden) load().catch(() => {}); }, 30000);
+  }).catch(e => { $("#main").innerHTML = `<div class="note">Could not read the sessions: ${esc(e.message)}</div>`; });
+}
+start();
+</script>
+</body>
+</html>

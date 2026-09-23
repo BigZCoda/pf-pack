@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Map</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css (the canvas reads the same tokens at start) */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { flex: 1; position: relative; min-height: 0; overflow: hidden; }
+  #graph { position: absolute; inset: 0; }
+  #graph canvas { display: block; }
+  #graph .graph-tooltip { font: 12.5px/1.4 var(--font-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 7px 10px; max-width: 320px; box-shadow: var(--frame); }
+  #graph .graph-tooltip .tl { font-family: var(--font-display); font-size: 14px; margin-bottom: 2px; }
+  #graph .graph-tooltip .tt { color: var(--muted); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; }
+  #graph .graph-tooltip .ts { color: var(--ink-soft); }
+  header.bar select { padding: 5px 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); font-size: 13px; max-width: 260px; }
+  header.bar select:focus { outline: none; border-color: var(--accent); }
+  details.legend { position: absolute; left: 18px; bottom: 50px; z-index: 4; padding: 8px 12px 10px; max-width: 320px; font-size: 12.5px; }
+  details.legend summary { cursor: pointer; list-style: none; font-family: var(--font-display); font-size: 14px; }
+  details.legend summary::-webkit-details-marker { display: none; }
+  details.legend ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 14px; }
+  details.legend li { white-space: nowrap; }
+  details.legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: -1px; border: 1px solid transparent; }
+  details.legend .sw.doc { border-color: var(--rule); }
+  details.legend .bd { display: inline-block; min-width: 14px; height: 14px; border-radius: 7px; background: var(--accent); color: var(--surface); font: 9.5px/14px var(--font-mono); text-align: center; padding: 0 3px; margin-right: 6px; vertical-align: 0; }
+  details.legend p { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+  .counts { position: absolute; right: 18px; bottom: 18px; z-index: 4; font-size: 12px; color: var(--muted); text-align: right; }
+  .menu { position: absolute; z-index: 6; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-lg); box-shadow: var(--frame); padding: 6px 4px; min-width: 190px; font-size: 13px; }
+  .menu[hidden] { display: none; }
+  .menu .h { padding: 4px 12px 6px; color: var(--muted); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; }
+  .menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 6px 12px; cursor: pointer; border-radius: var(--radius); }
+  .menu button:hover { background: var(--hover); }
+  .menu button:disabled { color: var(--muted); cursor: default; }
+  /* the drawer: the same folds and open-items block /people uses */
+  .drawer h2.pname { font-family: var(--font-display); font-size: 22px; margin: 0 0 6px; }
+  .drawer .who { color: var(--ink-soft); margin: 0 0 12px; }
+  .openblock { margin: 0 0 14px; }
+  .openblock .secthead { display: flex; align-items: baseline; gap: 12px; margin: 0 0 8px; }
+  .openblock .secthead h3 { margin: 0; font-size: 17px; font-family: var(--font-display); }
+  .openblock ul.items { border-top: 1px solid var(--rule-soft); margin-top: 6px; }
+  .drawer .links { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 14px; }
+  .drawer .links a.btn { text-decoration: none; }
+  details.fold { border-top: 1px solid var(--rule-soft); padding: 6px 0; }
+  details.fold > summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; font-family: var(--font-display); font-size: 15px; padding: 3px 0; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary::before { content: "\25B8"; color: var(--muted); font-size: 11px; font-family: var(--font-ui); }
+  details.fold[open] > summary::before { content: "\25BE"; }
+  details.fold > summary:hover { color: var(--accent); }
+  details.fold article.md { padding: 2px 0 8px; }
+  .drawer textarea.edit { width: 100%; min-height: 60vh; padding: 10px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); font-family: var(--font-mono); font-size: 12.5px; resize: vertical; }
+  .drawer .preplist { list-style: none; padding: 0; margin: 0; }
+  .drawer .preplist li { padding: 5px 0; border-top: 1px solid var(--rule-soft); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  @media (max-width: 900px) { details.legend { max-width: 240px; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Map</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <select id="focus" title="what the map shows">
+    <option value="all">everything</option>
+    <option value="open">only what is waiting on you</option>
+    <optgroup label="one project" id="focusProjects"></optgroup>
+  </select>
+  <button class="btn" id="fit" type="button" title="fit the whole map in view (f)">fit</button>
+  <nav class="panels" data-page="map"></nav>
+</header>
+<div class="stage">
+  <div id="graph"></div>
+  <details class="legend card" id="legend" open>
+    <summary>What the bubbles are</summary>
+    <p class="note" style="margin:6px 0 2px"><b>Retired 2026-09-09.</b> This moving graph is kept for reference and is off the nav. The maps are now several, each an existing canvas read against real state: <a href="/maps">open the maps</a>.</p>
+    <ul id="legendList"></ul>
+    <p id="legendNote"></p>
+    <p>Click a bubble to open it. Double-click a hub to unfold what it holds. Right-click a person or a thread to write a prep. Drag to move, wheel to zoom, <kbd>f</kbd> to fit.</p>
+  </details>
+  <div class="counts" id="counts"></div>
+  <div class="menu" id="menu" hidden></div>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script src="/static/vendor/force-graph.min.js"></script>
+<script src="/static/graph-physics.js"></script>
+<script>
+// /map -- THE BUBBLES (2026-09-09; ideas E14 + E16, step 3 of the rebuild).
+// Zak, 9/09: "I want the bubbles that connect to everything ... the bubbles can have notifications symbols on them"; 9/08, on the
+// look: "I just want it to look good, have physics, not be super static." Everything drawn here comes from GET /api/graph, one
+// graph the server joins at read time from what the brain declares (registry, ledgers, cards, the groups file, the manifest, the
+// canvases, the chat index, the team copy's status file, the running sessions). This page renders it with force-graph (vendored,
+// MIT, /static/vendor/) and never invents a node or an edge: the only client-side state is what is unfolded, what is in focus
+// and where the physics has carried things. A badge is the same open count the nav shows. Click opens the thing (a drawer for a
+// document, a person, a thread or a project; the page for a chat, a session, the copy, a canvas); double-click unfolds a hub;
+// right-click a person or a thread writes a prep through POST /api/prep -- the first instance of "a bubble with an action" that
+// Zak wants to grow into connecting bubbles to a document with a prompt (ledgered). In a team copy the server sends no people,
+// groups, chats or agents, and the legend says so.
+const { esc, inline, md, isImage, lightbox, mode, itemRow: row, questionCard: qCard, ledgerAct, refreshBadges } = BV;
+const $ = s => document.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const C = {}, FONT = {};
+function readTokens() {
+  for (const [k, v] of Object.entries({ bg: "--bg", surface: "--surface", ink: "--ink", inkSoft: "--ink-soft", muted: "--muted", rule: "--rule", ruleSoft: "--rule-soft",
+                                        accent: "--accent", open: "--open", done: "--done", selected: "--selected", hover: "--hover", openTint: "--open-tint", code: "--code" })) C[k] = css(v);
+  FONT.display = css("--font-display") || "Georgia, serif"; FONT.ui = css("--font-ui") || FONT.display; FONT.mono = css("--font-mono") || "monospace";
+}
+const rgba = (hex, a) => { const h = (hex || "#000").replace("#", ""); const n = parseInt(h.length === 3 ? h.replace(/./g, c => c + c) : h, 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+
+const FOLD_ID = "fold:people";
+const PROPOSE = mode().propose;
+let GRAPH = null, fg = null, FOCUS = "open", HOVER = null, NEIGH = new Set(), DRAG = null, USER_MOVED = false, LAST_LINKS = [];
+// fit the whole map in view, eased over `ms` with our own frames (the library's animated zoomToFit never lands in this pane; its instant one does)
+let fitTimer = null, TICKS = 0, FOLLOW = true;
+function fit(ms = 500) {
+  const bb = fg.getGraphBbox(); if (!bb) return;
+  const pad = 70, w = fg.width(), h = fg.height();
+  const k1 = Math.max(0.25, Math.min(3, (w - pad * 2) / Math.max(1, bb.x[1] - bb.x[0]), (h - pad * 2) / Math.max(1, bb.y[1] - bb.y[0])));
+  const c1 = { x: (bb.x[0] + bb.x[1]) / 2, y: (bb.y[0] + bb.y[1]) / 2 }, k0 = fg.zoom(), c0 = fg.centerAt();
+  if (fitTimer) clearTimeout(fitTimer);
+  const t0 = performance.now(), ease = t => 1 - Math.pow(1 - t, 3);
+  const step = () => {                                  // timers, not frames: the first step lands at once and the last one always lands
+    const t = ms ? Math.min(1, (performance.now() - t0) / ms) : 1, e = ease(t);
+    fg.centerAt(c0.x + (c1.x - c0.x) * e, c0.y + (c1.y - c0.y) * e, 0);
+    fg.zoom(k0 + (k1 - k0) * e, 0);
+    fitTimer = t < 1 ? setTimeout(step, 16) : null;
+  };
+  step();
+}
+// the camera follows the layout while it settles (by the engine's own ticks, so it runs exactly when the graph does), then leaves the view alone
+function follow() { TICKS = 0; FOLLOW = true; USER_MOVED = false; fit(0); }
+function onTick() { TICKS++; if (FOLLOW && !USER_MOVED && TICKS % 40 === 0) fit(300); if (TICKS > 720) FOLLOW = false; }
+const NODES = new Map();        // id -> the ONE node object per id (force-graph keeps x, y, vx, vy on it across re-renders)
+const LINKS = new Map();        // key -> the one link object (force-graph turns source/target into node objects; sid/tid stay strings)
+const EXPANDED = new Set();     // hubs unfolded right now (client-side only)
+const FOLD = { id: FOLD_ID, type: "fold", label: "", badge: 0, hub: true, summary: [] };
+
+// ---- look: fill by type from the tokens, size by weight, the badge in the accent ----
+const TYPE_LABEL = { project: "a project (its ledger)", person: "a person (their card)", group: "a standing call thread", document: "a document or a hub of them", chat: "a conversation", agent: "a running session", copy: "the team copy", fold: "the people with nothing open" };
+function fill(n) {
+  switch (n.type) {
+    case "project": return C.accent;
+    case "person": return C.ink;
+    case "group": return C.muted;
+    case "document": return C.surface;
+    case "chat": case "agent": return C.open;
+    case "copy": return C.done;
+    case "fold": return C.ruleSoft;
+  } return C.muted;
+}
+function stroke(n) { return n.type === "document" ? C.rule : n.type === "fold" ? C.muted : null; }
+function radius(n) {
+  if (n.type === "fold") return 9;
+  if (n.type === "project") return 14 + Math.min(10, Math.sqrt(n.badge || 0) * 2);
+  if (n.parent) return 5;
+  if (n.type === "document") return n.hub ? 12 : 6;
+  if (n.type === "person") return (n.quiet ? 5.5 : 7 + Math.min(4, n.badge || 0)) + (n.hub ? 1.5 : 0);
+  if (n.type === "group") return 10 + (n.hub ? 1.5 : 0);
+  if (n.type === "copy") return 11;
+  return 7;
+}
+function showLabel(n, scale) {
+  if (n === HOVER || NEIGH.has(n.id)) return true;
+  if (n.parent) return scale > 1.15;
+  if (n.type === "person" && n.quiet) return scale > 1.6;
+  return true;
+}
+const short = (s, n) => { s = String(s || ""); return s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s; };
+function labelOf(n) { return n.type === "chat" || n.type === "agent" ? short(n.label, 34) : n.parent ? short(n.label, 30) : short(n.label, 40); }
+
+function drawNode(n, ctx, scale) {
+  const hovered = n === HOVER, near = NEIGH.has(n.id);
+  const r = radius(n) * (hovered ? 1.18 : 1);
+  const dim = HOVER && !hovered && !near;
+  const px = 1 / scale;                                  // one screen pixel, in graph units
+  ctx.save();
+  ctx.globalAlpha = dim ? 0.14 : 1;
+  if ((n.type === "chat" || n.type === "agent") && n.badge > 0) {   // a running turn breathes
+    const t = performance.now() / 1000;
+    ctx.beginPath(); ctx.arc(n.x, n.y, r + (3 + Math.sin(t * 2.2) * 1.6) * px, 0, 2 * Math.PI);
+    ctx.strokeStyle = rgba(C.open, 0.55); ctx.lineWidth = 1.2 * px; ctx.stroke();
+  }
+  ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
+  ctx.fillStyle = fill(n); ctx.fill();
+  const st = stroke(n);
+  if (st) { ctx.strokeStyle = st; ctx.lineWidth = (n.hub ? 1.4 : 1.1) * px; ctx.stroke(); }
+  if (n.hub) {                                           // a hub wears the card's double line
+    ctx.beginPath(); ctx.arc(n.x, n.y, r + 3 * px, 0, 2 * Math.PI);
+    ctx.strokeStyle = n.type === "document" || n.type === "fold" ? C.rule : fill(n); ctx.lineWidth = 1 * px;
+    if (EXPANDED.has(n.id)) ctx.setLineDash([3 * px, 3 * px]);
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (hovered) { ctx.beginPath(); ctx.arc(n.x, n.y, r + 5 * px, 0, 2 * Math.PI); ctx.strokeStyle = rgba(C.accent, 0.5); ctx.lineWidth = 1.2 * px; ctx.stroke(); }
+  if (showLabel(n, scale)) {
+    const big = n.type === "project" || (n.hub && n.type !== "person");
+    ctx.font = `${(big ? 13 : n.parent || (n.type === "person" && n.quiet) ? 10.5 : 11.5) * px}px ${FONT.display}`;
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillStyle = dim ? C.muted : n.type === "project" ? C.accent : C.ink;
+    ctx.fillText(labelOf(n), n.x, n.y + r + 3.5 * px);
+  }
+  if (n.badge > 0) {                                     // the notification: a filled circle in the accent, upper right
+    const br = 7.5 * px, bx = n.x + r * 0.78, by = n.y - r * 0.78;
+    ctx.beginPath(); ctx.arc(bx, by, br + 1.5 * px, 0, 2 * Math.PI); ctx.fillStyle = C.bg; ctx.fill();
+    ctx.beginPath(); ctx.arc(bx, by, br, 0, 2 * Math.PI); ctx.fillStyle = C.accent; ctx.fill();
+    ctx.font = `700 ${9.5 * px}px ${FONT.mono}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = C.surface;
+    ctx.fillText(String(n.badge > 99 ? "99+" : n.badge), bx, by + 0.5 * px);
+  }
+  ctx.restore();
+}
+function paintArea(n, color, ctx, scale) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(n.x, n.y, radius(n) + 4 / scale, 0, 2 * Math.PI); ctx.fill(); }
+
+// ---- physics: charge + link distance so clusters read; alpha never decays, so the map keeps breathing (Zak: "not be super static") ----
+// The three forces themselves moved out to /static/graph-physics.js in 0.40.0, because the home board's People wanted
+// the same bubbles and a second physics engine was never going to stay in step with this one. What stayed here is what
+// is this page's own: how far apart each kind of line holds, and how much room a kind of bubble keeps around itself.
+const DIST = { member: 52, child: 36, quiet: 46, item: 150, under: 130, holds: 170, shared: 170, chat: 100, session: 110, running: 60 };
+const held = n => n === DRAG;
+const roomFor = n => n.parent ? 7 : (n.type === "person" && n.quiet) ? 11 : n.type === "project" ? 22 : 16;
+
+// ---- data: the server's graph, merged into the one object per id ----
+function linkObj(e) {
+  const k = `${e.source}|${e.target}|${e.kind}`;
+  let l = LINKS.get(k);
+  if (!l) { l = { source: e.source, target: e.target, kind: e.kind, n: e.n, sid: e.source, tid: e.target }; LINKS.set(k, l); }
+  else l.n = e.n;
+  return l;
+}
+const RING = { project: 120, group: 210, person: 270, document: 300, copy: 330, chat: 330, agent: 340, fold: 360 };
+function seed(n, i, count) {                                     // a calm start: each type on its own ring, projects evenly spaced near the middle
+  if (n.x != null || n.parent) return;
+  const a = n.type === "project" ? (i / Math.max(1, count)) * 2 * Math.PI - Math.PI / 2 : Math.random() * 2 * Math.PI;
+  const r = (RING[n.type] || 400) * (n.type === "project" ? 1 : 0.85 + Math.random() * 0.3);
+  n.x = Math.cos(a) * r; n.y = Math.sin(a) * r; n.vx = n.vy = 0;
+}
+function merge(g) {
+  const incoming = new Set(g.nodes.map(n => n.id));
+  const projects = g.nodes.filter(n => n.type === "project").map(n => n.id);
+  for (const raw of g.nodes) {
+    const have = NODES.get(raw.id);
+    if (have) { const { x, y, vx, vy, ph } = have; Object.assign(have, raw, { x, y, vx, vy, ph }); }
+    else { const n = Object.assign({}, raw); seed(n, projects.indexOf(n.id), projects.length); NODES.set(raw.id, n); }
+  }
+  for (const id of [...NODES.keys()]) if (!incoming.has(id) && id !== FOLD_ID) NODES.delete(id);
+  const quiet = g.nodes.filter(n => n.quiet).length;
+  FOLD.label = EXPANDED.has(FOLD_ID) ? "fold the quiet people" : `${quiet} more ${quiet === 1 ? "person" : "people"}`;
+  FOLD.summary = [`${quiet} ${quiet === 1 ? "person has" : "people have"} nothing open for you right now`, EXPANDED.has(FOLD_ID) ? "double-click to fold them away" : "double-click to see them"];
+  FOLD.quietCount = quiet;
+  seed(FOLD, 0, 1);
+  NODES.set(FOLD_ID, FOLD);
+  GRAPH = g;
+}
+function placeNear(n, at) { if (n.x == null && at && at.x != null) { const a = Math.random() * Math.PI * 2, d = 10 + Math.random() * 20; n.x = at.x + Math.cos(a) * d; n.y = at.y + Math.sin(a) * d; n.vx = n.vy = 0; } }
+
+function visible() {
+  if (!GRAPH) return { nodes: [], links: [] };
+  let keep = new Set();
+  const foldOpen = EXPANDED.has(FOLD_ID);
+  for (const n of NODES.values()) {
+    if (n.id === FOLD_ID) { if (FOLD.quietCount) keep.add(n.id); continue; }
+    if (n.parent) { if (EXPANDED.has(n.parent)) { keep.add(n.id); placeNear(n, NODES.get(n.parent)); } continue; }
+    if (n.quiet && !foldOpen) continue;
+    if (n.quiet) placeNear(n, FOLD);
+    keep.add(n.id);
+  }
+  if (FOCUS === "open") {
+    keep = new Set([...keep].filter(id => { const n = NODES.get(id); return n.badge > 0 || n.type === "project"; }));
+  } else if (FOCUS.startsWith("project:") && NODES.has(FOCUS)) {
+    const nb = new Set([FOCUS]);
+    for (const e of GRAPH.edges) { if (e.source === FOCUS) nb.add(e.target); if (e.target === FOCUS) nb.add(e.source); }
+    keep = new Set([...keep].filter(id => nb.has(id) || (NODES.get(id).parent && nb.has(NODES.get(id).parent))));
+  }
+  const nodes = [...keep].map(id => NODES.get(id));
+  const links = GRAPH.edges.filter(e => keep.has(e.source) && keep.has(e.target)).map(linkObj);
+  if (foldOpen && keep.has(FOLD_ID)) for (const n of nodes) if (n.quiet) links.push(linkObj({ source: FOLD_ID, target: n.id, kind: "quiet", n: 1 }));
+  LAST_LINKS = links;
+  return { nodes, links };
+}
+function apply(refit) {
+  const d = visible();
+  fg.graphData(d);
+  counts(d);
+  if (refit) setTimeout(follow, 30);
+}
+function neighbours(n) {
+  const s = new Set();
+  if (n) for (const l of LAST_LINKS) { if (l.sid === n.id) s.add(l.tid); if (l.tid === n.id) s.add(l.sid); }
+  return s;
+}
+
+// ---- the legend and the counts ----
+function legend() {
+  const types = ["project", "person", "group", "document", "chat", "agent", "copy"].filter(t => !PROPOSE || !["person", "group", "chat", "agent"].includes(t));
+  $("#legendList").innerHTML = types.map(t => `<li><span class="sw ${t === "document" ? "doc" : ""}" style="background:${fill({ type: t })}"></span>${esc(TYPE_LABEL[t])}</li>`).join("")
+    + `<li><span class="bd">3</span>open items waiting on you</li>`;
+  $("#legendNote").textContent = PROPOSE
+    ? "Team copy: people, standing threads, chats and running sessions live on Zak's machine and are not on this map."
+    : "Projects in the title burgundy; people in ink; documents on the surface with a rule; the copy in green; anything running in the sun's gold.";
+}
+function counts(d) {
+  if (!GRAPH) return;
+  const c = GRAPH.counts || {}, folded = EXPANDED.has(FOLD_ID) ? 0 : (GRAPH.quietPeople || 0);
+  const bits = [];
+  if (c.project) bits.push(`${c.project} project${c.project === 1 ? "" : "s"}`);
+  if (c.person) bits.push(`${c.person - folded} ${c.person - folded === 1 ? "person" : "people"}${folded ? ` (+${folded} folded)` : ""}`);
+  if (c.group) bits.push(`${c.group} thread${c.group === 1 ? "" : "s"}`);
+  if (c.document) bits.push(`${c.document} documents`);
+  if (c.chat) bits.push(`${c.chat} chat${c.chat === 1 ? "" : "s"}`);
+  if (c.agent) bits.push(`${c.agent} running session${c.agent === 1 ? "" : "s"}`);
+  if (c.copy) bits.push("the team copy");
+  $("#counts").innerHTML = `${esc(bits.join(" · "))}<br>${d.nodes.length} bubbles and ${d.links.length} lines in view · generated ${esc(String(GRAPH.generatedAt || "").slice(11, 16))}`;
+  $("#crumb").textContent = "retired 2026-09-09, kept for reference · " + (FOCUS === "all" ? "everything, wired by what the brain declares" : FOCUS === "open" ? "only what is waiting on you" : `just ${(NODES.get(FOCUS) || {}).label || FOCUS}`);
+}
+
+// ---- opening things: a drawer where that works, the page otherwise ----
+// "open in Reader" rides in the header of any .md the drawer shows (2026-09-09, T-0046): the same file by its headings,
+// where its list items can be struck and moved. BV.readerLink returns "" for anything that is not a .md.
+const dh = (path, extra = "") => `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(path)}</code>${BV.readerLink(path)}${extra}</div>`;
+const link = (path, label) => `<span class="filelink" data-open="${esc(path)}" title="${esc(path)}">${esc(label || path.split("/").pop())}</span>`;
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+function openBlock(name, items) {
+  const qs = items.filter(i => i.kind === "question"), ts = items.filter(i => i.kind !== "question");
+  if (!items.length) return `<div class="openblock"><div class="secthead"><h3>Nothing open for you about ${esc(name)}</h3></div></div>`;
+  return `<div class="openblock"><div class="secthead"><h3>Open for you about ${esc(name)}</h3><span class="meta">${plural(qs.length, "question")}, ${plural(ts.length, "task")}</span></div>
+    ${qs.map(q => qCard(q, { project: q.project, showProject: true, hidePeople: true })).join("")}
+    ${ts.length ? `<ul class="items">${ts.map(t => row(t, { project: t.project, showProject: true, hidePeople: true, today: GRAPH && GRAPH.today })).join("")}</ul>` : ""}</div>`;
+}
+function show(html) { const d = $("#drawer"); d.hidden = false; d.innerHTML = html; d.scrollTop = 0; }
+
+async function openPerson(n) {
+  show(`<div class="empty">reading…</div>`);
+  const r = await fetch(`/api/person?slug=${encodeURIComponent(n.key)}`); const j = await r.json();
+  if (j.error) { show(dh(n.href) + `<div class="empty">${esc(j.error)}</div>`); return; }
+  const secs = j.sections || [];
+  show(dh(j.path, `<span class="meta">${esc(j.lastFold ? "last dated fold " + j.lastFold : "no dated fold")}</span>`) + `
+    <h2 class="pname">${esc(j.name)}</h2>
+    ${j.role ? `<p class="who">${inline(j.role)}</p>` : ""}
+    ${openBlock(j.name, j.openItems || [])}
+    <div class="links"><a class="btn" href="/people?open=${encodeURIComponent(j.slug)}">open in People</a><button class="btn" type="button" data-prep-slug="${esc(j.slug)}">New prep</button><span class="status-line" id="prepstatus" style="margin:0"></span></div>
+    ${secs.map((s, i) => `<details class="fold" ${i === 0 ? "open" : ""}><summary>${esc(s.title)}</summary><article class="md">${md(s.text || "")}</article></details>`).join("")}
+    <details class="fold"><summary>Call preps <span class="meta">${(j.preps || []).length ? plural(j.preps.length, "on file") : "none yet"}</span></summary>
+      <ul class="preplist">${(j.preps || []).map(p => `<li>${link(p.path, p.call)}<span class="meta">${esc(p.purpose || "no purpose stated")}</span></li>`).join("") || `<li class="meta">no prep yet</li>`}</ul></details>`);
+}
+async function openGroup(n) {
+  show(`<div class="empty">reading…</div>`);
+  const r = await fetch("/api/groups"); const j = await r.json();
+  const g = (j.groups || []).find(x => x.id === n.key);
+  if (!g) { show(dh(n.href) + `<div class="empty">no thread ${esc(n.key)} in ${esc(j.file || "the groups file")}</div>`); return; }
+  show(dh(j.file, `<span class="meta">${esc(g.id)}</span>`) + `
+    <h2 class="pname">${esc(g.name)}</h2>
+    <p class="who">${g.members.map(m => m.path ? `<span class="filelink" data-person="${esc(m.slug)}">${esc(m.name)}</span>` : esc(m.name)).join(", ")} · ${esc(g.cadence || "no cadence on record")}${g.confirmed ? "" : " · not confirmed yet"}</p>
+    ${openBlock(g.name, g.openItems || [])}
+    <div class="links"><a class="btn" href="/people?group=${encodeURIComponent(g.id)}">open in People</a><button class="btn" type="button" data-prep-group="${esc(g.id)}">New prep</button><span class="status-line" id="prepstatus" style="margin:0"></span></div>
+    ${g.lastCall ? `<p class="meta">last call with all of them: ${esc(g.lastCall.date)} · ${link(g.lastCall.path, g.lastCall.title || g.lastCall.path.split("/").pop())}</p>` : `<p class="meta">no transcript in the brain has all of them on it</p>`}
+    <details class="fold"><summary>Call preps <span class="meta">${(g.prepList || []).length ? plural(g.prepList.length, "on file") : "none yet"}</span></summary>
+      <ul class="preplist">${(g.prepList || []).map(p => `<li>${link(p.path, p.call)}<span class="meta">${esc(p.purpose || "no purpose stated")}</span></li>`).join("") || `<li class="meta">no prep for this thread yet</li>`}</ul></details>`);
+}
+async function openProject(n) {
+  show(`<div class="empty">reading…</div>`);
+  const r = await fetch("/api/projects"); const j = await r.json();
+  const p = (j.projects || []).find(x => x.id === n.key);
+  if (!p) { show(dh(n.href) + `<div class="empty">no ledger for ${esc(n.key)}</div>`); return; }
+  const items = (p.groups || []).flatMap(g => g.items.map(i => Object.assign({}, i, { project: p.id, projectName: p.name })));
+  const waiting = items.filter(i => (i.kind === "question" && i.mark === "?") || (i.kind === "task" && i.owner === BV.owner && (i.mark === " " || i.mark === "-")));
+  const claude = items.filter(i => i.kind === "task" && i.owner === "@claude" && (i.mark === " " || i.mark === "-"));
+  const s = p.summary || {};
+  show(dh(p.path, `<span class="meta">touched ${esc(p.mtime || "")}</span>`) + `
+    <h2 class="pname">${esc(p.name)}</h2>
+    ${p.description ? `<p class="who">${inline(p.description)}</p>` : ""}
+    ${openBlock(p.name, waiting)}
+    <div class="links"><a class="btn" href="/projects?id=${encodeURIComponent(p.id)}">open the ledger</a><a class="btn" href="/chat?project=${encodeURIComponent(p.id)}">chat with this project</a></div>
+    <details class="fold"><summary>Open for Claude <span class="meta">${plural(claude.length, "task")}</span></summary>
+      <ul class="items">${claude.map(t => row(t, { project: p.id, hidePeople: false, today: j.today })).join("") || `<li class="meta" style="padding:6px 0">nothing open</li>`}</ul></details>
+    ${s.done != null ? `<p class="meta" style="margin-top:12px">${esc(s.done)} done of ${esc(s.tasks != null ? s.tasks : "?")} tasks · ${esc(s.questions_open != null ? s.questions_open : "?")} questions open</p>` : ""}`);
+}
+async function openFile(path) {
+  if (path.endsWith(".canvas")) { location.href = BV.forgeHref(path); return; }   // a drawing opens on the design surface (2026-09-09)
+  if (isImage(path)) { lightbox(path); return; }
+  show(`<div class="empty">reading…</div>`);
+  const d = $("#drawer");
+  const r = await fetch(`/api/file?path=${encodeURIComponent(path)}`); const j = await r.json();
+  if (j.error) { show(dh(path) + `<div class="empty">${esc(j.error)}</div>`); return; }
+  const head = dh(path, `${j.editable ? `<button class="btn" id="editBtn">edit</button>` : ""}${j.mtime ? `<span class="meta">touched ${esc(j.mtime.slice(0, 10))}</span>` : ""}<span class="status-line" id="saveStatus" style="margin:0"></span>`);
+  const body = path.endsWith(".json")
+    ? `<pre>${esc((() => { try { return JSON.stringify(JSON.parse(j.text), null, 1); } catch (e) { return j.text; } })())}</pre>`
+    : `<article class="md">${md(j.text, { base: path.split("/").slice(0, -1).join("/") })}</article>`;
+  show(head + body);
+  const edit = d.querySelector("#editBtn");
+  if (edit) edit.addEventListener("click", () => {
+    d.innerHTML = dh(path, `<button class="btn primary" id="saveBtn">save</button><button class="btn" id="cancelBtn">cancel</button><span class="status-line" id="saveStatus" style="margin:0"></span>`) + `<textarea class="edit" id="editor"></textarea>`;
+    d.querySelector("#editor").value = j.text;
+    d.querySelector("#cancelBtn").addEventListener("click", () => openFile(path));
+    d.querySelector("#saveBtn").addEventListener("click", async ev => {
+      const out = d.querySelector("#saveStatus"); ev.target.disabled = true; out.textContent = "saving…";
+      try {
+        const res = await fetch(`/api/file?path=${encodeURIComponent(path)}`, { method: "PUT", headers: { "Content-Type": "text/plain; charset=utf-8" }, body: d.querySelector("#editor").value });
+        const jj = await res.json();
+        if (!res.ok) out.textContent = "refused: " + (jj.error || res.status);
+        else if (jj.proposed) out.textContent = BV.proposedText(jj);
+        else { out.textContent = `saved · ${jj.bytes} bytes · ${jj.log}`; setTimeout(() => openFile(path), 700); }
+      } catch (err) { out.textContent = "could not save: " + err.message; }
+      ev.target.disabled = false;
+    });
+  });
+}
+function open(n) {
+  if (n.type === "fold" || (n.hub && n.type === "document" && !n.href)) { toggleHub(n); return; }
+  if (n.type === "person") return openPerson(n);
+  if (n.type === "group") return openGroup(n);
+  if (n.type === "project") return openProject(n);
+  if (n.type === "document") { if (n.opens === "drawer" && n.href) return openFile(n.href); if (n.hub && n.href === "/") return toggleHub(n); }
+  if (n.href) location.href = n.href;
+}
+function toggleHub(n) {
+  if (!(n.hub || n.type === "fold")) { open(n); return; }
+  if (EXPANDED.has(n.id)) EXPANDED.delete(n.id); else EXPANDED.add(n.id);
+  if (n.id === FOLD_ID) merge(GRAPH);                   // the fold bubble's own label flips
+  apply(false);
+}
+async function newPrep(body, statusEl) {
+  if (statusEl) statusEl.textContent = "writing…";
+  try {
+    const res = await fetch("/api/prep", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const jj = await res.json();
+    if (!res.ok) { if (statusEl) statusEl.textContent = "refused: " + (jj.error || res.status); return; }
+    if (statusEl) statusEl.textContent = jj.note;
+    await load(false);
+    const parent = body.group ? "group:" + body.group : "person:" + body.slug;
+    EXPANDED.add(parent); apply(false);
+    openFile(jj.path);
+  } catch (err) { if (statusEl) statusEl.textContent = "could not write: " + err.message; }
+}
+
+// ---- the right-click menu ----
+function menu(n, ev) {
+  const m = $("#menu"); const items = [];
+  const hd = `<div class="h">${esc(TYPE_LABEL[n.type] || n.type)}</div>`;
+  if (n.type === "person") items.push(`<button data-act="prep">New prep for ${esc(n.label)}</button>`, `<button data-act="page">Open in People</button>`);
+  else if (n.type === "group") items.push(`<button data-act="prep">New prep for this thread</button>`, `<button data-act="page">Open in People</button>`);
+  else if (n.type === "project") items.push(`<button data-act="drawer">What is open here</button>`, `<button data-act="page">Open the ledger</button>`, `<button data-act="chat">Chat with this project</button>`);
+  else if (n.type === "document") items.push(`<button data-act="open">Open</button>`);
+  else if (n.href) items.push(`<button data-act="page">Open</button>`);
+  if (n.hub || n.type === "fold") items.push(`<button data-act="toggle">${EXPANDED.has(n.id) ? "Fold" : "Unfold"} what it holds</button>`);
+  m.innerHTML = hd + items.join("");
+  m.hidden = false;
+  const st = $(".stage").getBoundingClientRect();
+  m.style.left = Math.min(ev.clientX - st.left, st.width - m.offsetWidth - 8) + "px";
+  m.style.top = Math.min(ev.clientY - st.top, st.height - m.offsetHeight - 8) + "px";
+  m.onclick = e => {
+    const b = e.target.closest("button[data-act]"); if (!b) return;
+    m.hidden = true;
+    switch (b.dataset.act) {
+      case "prep": if (n.type === "group") newPrep({ group: n.key }); else newPrep({ slug: n.key }); break;
+      case "page": if (n.href) location.href = n.href; break;
+      case "chat": location.href = `/chat?project=${encodeURIComponent(n.key)}`; break;
+      case "drawer": openProject(n); break;
+      case "open": open(n); break;
+      case "toggle": toggleHub(n); break;
+    }
+  };
+}
+const hideMenu = () => { $("#menu").hidden = true; };
+
+// ---- the graph ----
+function build() {
+  const el = $("#graph");
+  fg = ForceGraph()(el)
+    .width(el.clientWidth).height(el.clientHeight)
+    .backgroundColor(C.bg)
+    .nodeId("id").nodeVal(n => radius(n) * radius(n) / 40)
+    .nodeCanvasObjectMode(() => "replace").nodeCanvasObject(drawNode).nodePointerAreaPaint(paintArea)
+    .nodeLabel(n => `<div class="tt">${esc(TYPE_LABEL[n.type] || n.type)}${n.badge ? ` · ${n.badge} open` : ""}</div><div class="tl">${esc(n.label)}</div>${(n.summary || []).map(s => `<div class="ts">${esc(s)}</div>`).join("")}`)
+    .linkColor(l => {
+      if (HOVER) return (l.sid === HOVER.id || l.tid === HOVER.id) ? rgba(C.accent, 0.75) : rgba(C.rule, 0.08);
+      if (l.kind === "child" || l.kind === "quiet") return rgba(C.rule, 0.35);
+      if (l.kind === "under") return rgba(C.rule, 0.22);
+      if (l.kind === "running" || l.kind === "session") return rgba(C.open, 0.8);
+      return rgba(C.rule, 0.6);
+    })
+    .linkWidth(l => (HOVER && (l.sid === HOVER.id || l.tid === HOVER.id)) ? 1.8 : l.kind === "item" ? Math.min(3, 0.7 + l.n * 0.3) : l.kind === "holds" ? 1.4 : 0.8)
+    .linkLineDash(l => l.kind === "under" ? [2, 3] : l.kind === "shared" ? [5, 4] : null)
+    .linkDirectionalParticles(l => (l.kind === "running" || l.kind === "session" || (l.kind === "chat" && (NODES.get(l.sid) || {}).badge)) ? 2 : 0)
+    .linkDirectionalParticleWidth(2.6).linkDirectionalParticleSpeed(0.006).linkDirectionalParticleColor(() => C.open)
+    .minZoom(0.25).maxZoom(6)
+    .d3AlphaDecay(0).d3VelocityDecay(0.6).cooldownTime(Infinity).warmupTicks(400)
+    .onNodeHover(n => { HOVER = n || null; NEIGH = neighbours(n); el.style.cursor = n ? "pointer" : null; })
+    .onNodeClick((n, ev) => {
+      const now = performance.now();
+      if (lastClick.id === n.id && now - lastClick.t < 340) { clearTimeout(clickTimer); clickTimer = null; lastClick = { id: null, t: 0 }; toggleHub(n); return; }
+      lastClick = { id: n.id, t: now }; clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => { clickTimer = null; hideMenu(); open(n); }, 350);
+    })
+    .onNodeRightClick((n, ev) => { ev.preventDefault(); menu(n, ev); })
+    .onNodeDrag(n => { DRAG = n; USER_MOVED = true; hideMenu(); })
+    .onNodeDragEnd(n => { DRAG = null; n.fx = n.fy = undefined; })      // back into the physics: nothing stays pinned
+    .onBackgroundClick(() => { hideMenu(); })
+    .onBackgroundRightClick(ev => { ev.preventDefault(); hideMenu(); })
+    .onEngineTick(onTick);
+  // alpha never decays, so these are full-strength numbers: about a third of what a cooling d3 layout would start with
+  fg.d3Force("center", null);                                          // d3's recentering translates positions every tick and fights the spring below; one restoring force, not two
+  fg.d3Force("charge").strength(n => n.type === "fold" ? -110 : n.parent ? -20 : n.type === "project" ? -280 : n.type === "group" ? -170 : (n.type === "person" && n.quiet) ? -35 : -125).distanceMax(600);
+  fg.d3Force("link").distance(l => DIST[l.kind] || 95).strength(l => l.kind === "under" ? 0.05 : l.kind === "child" ? 0.4 : l.kind === "quiet" ? 0.3 : l.kind === "member" ? 0.35 : 0.15);
+  fg.d3Force("gravity", BV.graph.gravity(0.003, { skip: held }));     // a weak spring to the middle: what keeps a bubble with no lines from drifting off
+  fg.d3Force("collide", BV.graph.collide(0.35, { radius, pad: roomFor, skip: held }));
+  fg.d3Force("breathe", BV.graph.breathe(0.01, { skip: held }));
+  el.addEventListener("dblclick", e => e.stopPropagation(), true);     // the double-click is ours (unfold), not the zoom's
+  // only a gesture counts as the user moving the view (a wheel, a drag-pan); the library's own zoom events do not
+  el.addEventListener("wheel", () => { USER_MOVED = true; }, { passive: true });
+  el.addEventListener("pointermove", e => { if (e.buttons) USER_MOVED = true; });
+  window.addEventListener("resize", () => fg.width(el.clientWidth).height(el.clientHeight));
+}
+let clickTimer = null, lastClick = { id: null, t: 0 };
+
+// ---- loading ----
+async function load(refit) {
+  const r = await fetch("/api/graph"); const g = await r.json();
+  if (!r.ok) throw new Error(g.error || `/api/graph returned ${r.status}`);
+  g.today = (g.generatedAt || "").slice(0, 10);
+  merge(g);
+  const sel = $("#focusProjects"); const cur = FOCUS;
+  sel.innerHTML = g.nodes.filter(n => n.type === "project").map(n => `<option value="${esc(n.id)}">${esc(n.label)}</option>`).join("");
+  if ([...$("#focus").options].some(o => o.value === cur)) $("#focus").value = cur; else FOCUS = "all";
+  apply(refit);
+}
+
+document.addEventListener("click", async e => {
+  if (!e.target.closest("#menu")) hideMenu();
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  const cb = e.target.closest("input[type=checkbox][data-id]");
+  if (cb) { e.preventDefault(); await act(cb.dataset.project, { action: cb.checked ? "done" : "reopen", id: cb.dataset.id }); return; }
+  const ro = e.target.closest("[data-reopen]"); if (ro) { await act(ro.dataset.project, { action: "reopen", id: ro.dataset.reopen }); return; }
+  const ps = e.target.closest("[data-prep-slug]"); if (ps) { newPrep({ slug: ps.dataset.prepSlug }, $("#prepstatus")); return; }
+  const pg = e.target.closest("[data-prep-group]"); if (pg) { newPrep({ group: pg.dataset.prepGroup }, $("#prepstatus")); return; }
+  const pp = e.target.closest("[data-person]"); if (pp) { const n = NODES.get("person:" + pp.dataset.person); if (n) openPerson(n); return; }
+  if (e.target.closest("form")) return;
+  const o = e.target.closest(".filelink[data-open]"); if (o) { openFile(o.dataset.open); return; }   // a real file link only (T-0065)
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); openFile(w.dataset.wikilink.split("#")[0].trim()); return; }
+});
+document.addEventListener("submit", async e => {
+  const f = e.target; if (!f.dataset.q) return;
+  e.preventDefault();
+  await act(f.dataset.project, { action: "answer", id: f.dataset.q, text: f.querySelector("textarea").value, by: BV.owner });
+});
+async function act(project, payload) {
+  const r = await ledgerAct(project, payload);
+  const line = document.createElement("p"); line.className = "status-line"; line.textContent = r.message;
+  const d = $("#drawer"); const old = d.querySelector(".dh + .status-line"); if (old) old.remove();
+  const dhEl = d.querySelector(".dh"); if (dhEl) dhEl.after(line);
+  if (r.ok) { await load(false); refreshBadges(); }
+}
+document.addEventListener("keydown", e => {
+  if (BV.typing(e)) return;                                  // no hotkey while he is typing (T-0112)
+  if (e.key === "Escape") { $("#drawer").hidden = true; hideMenu(); }
+  if (e.key === "f") fit(600);
+});
+$("#focus").addEventListener("change", e => { FOCUS = e.target.value; USER_MOVED = false; apply(true); });
+$("#fit").addEventListener("click", () => fit(600));
+
+readTokens(); legend(); build();
+const params = new URLSearchParams(location.search);
+if (params.get("focus")) FOCUS = params.get("focus");
+load(true).then(() => {
+  if (params.get("open") && NODES.has(params.get("open"))) open(NODES.get(params.get("open")));
+  setInterval(() => { if (!document.hidden) load(false).catch(() => {}); }, 30000);   // running turns and sessions change; positions are kept
+}).catch(e => { $("#counts").textContent = "could not load the map: " + e.message; });
+</script>
+</body>
+</html>

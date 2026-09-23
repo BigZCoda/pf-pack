@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projects</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .layout { flex: 1; display: grid; grid-template-columns: 320px minmax(0, 1fr); min-height: 0; }
+  nav.side { border-right: 1px solid var(--rule); background: var(--surface); overflow: auto; padding: 8px 0 24px; }
+  .bar-mini { height: 4px; background: var(--rule-soft); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+  .bar-mini i { display: block; height: 100%; background: var(--done); }
+  .stage { position: relative; min-height: 0; overflow: hidden; display: flex; }
+  main { flex: 1; overflow: auto; padding: 26px 34px 80px; }
+  .hh { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .hh h2 { margin: 0; font-size: 30px; line-height: 1.1; }
+  .desc { color: var(--ink-soft); max-width: 72ch; margin: 6px 0 16px; }
+  .progress { display: flex; align-items: center; gap: 14px; margin: 0 0 22px; flex-wrap: wrap; }
+  .progress .bar { flex: 1; min-width: 200px; max-width: 520px; height: 10px; background: var(--rule-soft); border-radius: 2px; overflow: hidden; border: 1px solid var(--rule); }
+  .progress .bar i { display: block; height: 100%; background: var(--done); }
+  .filters { display: flex; gap: 4px; margin-left: auto; }
+  /* the two view switches share the owner buttons' row, set a little apart from them (T-0151) */
+  .filters .viewsw { margin-left: 10px; }
+  .filters .viewsw + .btn { margin-left: 0; }
+  .card { padding: 14px 18px 16px; margin: 0 0 16px; }
+  .card h3 { margin: 0 0 10px; font-size: 18px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .card h3 .meta { font-size: 13px; }
+  /* the ledger item, the question card and their badges are shared with /people: viewer-tokens.css holds their layout, viewer-common.js their markup */
+  details.ms > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  details.ms > summary::-webkit-details-marker { display: none; }
+  details.ms > summary::before { content: "▸"; color: var(--muted); font-size: 11px; }
+  details.ms[open] > summary::before { content: "▾"; }
+  details.ms > summary h3 { margin: 0; font-size: 18px; display: inline; }
+  form.add { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  form.add input[name=text] { flex: 1; min-width: 240px; }
+  form.add input, form.add select { padding: 6px 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); }
+  form.add input:focus, form.add select:focus { outline: none; border-color: var(--accent); }
+  details.more summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-top: 8px; }
+  /* the stage line sits above the milestones on a ledger that carries the build order (T-0064); its look is in viewer-tokens.css */
+  .stagerow { margin: 0 0 18px; }
+  /* two ledgers stacked by a shift-click (T-0107): a rule between them so it is clear where one ends */
+  section.pjsec + section.pjsec { border-top: 1px solid var(--rule); margin-top: 26px; padding-top: 22px; }
+  nav.side details.past > summary { cursor: pointer; list-style: none; font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 10px 18px 2px; padding: 3px 0; }
+  nav.side details.past > summary::-webkit-details-marker { display: none; }
+  nav.side details.past > summary::before { content: "▸ "; }
+  nav.side details.past[open] > summary::before { content: "▾ "; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } nav.side { max-height: 36vh; border-right: 0; border-bottom: 1px solid var(--rule); } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Projects</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="projects"></nav>
+</header>
+<div class="layout">
+  <nav class="side" id="list"></nav>
+  <div class="stage">
+    <main id="main"></main>
+    <aside class="drawer" id="drawer" hidden></aside>
+  </div>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script src="/static/attach.js"></script>
+<script>BVAttach.watch(document.getElementById("main"));   // pictures on questions and answers: thumbnails, attach, paste (T-0219)</script>
+<script>
+const { esc, md, isImage, lightbox, fileLink: link, itemRow: row, questionCard: qCard, ledgerAct, refreshBadges, showAll, mountShowAll } = BV;
+const $ = s => document.querySelector(s);
+let DATA = null, CURRENT = null, OWNER = "all";
+// The ledgers open in the main pane, newest last. ONE at a time (2026-09-10, T-0107): a plain press on a project in the
+// rail opens it and closes the one that was open; shift-press keeps the other open and stacks the two, so two ledgers
+// can be read side by side. Ids, not objects: a write reloads DATA and every object with it.
+let OPENIDS = [];
+const CLOSED = new Set();   // milestones Zak folded shut this session ("!key" = one he deliberately opened)
+
+// ---- the last-seven-days switch on the Questions card (2026-09-15, T-0151) ----
+// Open questions read newest first by default (asked date, then id), and one switch beside the owner buttons narrows the
+// whole card -- the open list and the answered fold -- to what was asked in the last seven days, counting back from the
+// server's own `today`. The choice is a view choice, so it lives in this browser and nowhere in the brain (rules 4b),
+// written the way every other remembered view choice on these pages is: one `bv.` key in localStorage, read in a
+// try/catch so a browser with storage off still draws the page.
+const RECENT_KEY = "bv.projects.recentq", RECENT_DAYS = 7;
+const pref = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+const prefSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+let RECENT = pref(RECENT_KEY, "0") === "1";
+// the order is a switch he can see, not a silent default: on (the default) is newest first, off is the ledger's own
+// order, the way the file lists them. Same storage, same row as the owner buttons.
+const NEWEST_KEY = "bv.projects.newestq";
+let NEWEST = pref(NEWEST_KEY, "1") === "1";
+// the first day still inside the window, as YYYY-MM-DD. UTC arithmetic on the parts, so no timezone can shift the day.
+const sinceDays = (iso, n) => { const [y, m, d] = String(iso || "").split("-").map(Number); return y ? new Date(Date.UTC(y, m - 1, d - n)).toISOString().slice(0, 10) : ""; };
+// newest first: asked date descending, then id descending
+const byNewest = (a, b) => String(b.created || "").localeCompare(String(a.created || "")) || String(b.id || "").localeCompare(String(a.id || ""));
+
+// ---- the questions an open task on this ledger is blocked by (2026-09-16, T-0163) ----
+// The same relation the Today page reads: an open task carries `blocked:` naming the question (`tasks.py block` writes
+// it, `answer` releases it), and ids run from Q-0001 on every file, so only this ledger's own tasks are looked at. Those
+// questions wear a badge and sort first INSIDE whatever order is chosen on the card, so "newest first" still does its job.
+function blocksMap(p) {
+  const all = (p.groups || []).flatMap(g => g.items);   // a registered ledger whose file does not exist has no groups
+  const m = new Map();
+  for (const q of all.filter(i => i.kind === "question" && i.mark === "?")) {
+    const held = all.filter(i => i.kind === "task" && i.mark !== "x" && i.blocked && String(i.blocked).includes(q.id));
+    if (held.length) m.set(q.id, held);
+  }
+  return m;
+}
+
+const pct = s => s.tasks ? Math.round(100 * s.done / s.tasks) : 0;
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+const liveCount = p => p.exists ? (p.summary.questions_open || 0) + ((p.summary.by_owner[BV.owner] || {}).open || 0) : 0;
+
+// The rail: projects with something open for Zak first; the quiet ones behind one fold (the filtering rule, 2026-09-09).
+// "showing everything" lists them all flat, and the project being read is always visible wherever it sits.
+function renderList() {
+  const nav = $("#list"); nav.innerHTML = "";
+  const all = showAll("projects");
+  const rowFor = p => {
+    const b = document.createElement("button"); b.className = "row" + (OPENIDS.includes(p.id) ? " on" : "");
+    b.title = "open this ledger \u00b7 shift-click to keep the one that is open too";
+    const s = p.summary;
+    b.innerHTML = `<div class="t">${esc(p.name)}</div>` + (p.exists
+      ? `<div class="m"><span>${s.done}/${s.tasks} done</span>${s.blocked ? `<span class="badge blocked">${s.blocked} blocked</span>` : ""}${s.overdue ? `<span class="badge overdue">${s.overdue} overdue</span>` : ""}${s.questions_open ? `<span class="badge open">${plural(s.questions_open, "question")}</span>` : ""}${(s.by_owner[BV.owner] || {}).open ? `<span class="badge owner-zak">${s.by_owner[BV.owner].open} for you</span>` : ""}</div><div class="bar-mini"><i style="width:${pct(s)}%"></i></div>`
+      : `<div class="m"><span class="badge missing">no ledger file</span></div>`);
+    b.onclick = e => openProject(p, true, e.shiftKey); return b;   // a deliberate move: it goes on the app's back trail (T-0061)
+  };
+  const live = DATA.projects.filter(p => all || liveCount(p) || OPENIDS.includes(p.id));
+  const quiet = DATA.projects.filter(p => !live.includes(p));
+  const h2 = document.createElement("h2");
+  h2.textContent = all ? `${plural(DATA.projects.length, "project ledger")} · from the registry` : `${live.length} of ${DATA.projects.length} ledgers · something open for you`;
+  nav.appendChild(h2);
+  for (const p of live) nav.appendChild(rowFor(p));
+  if (quiet.length) {
+    const d = document.createElement("details"); d.className = "past";
+    d.innerHTML = `<summary>${plural(quiet.length, "quiet project")} · nothing waiting on you</summary>`;
+    for (const p of quiet) d.appendChild(rowFor(p));
+    nav.appendChild(d);
+  }
+}
+
+// the status line of the ledger that was written, inside its own section (every open ledger has one)
+const statusEl = project => $(`section.pjsec[data-project="${CSS.escape(project || "")}"] .status-line`) || $(".status-line");
+async function act(project, payload) {
+  const res = await ledgerAct(project, payload);
+  if (!res.ok) { const s = statusEl(project); if (s) s.textContent = res.message; else alert(res.message); return null; }
+  await load(false); refreshBadges();
+  paintMain();                                   // whatever is open stays open (T-0107)
+  const s = statusEl(project); if (s) s.textContent = res.message;
+  return res.json;
+}
+
+// a plain press opens one ledger; shift adds it beside what is already open (and a second shift-press on an open one
+// puts it away again, as long as it is not the last)
+function openProject(p, moved, add) {
+  if (add) {
+    if (OPENIDS.includes(p.id)) { if (OPENIDS.length > 1) OPENIDS = OPENIDS.filter(x => x !== p.id); }
+    else OPENIDS = OPENIDS.concat([p.id]);
+  } else OPENIDS = [p.id];
+  CURRENT = p;
+  history.replaceState(null, "", `/projects?id=${encodeURIComponent(p.id)}`);
+  if (moved) BV.back.push(`Projects · ${p.name}`);   // only a move Zak made; the ledger opened at load, and a re-render after a write, are the same place
+  $("#drawer").hidden = true;
+  paintMain();
+}
+// the main pane is whatever OPENIDS names, in order, each section carrying its own project so every form, status line
+// and stage line belongs to the ledger it sits under
+function paintMain() {
+  renderList();
+  const ps = OPENIDS.map(id => DATA.projects.find(x => x.id === id)).filter(Boolean);
+  const main = $("#main");
+  if (!ps.length) { main.innerHTML = `<div class="empty">No ledger is open. Pick one on the left.</div>`; return; }
+  main.innerHTML = ps.map(projectHTML).join("");
+  for (const sec of main.querySelectorAll("section.pjsec")) {
+    const p = DATA.projects.find(x => x.id === sec.dataset.project); if (!p) continue;
+    const pb = BV.proposeBox(p.path, { label: "propose a change to this ledger" }); if (pb) sec.querySelector(".propose").appendChild(pb);   // propose mode only; null otherwise
+    const sl = sec.querySelector(".stagerow"); if (sl) BV.stages.mount(sl, { label: "the build order on this ledger" });
+    // the badge is put on after the card is drawn rather than inside the shared component, so /today and /people keep
+    // the question card they have (the same way the Today page adds its blocks strip)
+    for (const [qid, held] of blocksMap(p)) {
+      const head = sec.querySelector(`.q[id="${CSS.escape(`q-${p.id}-${qid}`)}"] .qh`); if (!head) continue;
+      const b = document.createElement("span");
+      b.className = "badge blocked";
+      b.textContent = held.length > 1 ? `blocks ${held.length} tasks` : "blocking";
+      b.title = held.map(t => `${t.id} · ${t.text}`).join("\n");
+      head.appendChild(b);
+    }
+  }
+  main.scrollTop = 0;
+}
+// a ledger code inside another item's words links here with the row's own id on it (2026-09-21, viewer Q-0028).
+// openProject replaces the URL without the hash, so the fragment is carried in by hand and the row is marked as it lands.
+function jumpTo(frag) {
+  if (!frag) return;
+  const el = document.getElementById(frag); if (!el) return;
+  el.scrollIntoView({ block: "center" });
+  el.classList.add("refhit"); setTimeout(() => el.classList.remove("refhit"), 2200);
+}
+
+function projectHTML(p) {
+  if (!p.exists) return `<section class="pjsec" data-project="${esc(p.id)}"><div class="hh"><h2>${esc(p.name)}</h2></div><p class="note">The registry names <code>${esc(p.path)}</code> but no such file exists. Create it from the brain root:<br><code>python skills/brain-tasks/tasks.py init --project ${esc(p.id)} --name "${esc(p.name)}"</code></p></section>`;
+  const s = p.summary, all = p.groups.flatMap(g => g.items);
+  // `.filter` already hands back a new array, so the sort never touches the order the ledger was read in
+  const qs = all.filter(i => i.kind === "question");
+  const order = a => NEWEST ? a.sort(byNewest) : a;
+  const openQ = order(qs.filter(q => q.mark === "?")), ansQ = order(qs.filter(q => q.mark === "a"));
+  const BLOCKS = blocksMap(p);
+  const blockFirst = a => a.filter(q => BLOCKS.has(q.id)).concat(a.filter(q => !BLOCKS.has(q.id)));
+  const owners = [...new Set(all.filter(i => i.kind === "task").map(i => i.owner))];
+  const show = i => OWNER === "all" || i.owner === OWNER || i.to === OWNER;
+  // a milestone is collapsible and remembers itself per project (Zak, 9/09: "it all needs to be collapseable"); a milestone
+  // with nothing open starts closed. Inside one, the filtering rule: your open tasks on screen, Claude's open tasks behind
+  // their own fold, done behind theirs. "showing everything" opens all three at once.
+  const everything = showAll("projects");
+  const opts = { project: p.id, today: DATA.today, ledger: p.path };   // p.path so every row's corner tag can name the ledger it is written on (2026-09-18)
+  // the seven-day window (T-0151): the count on the switch is what pressing it would leave on screen, so it is counted
+  // through the owner filter the same way the list is. The answered fold narrows with it -- it is one card.
+  const cut = sinceDays(DATA.today, RECENT_DAYS);
+  const inWindow = q => String(q.created || "") >= cut;
+  const openMine = openQ.filter(show), recentCount = openMine.filter(inWindow).length;
+  const openShown = blockFirst(RECENT ? openMine.filter(inWindow) : openMine);
+  const ansShown = RECENT ? ansQ.filter(inWindow) : ansQ;
+  const milestones = p.groups.map(g => {
+    const tasks = g.items.filter(i => i.kind === "task" && show(i)); if (!tasks.length) return "";
+    const doneT = tasks.filter(i => i.mark === "x"), openT = tasks.filter(i => i.mark !== "x");
+    // a task of Zak's on hold leaves the list until its day and sits behind its own line (2026-09-10, T-0108)
+    const held = openT.filter(i => i.owner === BV.owner && BV.holds.is(i, DATA.today));
+    const mine = openT.filter(i => i.owner === BV.owner && !held.includes(i)), theirs = openT.filter(i => i.owner !== BV.owner);
+    const key = `${p.id}::${g.name}`, shut = CLOSED.has(key) || (!openT.length && !CLOSED.has("!" + key) && !everything);
+    return `<details class="card ms" data-ms="${esc(key)}"${shut ? "" : " open"}><summary><h3>${esc(g.name)}</h3><span class="meta">${doneT.length}/${tasks.length} done${mine.length ? ` · ${mine.length} for you` : ""}${held.length ? ` · ${held.length} on hold` : ""}${theirs.length ? ` · ${theirs.length} on Claude` : ""}</span></summary>
+      <div class="bar-mini" style="margin:8px 0 10px"><i style="width:${Math.round(100 * doneT.length / tasks.length)}%"></i></div>
+      ${mine.length ? `<ul class="items">${mine.map(i => row(i, opts)).join("")}</ul>` : `<p class="meta" style="margin:0">${openT.length ? (held.length ? "Nothing here is waiting on you today." : "Nothing here is waiting on you.") : "Everything here is done."}</p>`}
+      ${held.length ? `<details class="more"${everything ? " open" : ""}><summary>${plural(held.length, "task")} on hold</summary><ul class="items">${held.map(i => row(i, opts)).join("")}</ul></details>` : ""}
+      ${theirs.length ? `<details class="more"${everything ? " open" : ""}><summary>${plural(theirs.length, "open task")} on Claude</summary><ul class="items">${theirs.map(i => row(i, opts)).join("")}</ul></details>` : ""}
+      ${doneT.length ? `<details class="more"${everything ? " open" : ""}><summary>${plural(doneT.length, "done task")}</summary><ul class="items">${doneT.map(i => row(i, opts)).join("")}</ul></details>` : ""}</details>`;
+  }).join("");
+  // the build order drawn as a line, above the milestones, on a ledger that actually carries it (2026-09-09, T-0064).
+  // Which ledger that is comes from the ledger itself -- a `Straight-line` milestone -- never from a project id in here.
+  const hasStages = p.groups.some(g => g.name.trim().toLowerCase() === "straight-line");
+  const msNames = p.groups.map(g => g.name);
+  const sel = (name, opts) => `<select name="${name}">${opts.map(o => `<option>${esc(o)}</option>`).join("")}</select>`;
+  return `<section class="pjsec" data-project="${esc(p.id)}">
+    <div class="hh"><h2>${esc(p.name)}</h2><span class="meta">${link(p.path)} · touched ${esc(p.mtime)}</span><a class="btn" href="/chat?project=${encodeURIComponent(p.id)}" style="text-decoration:none" title="talk to this project's agent">chat</a></div>
+    <p class="desc">${esc(p.description || "")}</p>
+    <div class="propose"></div>
+    <div class="progress"><div class="bar"><i style="width:${pct(s)}%"></i></div>
+      <span class="meta">${s.done} of ${plural(s.tasks, "task")} done · ${s.open} open · ${s.blocked} blocked · ${s.overdue} overdue · ${plural(s.questions_open, "question")} waiting</span>
+      <div class="filters"><button class="btn ${OWNER === "all" ? "on" : ""}" data-owner="all">all</button>${owners.map(o => `<button class="btn ${OWNER === o ? "on" : ""}" data-owner="${esc(o)}">${esc(o)}</button>`).join("")}<button class="btn viewsw ${NEWEST ? "on" : ""}" data-newest="1" title="${NEWEST ? "click to read the questions in the ledger's own order" : "click to read the newest question first"}">newest first</button><button class="btn ${RECENT ? "on" : ""}" data-recent="1" title="${RECENT ? "click to show every open question again" : `click to show only what was asked since ${esc(cut)}`}">last 7 days · ${recentCount}</button></div></div>
+    ${p.errors && p.errors.length ? `<p class="note">The ledger has lines that do not parse (fix by hand, then reload): ${p.errors.map(esc).join(" · ")}</p>` : ""}
+    <div class="card"><h3>Questions <span class="meta">${openQ.length} waiting for an answer · ${BLOCKS.size ? `${BLOCKS.size} blocking, first · ` : ""}${NEWEST ? "newest first" : "in the ledger's own order"}${RECENT ? ` · showing what was asked since ${esc(cut)}` : ""} · pinned here, above the work</span></h3>
+      ${openShown.map(q => qCard(q, opts)).join("") || `<p class="meta" style="margin:0">${RECENT && openMine.length ? "Nothing was asked in the last seven days. Press the switch above to see the rest." : "Nothing is waiting on anyone."}</p>`}
+      ${ansShown.length ? `<details class="more"${everything ? " open" : ""}><summary>${plural(ansShown.length, "answered question")}</summary>${ansShown.map(q => qCard(q, opts)).join("")}</details>` : ""}
+      <form class="add" data-form="ask"><input name="text" placeholder="ask a question…" required>${sel("from", ["@claude", BV.owner])}<span class="meta">asks</span>${sel("to", [BV.owner, "@claude"])}<input name="link" placeholder="link a file (path), optional" style="min-width:220px"><input name="milestone" list="msList-${esc(p.id)}" placeholder="milestone (Inbox)"><button class="btn" type="submit">Ask</button></form>
+    </div>
+    ${hasStages ? `<div class="stagerow"></div>` : ""}
+    ${milestones}
+    <div class="card"><h3>Add a task</h3>
+      <form class="add" data-form="add"><input name="text" placeholder="what needs doing…" required>${sel("owner", [BV.owner, "@claude"])}<input name="due" type="date" title="due"><input name="link" placeholder="link a file (path), optional" style="min-width:220px"><input name="milestone" list="msList-${esc(p.id)}" placeholder="milestone (Inbox)"><datalist id="msList-${esc(p.id)}">${msNames.map(n => `<option value="${esc(n)}">`).join("")}</datalist><button class="btn primary" type="submit">Add</button></form>
+      <p class="status-line meta"></p></div></section>`;
+}
+
+// ---- the read drawer ----
+async function openFile(path) {
+  const d = $("#drawer"); d.hidden = false;
+  d.innerHTML = `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(path)}</code></div>`;   // close is delegated below: `innerHTML +=` re-creates this button, so a handler bound here would be lost
+  if (!path.includes("/")) { const r = await fetch(`/api/resolve?name=${encodeURIComponent(path)}`); const j = await r.json(); if (j.path) path = j.path; else { d.innerHTML += `<div class="empty">${esc(j.error || "could not resolve " + path)}</div>`; return; } }
+  if (path.endsWith("/")) { d.innerHTML += `<div class="empty">a folder: <code>${esc(path)}</code>${/references\/$/.test(path) ? " · the source images live here" : ""}</div>`; return; }
+  if (isImage(path)) { d.hidden = true; lightbox(path); return; }
+  const r = await fetch(`/api/file?path=${encodeURIComponent(path)}`); const j = await r.json();
+  let body;
+  if (j.error) body = `<div class="empty">${esc(j.error)}</div>`;
+  else if (path.endsWith(".json")) { let t = j.text; try { t = JSON.stringify(JSON.parse(j.text), null, 1); } catch (e) {} body = `<pre>${esc(t)}</pre>`; }
+  else body = `<article class="md">${md(j.text, { base: path.split("/").slice(0, -1).join("/") })}</article>`;
+  d.innerHTML = `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(path)}</code>${BV.readerLink(path)}${j.mtime ? `<span class="meta">touched ${esc(j.mtime.slice(0, 10))}</span>` : ""}</div>${body}`;
+  d.scrollTop = 0;
+}
+
+document.addEventListener("click", async e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  const cb = e.target.closest("input[type=checkbox][data-id]");
+  if (cb) {
+    e.preventDefault();
+    // a box ticked with words in its reply box carries them along: the reply is written first, then the item closes (T-0078)
+    const pend = BV.replies.pending(cb);
+    if (pend && cb.checked) { const r = await BV.replies.act(pend.project, pend.id, pend.text, pend.ledger); if (r.ok) pend.form.querySelector("textarea").value = ""; }
+    await act(cb.dataset.project || CURRENT.id, { action: cb.checked ? "done" : "reopen", id: cb.dataset.id }); return;
+  }
+  const ro = e.target.closest("[data-reopen]"); if (ro) { await act(ro.dataset.project || CURRENT.id, { action: "reopen", id: ro.dataset.reopen }); return; }
+  const pc = e.target.closest(".badge.person"); if (pc) { location.href = `/people?open=${encodeURIComponent(pc.dataset.person)}`; return; }
+  const ms = e.target.closest("details.ms > summary");
+  if (ms) { const d = ms.parentElement, k = d.dataset.ms; setTimeout(() => { if (d.open) { CLOSED.delete(k); CLOSED.add("!" + k); } else { CLOSED.add(k); CLOSED.delete("!" + k); } }, 0); return; }
+  const f = e.target.closest("[data-owner]"); if (f) { OWNER = f.dataset.owner; paintMain(); return; }
+  const rc = e.target.closest("[data-recent]"); if (rc) { RECENT = !RECENT; prefSet(RECENT_KEY, RECENT ? "1" : "0"); paintMain(); return; }   // T-0151
+  const nw = e.target.closest("[data-newest]"); if (nw) { NEWEST = !NEWEST; prefSet(NEWEST_KEY, NEWEST ? "1" : "0"); paintMain(); return; }   // T-0151
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); const t = w.dataset.wikilink.split("#")[0].trim(); if (t.endsWith(".canvas")) location.href = BV.forgeHref(t); else openFile(t); return; }
+  // ONLY a real file link opens the drawer (2026-09-09, T-0065): the bare `[data-open]` selector also matched the
+  // quest log panel, which floats over every page and carried its own open/shut state in a `data-open` attribute,
+  // so a click anywhere inside it opened a drawer on the path "1". Badges and counts have no `.filelink` class and
+  // now do nothing here.
+  const o = e.target.closest(".filelink[data-open]"); if (o) { openFile(o.dataset.open); }
+});
+document.addEventListener("submit", async e => {
+  e.preventDefault(); const f = e.target, fd = new FormData(f);
+  if (f.dataset.reply) return;                 // the reply box is wired once, in viewer-common (BV.replies.wire)
+  // the form belongs to the ledger whose section it sits in, not to whichever was clicked last (T-0107)
+  const sec = f.closest("section.pjsec"), pid = (sec && sec.dataset.project) || (CURRENT && CURRENT.id);
+  if (f.dataset.form === "add") { const links = fd.get("link") ? [fd.get("link").trim()] : []; await act(pid, { action: "add", text: fd.get("text"), owner: fd.get("owner"), due: fd.get("due") || null, milestone: fd.get("milestone") || null, links }); }
+  else if (f.dataset.form === "ask") { const links = fd.get("link") ? [fd.get("link").trim()] : []; await act(pid, { action: "ask", text: fd.get("text"), from: fd.get("from"), to: fd.get("to"), milestone: fd.get("milestone") || null, links }); }
+  else if (f.dataset.q) { await act(f.dataset.project || pid, { action: "answer", id: f.dataset.q, text: f.querySelector("textarea").value, by: BV.owner }); }
+});
+document.addEventListener("keydown", e => { if (BV.typing(e)) return; if (e.key === "Escape") $("#drawer").hidden = true; });
+
+mountShowAll("projects", () => paintMain());
+// the reply boxes on every task of Zak's: one wiring for the whole page (T-0078)
+BV.replies.wire(document, { status: m => { const s = $(".status-line"); if (s) s.textContent = m; },
+                            onDone: async () => { await load(false); refreshBadges(); paintMain(); } });
+// hold / bring back beside the checkbox on every task of Zak's (T-0108)
+BV.holds.wire(document, { status: m => { const s = $(".status-line"); if (s) s.textContent = m; },
+                          onDone: async () => { await load(false); paintMain(); } });
+
+async function load(render = true) {
+  const r = await fetch("/api/projects"); DATA = await r.json();
+  if (DATA.error) throw new Error(DATA.error);
+  BV.ledger.learn(DATA);            // a T-#### / Q-#### in any body reads as the item it names (viewer Q-0028)
+  const s = DATA.projects.reduce((a, p) => p.exists ? { t: a.t + p.summary.tasks, d: a.d + p.summary.done, q: a.q + p.summary.questions_open } : a, { t: 0, d: 0, q: 0 });
+  $("#crumb").textContent = `${plural(DATA.projects.length, "ledger")} · ${s.d}/${s.t} tasks done · ${plural(s.q, "question")} waiting · ${DATA.today}`;
+  if (!render) return;
+  const want = new URLSearchParams(location.search).get("id");
+  const frag = decodeURIComponent(location.hash.replace(/^#/, ""));   // a link from another item's words names the row it means
+  const start = DATA.projects.find(p => p.id === want) || DATA.projects[0];
+  if (start) { openProject(start); jumpTo(frag); } else { renderList(); $("#main").innerHTML = `<div class="empty">No holon names a ledger yet. Add a <code>tasks</code> field to a row in <code>context/holon-registry.json</code> and run <code>tasks.py init</code>.</div>`; }
+}
+load().catch(e => { $("#main").innerHTML = `<div class="note">Could not load the ledgers: ${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# Brain Viewer releases
+
+What each released version of the component changed, newest first. Written by release.py.
+
+## 0.56.1 (2026-10-02)
+
+Everything since 0.48.0. Numbered lists count again and a question opens the file it points at (0.48.1). The chat stands alone, pictures drop onto the notepad, and a call's prep shows before its card exists (0.49.0). A card can be tested beside the review page and a rating taken back (0.50.0). Transcript line numbers no longer show anywhere, and the call screen has a must tag (0.50.1); the maps draw the systems not built yet (0.50.2). The image studio can draw on a local graphics card through ComfyUI and redraw a picture you give it (0.51.0, 0.51.1); where ComfyUI is installed is a setting, comfy_dir in viewer/settings.json. A Files page lists every file in the brain in one table (0.52.0). A document link opens in the drawer beside the page on every page (0.53.0), and the Reader shows a document as one page with an outline (0.54.0). Every call to the PF App sends a User-Agent, so the first app read no longer fails with 403. References to tasks and questions read as chips that open a preview in place, and the Questions card has room (0.55.0); three Reader leaks closed (0.55.1). The projects page is one list with the ledgers as filters and what waits on you first, questions with named choices answer with one press, and the ask box is back; the People page opens on this week's calls and who you talk to weekly (0.56.0). Update with python skills/update/install-component.py brain-viewer (or /update); stop a running viewer first.
+
+## 0.48.0 (2026-09-23)
+
+The viewer is now a pf-pack component, replaced whole on update, and what you make lives outside it. Your settings, board layouts, looks and widgets live in viewer/ at the brain root, which no update touches; on first start the viewer creates that folder and copies in any settings, layouts and looks it finds from before. You can write your own widgets in viewer/widgets/: each declares contract: 1, loads after the viewer's own, and cannot take the name of one the viewer ships. A brain with no holon registry or content manifest now shows empty pages instead of errors, and the owner defaults to @me until viewer/settings.json names you. The ledger tool and the log tool the viewer runs on ship with it as the components brain-tasks and brain-log. Install or update with python skills/update/install-component.py brain-viewer (or /update).
+

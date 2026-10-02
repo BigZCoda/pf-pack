@@ -1,0 +1,106 @@
+{
+  "1": {
+    "class_type": "UnetLoaderGGUF",
+    "inputs": {
+      "unet_name": "{{unet}}"
+    },
+    "_meta": {"title": "the diffusion model, 4-bit GGUF (ComfyUI-GGUF)"}
+  },
+  "2": {
+    "class_type": "DualCLIPLoader",
+    "inputs": {
+      "clip_name1": "{{t5}}",
+      "clip_name2": "{{clip_l}}",
+      "type": "flux"
+    },
+    "_meta": {"title": "the two text encoders, T5-XXL and CLIP-L"}
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "{{vae}}"
+    },
+    "_meta": {"title": "the Flux VAE"}
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "{{prompt}}",
+      "clip": ["2", 0]
+    },
+    "_meta": {"title": "the prompt"}
+  },
+  "5": {
+    "class_type": "FluxGuidance",
+    "inputs": {
+      "conditioning": ["4", 0],
+      "guidance": "{{guidance}}"
+    },
+    "_meta": {"title": "Flux's distilled guidance"}
+  },
+  "6": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": ["4", 0]
+    },
+    "_meta": {"title": "the negative KSampler requires; unused at cfg 1.0, Flux has no negative prompt"}
+  },
+  "7": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{image}}"
+    },
+    "_meta": {"title": "the source picture, uploaded first to ComfyUI's input/brain-studio/ through POST /upload/image"}
+  },
+  "11": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": ["7", 0],
+      "upscale_method": "lanczos",
+      "width": "{{width}}",
+      "height": "{{height}}",
+      "crop": "center"
+    },
+    "_meta": {"title": "the source at the render size: its own aspect, both sides a multiple of 16, center crop of the few pixels the rounding leaves"}
+  },
+  "12": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": ["11", 0],
+      "vae": ["3", 0]
+    },
+    "_meta": {"title": "pixels to the 16-channel latent the sampler starts from"}
+  },
+  "8": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["1", 0],
+      "seed": "{{seed}}",
+      "steps": "{{steps}}",
+      "cfg": 1.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": ["5", 0],
+      "negative": ["6", 0],
+      "latent_image": ["12", 0],
+      "denoise": "{{denoise}}"
+    },
+    "_meta": {"title": "the sampler; denoise is the strength: below 0.5 keeps the drawing, 0.55 to 0.75 restyles it, above 0.8 forgets it"}
+  },
+  "9": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["8", 0],
+      "vae": ["3", 0]
+    },
+    "_meta": {"title": "latent to pixels"}
+  },
+  "10": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["9", 0],
+      "filename_prefix": "brain-studio-edit"
+    },
+    "_meta": {"title": "the picture the provider fetches with /view"}
+  }
+}

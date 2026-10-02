@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reader</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  /* the rail's width is a variable so it can be dragged (T-0060); BV.resizable writes it and remembers it per browser */
+  .layout { flex: 1; display: grid; grid-template-columns: var(--railw, 300px) minmax(0, 1fr); min-height: 0; }
+  main { overflow: auto; padding: 22px 34px 120px; min-width: 0; }
+
+  /* the rail (0.54.0): the outline on top, the ledger items and the search at its foot */
+  nav.side#rail { border-right: 1px solid var(--rule); background: var(--surface); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  nav.side .outline { flex: 1 1 auto; min-height: 60px; overflow: auto; padding: 8px 0 16px; position: relative; }
+  nav.side .ol { display: flex; gap: 8px; align-items: baseline; width: 100%; text-align: left; border: 0; background: transparent; padding: 5px 16px 5px 18px; cursor: pointer; font-family: var(--font-display); font-size: 13.5px; line-height: 1.3; color: var(--ink); }
+  nav.side .ol:hover { background: var(--hover); }
+  nav.side .ol.on { background: var(--selected); box-shadow: inset 3px 0 0 var(--accent); }
+  nav.side .ol .n { flex: 1; min-width: 0; }
+  nav.side .ol.l3 { padding-left: 32px; font-size: 12.5px; color: var(--ink-soft); }
+  nav.side .ol.l4 { padding-left: 44px; font-size: 12px; color: var(--muted); }
+  nav.side .ol.l5 { padding-left: 56px; font-size: 12px; color: var(--muted); }
+  nav.side .ol.l6 { padding-left: 68px; font-size: 12px; color: var(--muted); }
+  nav.side .ol.ag .n { opacity: .75; font-style: italic; }
+  nav.side .railfoot { flex: 0 1 auto; max-height: 48%; overflow: auto; position: relative; border-top: 1px solid var(--rule-soft); padding: 2px 14px 18px; }
+  nav.side .railfoot h4 { margin: 12px 0 6px; }
+  .railfoot form { display: flex; gap: 6px; margin: 0; }
+  .railfoot input[type=search] { flex: 1; min-width: 0; padding: 5px 9px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); }
+  .railfoot input[type=search]:focus { outline: none; border-color: var(--accent); }
+  .railfoot .hits { margin: 8px 0 0; }
+  .railfoot .hits a { display: block; text-decoration: none; color: var(--ink); padding: 5px 6px; border-radius: var(--radius); }
+  .railfoot .hits a:hover { background: var(--hover); }
+  .railfoot .hits a .p { font-family: var(--font-mono); font-size: 11.5px; word-break: break-all; }
+  .railfoot .hits a .w { color: var(--muted); font-size: 11px; margin-left: 6px; }
+  .railfoot .hits a .s { display: block; color: var(--ink-soft); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .railfoot .at { margin: 10px 0 4px; font-size: 12px; color: var(--muted); }
+  .railfoot .at button { border: 0; background: transparent; padding: 0; cursor: pointer; color: var(--accent); font-size: 12px; text-align: left; }
+  .railfoot .at button:hover { text-decoration: underline; }
+  .railfoot .asks .q { margin-bottom: 8px; }
+
+  /* the page: one measure, a gutter on its left for the margin controls, no boxes */
+  .page { --gut: 84px; max-width: calc(70ch + var(--gut)); margin: 0 auto; padding-left: var(--gut); }
+  .dochead { display: flex; gap: 8px 12px; align-items: center; flex-wrap: wrap; margin: 0 0 18px; }
+  .dochead .status-line { margin: 0; }
+  .railbtn { display: none; }
+  #doc { border: 0; box-shadow: none; background: transparent; padding: 0; border-radius: 0; }
+  #doc > section.s:first-child > .hd, #doc > .doctitle { margin-top: 0; }
+  #doc section.s { position: relative; }
+  #doc .hd { scroll-margin-top: 8px; }
+  #doc .hd.landedsec { box-shadow: inset 0 -2px 0 var(--open); }
+
+  /* Edit and Ask live in the margin and show at the section under the pointer (or holding the focus) */
+  #doc .mctl { position: absolute; top: 2px; left: calc(-1 * var(--gut)); width: calc(var(--gut) - 14px); display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  #doc .mctl .b { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; opacity: 0; pointer-events: none; transition: opacity .12s ease; }
+  #doc section.s:hover > .mctl .b, #doc section.s:focus-within > .mctl .b, #doc section.s.editing > .mctl .b, #doc section.s.asking > .mctl .b { opacity: 1; pointer-events: auto; }
+  #doc .mctl .b button { font-size: 11.5px; line-height: 1.5; padding: 1px 9px; border-radius: 2px; border: 1px solid var(--rule-soft); background: var(--surface); color: var(--muted); cursor: pointer; }
+  #doc .mctl .b button:hover, #doc .mctl .b button:focus-visible { background: var(--hover); color: var(--ink); border-color: var(--rule); }
+  #doc .mctl .mwait { cursor: pointer; }
+  #doc .mctl .nomap { font-size: 10.5px; line-height: 1.3; text-align: right; color: var(--muted); }
+  #doc textarea.raw { width: 100%; min-height: 40vh; padding: 10px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); font-family: var(--font-mono); font-size: 12.5px; resize: vertical; }
+  #doc textarea.raw:focus { outline: none; border-color: var(--accent); }
+  #doc .edtools { display: flex; gap: 8px; margin: 8px 0 12px; }
+
+  /* asking about one section: a small form under its heading while it is open, gone when sent or cancelled */
+  #doc .askbox { margin: 6px 0 12px; padding: 10px 12px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); font-size: 13px; }
+  #doc .askbox form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0; }
+  #doc .askbox input[name=text] { flex: 1; min-width: 200px; }
+  #doc .askbox input, #doc .askbox select { padding: 5px 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); }
+  #doc .askbox input:focus, #doc .askbox select:focus { outline: none; border-color: var(--accent); }
+  #doc .askbox p { margin: 6px 0 0; }
+
+  /* strike and reorder: three controls that appear when the pointer is on the item, so the page stays a document */
+  #doc li { position: relative; }
+  #doc li .ctl { display: none; gap: 3px; margin-left: 8px; vertical-align: baseline; white-space: nowrap; }
+  #doc li:hover > .ctl, #doc li:focus-within > .ctl { display: inline-flex; }
+  #doc li .ctl button { font-size: 11px; line-height: 1.5; padding: 0 6px; border-radius: 2px; border: 1px solid var(--rule-soft); background: var(--surface); color: var(--muted); cursor: pointer; }
+  #doc li .ctl button:hover { background: var(--hover); color: var(--ink); border-color: var(--rule); }
+  #doc li .ctl button:disabled { opacity: .35; cursor: default; }
+
+  /* a must-ask line: the file says `_must_`, the page shows a small tag (the call screen's own, Zak 9/25) */
+  #doc .must { display: inline-block; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+               color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; padding: 0 6px; margin-left: 8px; vertical-align: 1px; }
+
+  /* the agent layer (0.54.0): only on the page when the switch is on, where it was written, tagged agent */
+  .agentnote { border-left: 3px solid var(--rule-soft); padding: 4px 0 4px 12px; margin: 10px 0; }
+  .agentnote > .badge { margin: 0 0 2px; font-family: var(--font-mono); }
+  .agentnote > :not(.badge) { opacity: .8; }
+  .agentnote > :nth-child(2) { margin-top: 2px; }
+  .agentnote pre.fm, .agentnote pre.agc { margin: 4px 0; padding: 8px 10px; font-size: 12px; white-space: pre-wrap; }
+  .agentnote.hist { margin: 18px 0; }
+  .agi { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+  .agi .badge { font-size: 10px; padding: 0 5px; font-family: var(--font-mono); }
+
+  /* a code or data file opened from the Files page (0.52.0): shown whole, read-only, in the mono face */
+  pre.codeview { margin: 0; padding: 14px 16px; background: var(--code); border: 1px solid var(--rule-soft); border-radius: var(--radius); font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5; white-space: pre; overflow: auto; tab-size: 4; }
+  nav.side .codeinfo { padding: 6px 18px; font-size: 13px; color: var(--ink-soft); }
+  nav.side .codeinfo code { word-break: break-all; }
+
+  /* below 900px the outline folds under one button and the margin controls move to the right of the heading */
+  @media (max-width: 900px) {
+    .layout { display: flex; flex-direction: column; }
+    nav.side#rail { display: none; max-height: 55vh; border-right: 0; border-bottom: 1px solid var(--rule); }
+    .layout.railopen nav.side#rail { display: flex; }
+    main { flex: 1; min-height: 0; padding: 18px 16px 100px; }
+    .page { --gut: 0px; }
+    .railbtn { display: inline-block; }
+    #doc .mctl { left: auto; right: 0; top: 0; width: auto; flex-direction: row; align-items: center; z-index: 1; }
+    #doc .mctl .b { flex-direction: row; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Reader</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="reader"></nav>
+</header>
+<!-- the shared read drawer, made here before the document so a heading whose slug is "drawer" can never be taken for it -->
+<aside class="drawer auto" id="drawer" hidden></aside>
+<div class="layout">
+  <nav class="side" id="rail"></nav>
+  <main id="main"><div class="empty">reading…</div></main>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// The Reader (2026-09-09, the straight line step 2b, ledger T-0046).
+// Zak: "create a module right here on the app that allows me to view an md that has been organized properly that gives me
+// the ability to strike and reorder... this is very important for an organized habit/methodology to project movement."
+// And: "You will be in charge of linking those mds and requesting the portions of them that need attention with the
+// projects viewer." So: a document opened BY ITS HEADINGS, every list item strikable and movable, and every heading
+// askable -- a question written onto a project ledger carrying "<file>#<slug>", which comes back here as a badge.
+//
+// 0.54.0 (2026-09-29, brain-viewer-holon/reader-redesign-brief-2026-09-29.md): the document is ONE PAGE. Zak: "nothing
+// flows well, its all just random expandable boxes, its exhausting to navigate". The folds per section, the line counts,
+// the ask box under every heading, the tips/search/ledger folds and the front/history flip are gone. What replaced them:
+// real headings in one flowing article at one measure; the rail as the outline, with a scroll-spy; Edit and Ask in the
+// margin at the section under the pointer; search and the ledger items at the foot of the rail; one switch, "agent
+// layer", that puts the frontmatter, the agent notes, the history sections and the comments on the page or leaves them
+// off it entirely.
+//
+// The one thing to be careful about in this file is still the LINE MAP. A control has to rewrite exactly the line it
+// belongs to, so every <li> the shared renderer emits is paired with the source line that produced it. The pairing is by
+// position, CHUNK BY CHUNK (a section is cut into its text and its agent blocks, and each chunk is drawn in its own
+// wrapper carrying its line range), which is only safe because scan() walks the lines with the SAME rules BV.md does
+// (fences skipped, tables skipped, blockquotes recursed into) and because the pairing is verified: a chunk whose counts do
+// not line up gets no controls at all rather than a control that would edit the wrong line. A chunk that is off the page
+// (the agent layer is off) is simply not paired; nothing on screen shifts because of it.
+const { esc, md, inline, slug: slugify, questionCard: qCard, ledgerAct } = BV;
+const $ = s => document.querySelector(s);
+const DEFAULT_PATH = "brain-viewer-holon/brain-viewer-build-doc.md";
+const params = new URLSearchParams(location.search);
+const NAMED = !!params.get("path");
+// A search hit carries the line it was found on (T-0158); a ledger link carries the heading slug (T-0155). Either way the
+// Reader opens THERE and says so: the heading takes a mark and the matching line lights up for a moment.
+const WANT_LINE = (() => { const n = parseInt(params.get("line") || "", 10); return Number.isFinite(n) && n > 0 ? n : 0; })();
+let FIND = { q: "", j: null, busy: false };
+let PATH = (params.get("path") || DEFAULT_PATH).replace(/^\/+/, "");
+let RAW = "", LINES = [], SECTIONS = [], ASKS = new Map(), LOOSE = [], ALLASKS = [], BADGES = null, LAYER_N = 0;
+let TODAY = "", EDITABLE = false, EDIT_REASON = "", MTIME = "", OPEN = "", STATUS = "";
+let EDITING = "";            // the slug whose raw markdown is open in a textarea, if any
+let RAILOPEN = false;        // below 900px the outline is behind one button
+
+// The agent layer switch is remembered per viewer, like every other toggle in the app, and nowhere in the brain. A link
+// that lands inside the agent layer (a #slug into a history section, a search hit on a status line) turns it on for that
+// view without changing what is remembered.
+const LAYER_KEY = "bv.reader.agentlayer";
+const layerSaved = () => { try { return localStorage.getItem(LAYER_KEY) === "1"; } catch (e) { return false; } };
+const saveLayer = v => { try { localStorage.setItem(LAYER_KEY, v ? "1" : "0"); } catch (e) {} };
+let LAYER = layerSaved();
+
+const isItemLine = l => /^(\s*)([-*+]|\d+\.)\s+/.test(l);
+const setStatus = t => { STATUS = t || ""; const el = $("#status"); if (el) el.textContent = STATUS; };
+const BASE = () => PATH.split("/").slice(0, -1).join("/");
+const narrow = () => window.matchMedia("(max-width: 900px)").matches;
+// a heading as plain words for the rail: the markdown marks go, the words stay
+const plain = t => String(t || "").replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (m, a, b) => b || a)
+  .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/\*\*|__|`|~~/g, "").replace(/(^|\s)\*([^*]+)\*/g, "$1$2").trim();
+
+// ---- the line model: where each heading's lines start and end ------------------------------------------------
+// This is not the layout any more (0.54.0): it is the map the writes need. A heading opens a section; the section owns
+// every line until the next heading, whatever its level. Headings inside a fenced code block or inside the frontmatter
+// are text, not headings. The slug is BV.slug -- ONE slugger, shared with the ledger links -- with a "-2" suffix when a
+// heading repeats, which is the only part that needs the whole document; it is also the heading's id on the page.
+function mapSections(lines) {
+  const secs = [], seen = new Map();
+  let fence = false, cur = { level: 0, title: "", slug: "top", head: -1, start: 0, end: lines.length }, i0 = 0;
+  if (lines[0] === "---") { const j = lines.indexOf("---", 1); if (j > 0) i0 = j + 1; }   // a "# comment" in YAML is not a title
+  for (let i = i0; i < lines.length; i++) {
+    if (/^```/.test(lines[i])) { fence = !fence; continue; }
+    if (fence) continue;
+    const h = lines[i].match(/^(#{1,6})\s+(.*)$/);
+    if (!h) continue;
+    cur.end = i; secs.push(cur);
+    const title = h[2].trim();
+    let sl = slugify(title) || "section";
+    if (seen.has(sl)) { const n = seen.get(sl) + 1; seen.set(sl, n); sl += "-" + n; } else seen.set(sl, 1);
+    cur = { level: h[1].length, title, slug: sl, head: i, start: i + 1, end: lines.length };
+  }
+  cur.end = lines.length; secs.push(cur);
+  return secs.filter((s, k) => !(k === 0 && s.head === -1 && lines.slice(s.start, s.end).join("").trim() === ""));
+}
+
+// ---- the agent layer of a brain file (2026-09-16, ledger T-0156; one switch since 0.54.0) ---------------------
+// THE RULE, written once here and read by everything below it.
+// AGENT NOTES are the blocks written for whoever reads the file next rather than for Zak: a blockquote callout
+//   (`> ...`, the banners with it), an HTML comment (`<!-- Previous header ... -->`) together with the quoted block
+//   right after it, a line opening `**STATUS:` in any case, and anything between the explicit markers
+//   `<!-- agent -->` and `<!-- /agent -->` (the convention is named in brain-viewer-rules.md section 4).
+// HISTORY is a whole section: a heading of level 2 or deeper that STARTS with a date (2026-09-16, or "September 14"),
+//   opens with a dated marker (`PURGED 2026-08-18 -- ...`), or carries "Previous", "superseded", "history",
+//   "Cold storage" or a `[2026-09-16]` bracket -- and every section under it down to the next heading at the same
+//   level or higher. A date inside PARENTHESES is provenance on a live heading (`## 2j. Reader (2026-09-09, ...)`)
+//   and never makes one history. A level-1 heading is never history either: it is the document's own title and the
+//   whole file sits under it.
+// The FRONTMATTER and the COMMENTS inside a line (the line references an agent leaves, `<!-- L612 -->`) are the layer too.
+// Everything else is the page. Nothing here edits, moves or drops a line; it decides only what is drawn.
+const AG_OPEN = /^\s*<!--\s*agent\s*-->/i, AG_CLOSE = /^\s*<!--\s*\/agent\s*-->/i;
+const AG_STATUS = /^\s*\*\*status\s*:/i, AG_QUOTE = /^>/;
+const HIST_WORDS = /\b(previous|superseded|history|cold storage)\b/i;
+const HIST_BRACKET = /\[\s*\d{4}-\d{2}-\d{2}/;
+const HIST_DATE = /^(?:\[\s*)?(?:\d{4}-\d{2}-\d{2}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2})/i;
+const HIST_NEAR = /^.{0,32}\d{4}-\d{2}-\d{2}/;   // a dated marker opening the heading, once the parentheses are out
+
+// every agent-note block inside one run of lines, as [start, end) pairs in that run's own indexes
+function agentSpans(lines) {
+  const spans = []; let i = 0;
+  while (i < lines.length) {
+    const l = lines[i];
+    if (/^```/.test(l)) { i++; while (i < lines.length && !/^```/.test(lines[i])) i++; i++; continue; }   // a fence is text
+    if (AG_OPEN.test(l)) { const s = i++; while (i < lines.length && !AG_CLOSE.test(lines[i])) i++; if (i < lines.length) i++; spans.push([s, i]); continue; }
+    if (/^\s*<!--/.test(l)) {
+      const s = i; while (i < lines.length && !/-->/.test(lines[i])) i++; i++;
+      let j = i; while (j < lines.length && !lines[j].trim()) j++;                     // the quoted block right after
+      if (j < lines.length && AG_QUOTE.test(lines[j])) { i = j; while (i < lines.length && AG_QUOTE.test(lines[i])) i++; }   // a comment goes with it
+      spans.push([s, Math.min(i, lines.length)]); continue;
+    }
+    if (AG_QUOTE.test(l)) { const s = i; while (i < lines.length && AG_QUOTE.test(lines[i])) i++; spans.push([s, i]); continue; }
+    if (AG_STATUS.test(l)) { spans.push([i, i + 1]); i++; continue; }
+    i++;
+  }
+  return spans;
+}
+
+const headingIsHistory = title => {
+  const t = String(title || "").replace(/^[^0-9A-Za-z\[]+/, "").trim();   // a leading emoji or ** is decoration, not the heading
+  const bare = t.replace(/\([^)]*\)/g, " ");                              // the date in "(2026-09-09, server 0.13.0)" is provenance
+  return HIST_DATE.test(t) || HIST_NEAR.test(bare) || HIST_WORDS.test(title) || HIST_BRACKET.test(title);
+};
+
+// the page or history, per section, in document order: a history heading carries everything nested under it
+function markSides(secs) {
+  let under = 0;
+  for (const s of secs) {
+    s.histRoot = false;
+    if (under && s.level > under) { s.side = "history"; continue; }
+    under = 0;
+    const hist = s.head >= 0 && s.level >= 2 && headingIsHistory(s.title);
+    s.side = hist ? "history" : "front";
+    if (hist) { under = s.level; s.histRoot = true; }
+  }
+  // A file whose every section is dated IS the record -- a what's-new page, a changelog, a log of runs. It has no
+  // back, because the back would be the whole file and the front would be its title. So it all stays on the page.
+  if (!secs.some(s => s.side === "front" && s.head >= 0 && s.level >= 2)) for (const s of secs) { s.side = "front"; s.histRoot = false; }
+  return secs;
+}
+
+// one section cut into what it draws: its text, its agent notes, and (the first section only) the frontmatter
+function chunkSection(s) {
+  const out = [];
+  let from = s.start;
+  if (s.start === 0 && LINES[0] === "---") {
+    const j = LINES.indexOf("---", 1);
+    if (j > 0 && j < s.end) { out.push({ from: 0, to: j + 1, kind: "fm" }); from = j + 1; }
+  }
+  const lines = LINES.slice(from, s.end);
+  let at = 0;
+  for (const [a, b] of agentSpans(lines)) {
+    if (a > at) out.push({ from: from + at, to: from + a, kind: "text" });
+    out.push({ from: from + a, to: from + b, kind: "note" });
+    at = b;
+  }
+  if (at < lines.length) out.push({ from: from + at, to: s.end, kind: "text" });
+  return out;
+}
+
+// how much of the file is agent layer: the frontmatter, each note, each history run, each comment inside a line
+function countLayer() {
+  let n = 0;
+  for (const s of SECTIONS) {
+    if (s.side === "history") { if (s.histRoot) n++; continue; }
+    for (const c of s.chunks) {
+      if (c.kind !== "text") { n++; continue; }
+      let fence = false;
+      for (let i = c.from; i < c.to; i++) {
+        const l = LINES[i];
+        if (/^```/.test(l)) { fence = !fence; continue; }
+        if (!fence) n += (l.match(/<!--[\s\S]*?-->/g) || []).length;
+      }
+    }
+  }
+  return n;
+}
+
+// is this source line (0-based) in the agent layer? A link that lands on one turns the layer on for the view.
+function lineInLayer(n) {
+  const s = SECTIONS.find(x => (x.head < 0 ? x.start : x.head) <= n && n < x.end);
+  if (!s) return false;
+  if (s.side === "history") return true;
+  const c = s.chunks.find(x => x.from <= n && n < x.to);
+  return !!(c && c.kind !== "text");
+}
+
+// ---- the line map --------------------------------------------------------------------------------------------
+// Every source line that BV.md turns into an <li>, in the order it emits them. It walks the same block types in the
+// same order md does, so a "- " inside a fenced block or a table is correctly NOT an item, and a list inside a
+// blockquote still counts (md renders it) but is marked quoted: the controls leave quoted lines alone, since editing
+// one would mean rewriting somebody's quoted words. It is only ever given one chunk, and the frontmatter is its own
+// chunk that is never scanned, so a "---" here is always a rule.
+function scan(lines) {
+  const out = [];
+  let i = 0;
+  while (i < lines.length) {
+    const l = lines[i];
+    if (/^```/.test(l)) { i++; while (i < lines.length && !/^```/.test(lines[i])) i++; i++; continue; }
+    if (/^\s*$/.test(l)) { i++; continue; }
+    if (/^(#{1,6})\s+/.test(l)) { i++; continue; }
+    if (/^(-{3,}|\*{3,})\s*$/.test(l)) { i++; continue; }                                 // a rule, not a list item
+    if (/^\|/.test(l)) { while (i < lines.length && /^\|/.test(lines[i])) i++; continue; }
+    if (/^>/.test(l)) {
+      const idx = []; while (i < lines.length && /^>/.test(lines[i])) idx.push(i++);
+      for (const k of scan(idx.map(x => lines[x].replace(/^>\s?/, "")))) out.push({ i: idx[k.i], quoted: true });
+      continue;
+    }
+    if (isItemLine(l)) { out.push({ i, quoted: false }); i++; continue; }
+    i++; while (i < lines.length && lines[i].trim() && !/^(#{1,6}\s|```|\||>|\s*([-*+]|\d+\.)\s)/.test(lines[i])) i++;
+  }
+  return out;
+}
+
+// ---- the two edits, both on ONE line each --------------------------------------------------------------------
+// An item line is (indent)(marker)(gap)(maybe a checkbox)(text)(trailing space). Only the text moves; everything else
+// is put back byte for byte, so an unstrike restores the line exactly as it was before the strike.
+const ITEM_RE = /^(\s*)([-*+]|\d+\.)(\s+)(.*?)(\s*)$/;
+function pieces(line) {
+  const m = ITEM_RE.exec(line); if (!m) return null;
+  const p = { ind: m[1], mark: m[2], gap: m[3], box: "", text: m[4], trail: m[5] };
+  const c = /^(\[[ xX]\]\s+)([\s\S]*)$/.exec(p.text); if (c) { p.box = c[1]; p.text = c[2]; }
+  return p;
+}
+const STRUCK_RE = /^~~((?:(?!~~)[\s\S])*)~~(?:\s*·\s*struck\s+\d{4}-\d{2}-\d{2})?$/;
+const isStruck = i => { const p = pieces(LINES[i] || ""); return !!(p && STRUCK_RE.test(p.text)); };
+
+function strike(i) {
+  const p = pieces(LINES[i]); if (!p) return false;
+  const s = STRUCK_RE.exec(p.text);
+  p.text = s ? s[1] : "~~" + p.text + "~~ · struck " + TODAY;
+  LINES[i] = p.ind + p.mark + p.gap + p.box + p.text + p.trail;
+  return true;
+}
+
+// An item's span is the line itself plus the deeper items nested under it; its sibling is the next (or previous) item
+// at the same depth with nothing but its own children in between. Anything else -- a blank line, a paragraph, the end
+// of the section -- is the end of the list, so a move there is a no-op rather than a jump into a different list.
+const depth = i => { const m = /^(\s*)/.exec(LINES[i]); return Math.floor(m[1].replace(/\t/g, "  ").length / 2); };
+function mover(sec, items) {
+  const inList = new Set(items.filter(x => !x.quoted).map(x => sec.start + x.i));
+  const span = i => { const d = depth(i); let j = i + 1; while (j < sec.end && inList.has(j) && depth(j) > d) j++; return [i, j]; };
+  const next = i => { const b = span(i)[1]; return (inList.has(b) && depth(b) === depth(i)) ? b : null; };
+  const prev = i => { let j = i - 1; while (j >= sec.start && inList.has(j) && depth(j) > depth(i)) j--; return (j >= sec.start && inList.has(j) && depth(j) === depth(i)) ? j : null; };
+  return {
+    can: (i, dir) => (dir < 0 ? prev(i) : next(i)) !== null,
+    move: (i, dir) => {
+      const other = dir < 0 ? prev(i) : next(i); if (other === null) return false;
+      const A = Math.min(i, other), B = Math.max(i, other);
+      const [a0, a1] = span(A), [b0, b1] = span(B);
+      const headRe = /^(\s*(?:[-*+]|\d+\.)\s+)([\s\S]*)$/;
+      const ha = headRe.exec(LINES[a0]), hb = headRe.exec(LINES[b0]); if (!ha || !hb) return false;
+      const blockA = LINES.slice(a0, a1), blockB = LINES.slice(b0, b1);
+      // each POSITION keeps its own prefix and the content swaps, so an ordered list stays 1, 2, 3 after a move
+      blockA[0] = hb[1] + ha[2];
+      blockB[0] = ha[1] + hb[2];
+      LINES.splice(a0, b1 - a0, ...blockB, ...blockA);
+      return true;
+    }
+  };
+}
+
+// ---- the writes ----------------------------------------------------------------------------------------------
+const clip = (s, n) => { const t = String(s || "").replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n - 1) + "…" : t; };
+async function save(note) {
+  setStatus("saving…");
+  let r, j;
+  try {
+    r = await fetch(`/api/file?path=${encodeURIComponent(PATH)}&note=${encodeURIComponent(note)}`,
+                    { method: "PUT", headers: { "Content-Type": "text/plain; charset=utf-8" }, body: LINES.join("\n") });
+    j = await r.json().catch(() => ({}));
+  } catch (e) { setStatus("could not save: " + e.message); await load(); return false; }
+  if (!r.ok) { setStatus("refused: " + (j.error || r.status)); await load(); return false; }
+  await load(j.proposed ? BV.proposedText(j) : `saved · ${j.bytes} bytes · ${j.log}`);
+  return true;
+}
+
+// ---- drawing the page ----------------------------------------------------------------------------------------
+const askCount = sl => (ASKS.get(sl) || []).length;
+const PH_A = "", PH_B = "";   // a comment inside a line, held out of md while the layer is on
+const PH_S = "", PH_E = "";   // a Where it stands line, held out of md so the ledger door draws it
+const STANDS_LINE = /^(\s*)\*\*Where it stands\s*\((\d{4}-\d{2}-\d{2})\)\s*:\*\*\s*(.+?)\s*$/i;
+
+// A run of text lines. With the agent layer on, a comment inside a line is lifted out before md (which drops every
+// comment) and put back where it was, tagged agent; outside a fence only, since a fence shows its text as written.
+function drawText(ls) {
+  let src = ls[0] === "---" ? [""].concat(ls) : ls.slice();   // only the file's own first line opens frontmatter
+  const notes = [];
+  if (LAYER) {
+    let fence = false;
+    src = src.map(l => {
+      if (/^```/.test(l)) { fence = !fence; return l; }
+      if (fence || !/<!--/.test(l)) return l;
+      return l.replace(/<!--([\s\S]*?)-->/g, (m, t) => { notes.push(t.trim()); return PH_A + (notes.length - 1) + PH_B; });
+    });
+  }
+  // A card's Where it stands line goes through the ledger door (0.55.1, T-0284), so a code in it is a chip, not raw:
+  // held out of md like a comment, then drawn by BV.ledgerText in its inline mode where it stood.
+  const stands = [];
+  { let fence = false;
+    src = src.map(l => {
+      if (/^```/.test(l)) { fence = !fence; return l; }
+      const m = !fence && l.match(STANDS_LINE);
+      if (!m) return l;
+      stands.push(m); return PH_S + (stands.length - 1) + PH_E;
+    }); }
+  let html = md(src.join("\n"), { base: BASE() });
+  if (stands.length) html = html.replace(new RegExp(PH_S + "(\\d+)" + PH_E, "g"), (x, k) => { const m = stands[+k];
+    return `${m[1]}<strong>Where it stands (${esc(m[2])}):</strong> ${BV.ledgerText(m[3], "", { inline: true, base: BASE() })}`; });
+  if (notes.length) html = html.replace(new RegExp(PH_A + "(\\d+)" + PH_B, "g"), (m, k) => `<span class="agi"><span class="badge">agent</span> ${esc(notes[+k])}</span>`);
+  return html;
+}
+// An agent note. The explicit markers are dropped and what they hold is drawn; a comment shows its own words as written,
+// then the quoted block that goes with it; a quote or a status line is drawn as the text it is.
+function drawNote(ls) {
+  if (AG_OPEN.test(ls[0])) return drawText(ls.filter(l => !AG_OPEN.test(l) && !AG_CLOSE.test(l)));
+  if (!/^\s*<!--/.test(ls[0])) return drawText(ls);
+  let k = 0; while (k < ls.length - 1 && !/-->/.test(ls[k])) k++;
+  const head = ls.slice(0, k + 1).join("\n"), cut = head.indexOf("-->");
+  const words = (cut >= 0 ? head.slice(0, cut) : head).replace(/^\s*<!--/, "").trim();
+  const after = cut >= 0 ? head.slice(cut + 3).trim() : "";
+  const rest = (after ? [after] : []).concat(ls.slice(k + 1));
+  return (words ? `<pre class="agc">${esc(words)}</pre>` : "") + (rest.join("").trim() ? drawText(rest) : "");
+}
+function chunkHTML(c) {
+  const ls = LINES.slice(c.from, c.to);
+  if (!ls.join("").trim()) return "";
+  const at = `data-from="${c.from}" data-to="${c.to}"`;
+  if (c.kind === "text") return `<div class="ck" ${at}>${drawText(ls)}</div>`;
+  if (!LAYER) return "";                                                   // off: not hidden, not folded, absent
+  if (c.kind === "fm") return `<div class="agentnote ck fmblock" ${at}><span class="badge">agent · frontmatter</span><pre class="fm">${esc(ls.slice(1, -1).join("\n"))}</pre></div>`;
+  return `<div class="agentnote ck" ${at}><span class="badge">agent</span>${drawNote(ls)}</div>`;
+}
+
+// One section: its heading at its own level with its slug as the id, its text, and the margin controls. Nothing else.
+function sectionHTML(s) {
+  const asks = ASKS.get(s.slug) || [], editing = EDITING === s.slug;
+  // a heading is not underlined by the glossary (it never was: it used to sit in a fold's summary line)
+  const hd = s.head < 0 ? "" : `<h${s.level} class="hd no-gloss" id="${esc(s.slug)}">${inline(s.title, BASE())}</h${s.level}>`;
+  const body = editing
+    // The textarea is written with a leading "\n" ON PURPOSE: the HTML parser eats one newline straight after the open
+    // tag, so without it a section whose body opens on a blank line lost that line on every save (measured 2026-09-09).
+    ? `<textarea class="raw" spellcheck="false">\n${esc(LINES.slice(s.start, s.end).join("\n"))}</textarea>
+       <div class="edtools"><button class="btn primary" type="button" data-savesec="${esc(s.slug)}">Save this section</button><button class="btn" type="button" data-edit="${esc(s.slug)}">cancel</button></div>`
+    : s.chunks.map(chunkHTML).join("");
+  if (!hd && !body.trim()) return "";
+  const where = s.head < 0 ? "the top of the file" : plain(s.title);
+  const tools = `<div class="mctl" role="group" aria-label="${esc("controls for " + where)}">`
+    + (asks.length ? `<button type="button" class="badge open mwait" data-waitgo="${esc(s.slug)}" title="${asks.length} open ledger item${asks.length === 1 ? "" : "s"} point${asks.length === 1 ? "s" : ""} at this section: listed at the foot of the outline">${asks.length} waiting</button>` : "")
+    + `<span class="b">${EDITABLE ? `<button type="button" data-edit="${esc(s.slug)}" title="open this section's raw markdown to edit it">${editing ? "cancel" : "Edit"}</button>` : ""}`
+    + `<button type="button" data-askopen="${esc(s.slug)}" title="write a question about this section onto a project ledger">Ask</button></span></div>`;
+  return `<section class="s l${Math.max(1, s.level)}${editing ? " editing" : ""}" data-slug="${esc(s.slug)}">${tools}${hd}${body}</section>`;
+}
+
+// The article, in file order. A history run is on the page only with the layer on, wrapped where it sits and tagged.
+function docHTML() {
+  let out = "", inHist = false;
+  if (!SECTIONS.some(s => s.level === 1 && (LAYER || s.side !== "history"))) out += `<h1 class="doctitle">${esc(PATH.split("/").pop())}</h1>`;
+  for (const s of SECTIONS) {
+    const hist = s.side === "history";
+    if (hist && !LAYER) continue;
+    if (inHist && (!hist || s.histRoot)) { out += "</div>"; inHist = false; }
+    if (hist && !inHist) { out += `<div class="agentnote hist"><span class="badge">agent · history</span>`; inHist = true; }
+    out += sectionHTML(s);
+  }
+  if (inHist) out += "</div>";
+  return out;
+}
+
+function projectOptions() {
+  const ps = (BADGES && BADGES.projects) || {};
+  const ids = Object.keys(ps), def = (BADGES && BADGES.defaultProject) || ids[0] || "";
+  return ids.map(id => `<option value="${esc(id)}"${id === def ? " selected" : ""}>${esc(ps[id].name || id)}</option>`).join("");
+}
+
+function render(keepScroll) {
+  const main = $("#main"), top = keepScroll ? main.scrollTop : 0;
+  const callLink = /(^|\/)deliverables\/call-prep\//.test(PATH) && /-call-prep-\d{4}-\d{2}-\d{2}\.md$/.test(PATH)
+    ? `<a class="btn" href="/call?prep=${encodeURIComponent(PATH)}" style="text-decoration:none">open as the call screen</a>` : "";
+  const sw = LAYER_N
+    ? `<button class="btn${LAYER ? " on" : ""}" type="button" id="layersw" aria-pressed="${LAYER}" title="${LAYER
+        ? "take the agent layer off the page: the frontmatter, the notes in quotes, the status lines, the comments and the dated history sections"
+        : "put the agent layer on the page, where it is written, each block tagged agent: the frontmatter, the notes in quotes, the status lines, the comments and the dated history sections"}">agent layer: ${LAYER ? "on" : "off"}</button>`
+    : `<button class="btn" type="button" id="layersw" disabled title="nothing in this file is written for agents only">agent layer: none</button>`;
+  main.innerHTML = `<div class="page">
+    <div class="dochead">
+      <button class="btn railbtn" type="button" id="railbtn" aria-expanded="${RAILOPEN}" aria-controls="rail">${RAILOPEN ? "hide outline" : "outline"}</button>
+      ${sw}${callLink}
+      <span class="meta"><code>${esc(PATH)}</code>${MTIME ? ` · touched ${esc(MTIME.slice(0, 10))}` : ""} · ${EDITABLE ? (BV.mode().propose ? "saves here become requests" : "editable here")
+        : BV.notepad.isNote(PATH) ? `<button class="btn" type="button" id="opennote" title="a note is edited in the notepad it was written in: this opens it there, with its words in the box">edit it in the notepad</button>`
+        : `read-only here: ${esc(EDIT_REASON || "not in the Reader's write list")}`}</span>
+      <span class="status-line" id="status">${esc(STATUS)}</span>
+    </div>
+    <article class="md" id="doc">${docHTML()}</article>
+  </div>`;
+  wireAll();
+  mustTags($("#doc"));
+  // a notepad note is not written from here: the button hands it to the notepad, which owns that folder (T-0146)
+  const ob = $("#opennote"); if (ob) ob.addEventListener("click", () => BV.notepad.open(PATH));
+  rail();
+  main.scrollTop = top;
+  spy();
+  if (EDITING) { const ta = $("#doc section.s.editing textarea.raw"); if (ta) ta.focus({ preventScroll: true }); }
+  BV.glossary.scan(main);
+}
+
+// pair every rendered <li> with the source line that produced it, chunk by chunk, then hang the three controls off it
+function wireAll() {
+  for (const s of SECTIONS) {
+    if (EDITING === s.slug) continue;
+    const el = $(`#doc section.s[data-slug="${CSS.escape(s.slug)}"]`); if (!el) continue;
+    // the mover sees every item the file has in this section, on the page or not, so a list is a list as written
+    const all = [];
+    for (const c of s.chunks) if (c.kind !== "fm") for (const it of scan(LINES.slice(c.from, c.to))) all.push({ i: c.from - s.start + it.i, quoted: it.quoted });
+    const mv = mover(s, all);
+    let off = false;
+    for (const ck of el.querySelectorAll(".ck")) {
+      if (ck.classList.contains("fmblock")) continue;
+      const from = Number(ck.dataset.from), to = Number(ck.dataset.to);
+      const items = scan(LINES.slice(from, to)), lis = ck.querySelectorAll("li");
+      // the map is not 1:1, so nothing here gets a control: a control that edits the wrong line is worse than no control
+      if (lis.length !== items.length) { if (!ck.classList.contains("agentnote")) off = true; continue; }
+      lis.forEach((li, k) => {
+        const abs = from + items[k].i;
+        li.dataset.line = String(abs);
+        if (!EDITABLE || items[k].quoted) return;
+        const struck = isStruck(abs);
+        const c = document.createElement("span"); c.className = "ctl";
+        c.innerHTML =
+          `<button type="button" data-act="strike" title="${struck ? "put this item back the way it was" : "strike it through and stamp it struck " + esc(TODAY)}">${struck ? "unstrike" : "strike"}</button>` +
+          `<button type="button" data-act="up" title="move this item up in its list"${mv.can(abs, -1) ? "" : " disabled"}>↑</button>` +
+          `<button type="button" data-act="down" title="move this item down in its list"${mv.can(abs, 1) ? "" : " disabled"}>↓</button>`;
+        li.appendChild(c);
+        li._mv = mv;
+      });
+    }
+    if (off && EDITABLE) {
+      const b = el.querySelector(":scope > .mctl .b");
+      if (b) { const n = document.createElement("span"); n.className = "nomap"; n.textContent = "no strike here"; n.title = "Strike and reorder are off in part of this section: the items on screen do not line up one to one with the lines in the file. Use Edit."; b.appendChild(n); }
+    }
+  }
+}
+
+// `_must_` at the end of a line is a tag on the call screen, never underscores on a page (Zak, 9/25): the same here
+function mustTags(root) {
+  if (!root) return;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n =>
+    /_must_/.test(n.nodeValue) && !(n.parentElement && n.parentElement.closest("code, pre, textarea")) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
+  const hits = []; while (w.nextNode()) hits.push(w.currentNode);
+  for (const t of hits) {
+    const frag = document.createDocumentFragment();
+    t.nodeValue.split(/[ \t]*_must_[ \t]*/).forEach((p, k) => {
+      if (k) { const m = document.createElement("span"); m.className = "must no-gloss"; m.textContent = "must"; frag.appendChild(m); if (p) frag.appendChild(document.createTextNode(" ")); }
+      if (p) frag.appendChild(document.createTextNode(p));
+    });
+    t.replaceWith(frag);
+  }
+}
+
+// ---- the rail: every heading on the page, then the ledger items and the search -------------------------------
+function rail() {
+  const el = $("#rail");
+  const shown = SECTIONS.filter(s => s.head >= 0 && (LAYER || s.side !== "history"));
+  const badge = n => n ? `<span class="badge open" title="${n} open ledger item${n === 1 ? "" : "s"} point${n === 1 ? "s" : ""} at this section">waiting</span>` : "";
+  const rows = shown.map(s => `<button type="button" class="ol l${Math.max(1, s.level)}${s.side === "history" ? " ag" : ""}${s.slug === OPEN ? " on" : ""}" data-go="${esc(s.slug)}" title="${esc(plain(s.title))}${s.side === "history" ? " · agent layer: history" : ""}"><span class="n">${esc(plain(s.title))}</span>${badge(askCount(s.slug))}</button>`).join("");
+  el.innerHTML = `<div class="outline" id="outline"><h2>Outline</h2>${rows || `<p class="meta" style="padding:0 18px">no headings in this file</p>`}</div>
+    <div class="railfoot" id="railfoot">${footHTML()}</div>`;
+  wireFind();
+  markRail();
+}
+
+// what used to be the page's three folds: the ledger items that link this document, and the search (the tips are the ? help)
+function footHTML() {
+  const card = q => q.kind === "question" ? qCard(q, { project: q.project, showProject: true }) : BV.itemRow(q, { project: q.project, showProject: true });
+  let led = "";
+  if (ALLASKS.length) {
+    led = `<h4>Ledger items that link this document</h4>`
+      + SECTIONS.filter(s => ASKS.has(s.slug)).map(s => `<div class="at" data-at="${esc(s.slug)}"><button type="button" data-go="${esc(s.slug)}" title="go to this section">at ${esc(plain(s.title))}</button></div><div class="asks">${ASKS.get(s.slug).map(card).join("")}</div>`).join("")
+      + (LOOSE.length ? `<div class="at">the whole document</div><div class="asks">${LOOSE.map(card).join("")}</div>` : "");
+  }
+  return led + `<h4>Search the brain</h4>
+    <form id="findform"><input type="search" name="q" value="${esc(FIND.q)}" placeholder="find a file or a line…" autocomplete="off" spellcheck="false" title="every live brain file by name and by text; archive/ and the key files are never read; a hit opens here at its line"><button class="btn" type="submit">find</button></form>
+    <div class="hits" id="findhits">${findHTML()}</div>`;
+}
+
+// the heading the eye is on, marked in the outline, and kept in view in it
+function markRail() {
+  const box = $("#outline"); if (!box) return;
+  let on = null;
+  for (const b of box.querySelectorAll(".ol")) { const y = b.dataset.go === OPEN; b.classList.toggle("on", y); if (y) on = b; }
+  if (on && (on.offsetTop < box.scrollTop || on.offsetTop + on.offsetHeight > box.scrollTop + box.clientHeight)) box.scrollTop = Math.max(0, on.offsetTop - box.clientHeight / 3);
+}
+function setRail(open) {
+  RAILOPEN = !!open;
+  document.querySelector(".layout").classList.toggle("railopen", RAILOPEN);
+  const b = $("#railbtn"); if (b) { b.setAttribute("aria-expanded", String(RAILOPEN)); b.textContent = RAILOPEN ? "hide outline" : "outline"; }
+}
+
+// ---- search, inside the Reader (2026-09-17, ledger T-0158) --------------------------------------------------
+// The same route the top bar's box calls (GET /api/search). Nothing is stored: the words and the last answer live in
+// FIND for as long as the page does, so a re-render keeps what you found instead of emptying the box.
+const findHref = r => /\.canvas$/i.test(r.path) ? `/forge?path=${encodeURIComponent(r.path)}`
+                    : `/reader?path=${encodeURIComponent(r.path)}` + (r.line > 1 ? `&line=${r.line}` : "");
+function findHTML() {
+  if (FIND.busy) return `<p class="meta">looking…</p>`;
+  const j = FIND.j;
+  if (!j) return "";
+  if (j.error) return `<p class="meta">${esc(j.error)}</p>`;
+  if (!j.items.length) return `<p class="meta">nothing in the live files matches “${esc(j.q)}”</p>`;
+  return `<p class="meta">${j.items.length}${j.capped ? ` of ${j.count}` : ""} hit${j.items.length === 1 ? "" : "s"} · names first, then text</p>`
+    + j.items.map(r => `<a href="${findHref(r)}"><span class="p">${esc(r.path)}</span><span class="w">${esc(r.why)}${r.line > 1 ? ` · line ${r.line}` : ""}${r.matches > 1 ? ` · ${r.matches}` : ""}</span><span class="s">${esc(r.snippet || "")}</span></a>`).join("");
+}
+function wireFind() {
+  const f = $("#findform"); if (!f) return;
+  f.addEventListener("submit", async e => {
+    e.preventDefault();
+    const q = f.q.value.trim();
+    FIND.q = q;
+    if (q.length < 2) { FIND.j = { q, items: [], error: "type at least two characters" }; return paintFind(); }
+    FIND.busy = true; paintFind();
+    try { FIND.j = await (await fetch(`/api/search?q=${encodeURIComponent(q)}`)).json(); }
+    catch (err) { FIND.j = { q, items: [], error: "search failed: " + err.message }; }
+    FIND.busy = false; paintFind();
+  });
+}
+function paintFind() { const h = $("#findhits"); if (h) h.innerHTML = findHTML(); }
+
+// ---- where a link landed you (2026-09-17, ledger T-0155 + T-0158) ---------------------------------------------
+// A ledger's "-> file.md#slug" and a search hit's line both arrive as a PLACE, not a file, so the page says which place:
+// the heading keeps an underline while it is the one you were sent to, and the matching line lights up and fades.
+// Returns what to scroll to: the line when one was named and found, the heading otherwise.
+let landedTimer = 0;
+const secEl = sl => sl ? $(`#doc section.s[data-slug="${CSS.escape(sl)}"]`) : null;
+const headEl = sl => { const s = secEl(sl); return s ? (s.querySelector(":scope > .hd") || s) : null; };
+function markLanded(sl, line) {
+  for (const el of document.querySelectorAll("#doc .landedsec")) el.classList.remove("landedsec");
+  for (const el of document.querySelectorAll("#doc .landed")) el.classList.remove("landed", "fading");
+  const sec = secEl(sl); if (!sec) return null;
+  const hd = sec.querySelector(":scope > .hd"); if (hd) hd.classList.add("landedsec");
+  let target = hd || sec;
+  if (line) {
+    const exact = sec.querySelector(`li[data-line="${line - 1}"]`);
+    const want = (LINES[line - 1] || "").replace(/^[\s>*+\-]*(\[.\]\s*)?/, "").trim().slice(0, 44).toLowerCase();
+    if (exact) target = exact;
+    else if (want.length > 3) {
+      const blocks = [...sec.querySelectorAll("li, p, td, h1, h2, h3, h4, h5, h6, pre, code")];
+      const hit = blocks.find(b => (b.textContent || "").toLowerCase().includes(want));
+      if (hit) target = hit;
+    }
+  }
+  if (target === sec) return sec;
+  target.classList.add("landed");
+  clearTimeout(landedTimer);
+  landedTimer = setTimeout(() => { target.classList.add("fading"); setTimeout(() => target.classList.remove("landed", "fading"), 1400); }, 2600);
+  return target;
+}
+
+// ---- the one switch --------------------------------------------------------------------------------------------
+// The page is redrawn with the layer on or off, and the place is kept: the first section of the page still on screen
+// stays where it was on screen, so the text you were reading does not move out from under you.
+function setLayer(on) {
+  const main = $("#main"), mt = main.getBoundingClientRect().top;
+  let anchor = "", off = 0;
+  for (const el of document.querySelectorAll("#doc section.s")) {
+    const r = el.getBoundingClientRect(); if (r.bottom <= mt) continue;
+    const s = SECTIONS.find(x => x.slug === el.dataset.slug); if (!s || s.side === "history") continue;
+    anchor = s.slug; off = r.top - mt; break;
+  }
+  LAYER = !!on; saveLayer(LAYER); EDITING = "";
+  render(true);
+  const el = secEl(anchor);
+  if (el) main.scrollTop += el.getBoundingClientRect().top - mt - off;
+}
+
+// ---- asking about one section: the same form, fields and write as before, opened from the margin ---------------
+function closeAsk() {
+  const b = $("#doc .askbox"); if (!b) return;
+  const s = b.closest("section.s"); if (s) s.classList.remove("asking");
+  b.remove();
+}
+function openAsk(sl) {
+  const had = $("#doc .askbox");
+  if (had) { const was = had.dataset.for; closeAsk(); if (was === sl) return; }
+  const sec = secEl(sl); if (!sec) return;
+  const box = document.createElement("div"); box.className = "askbox"; box.dataset.for = sl;
+  box.innerHTML = `<form data-ask="${esc(sl)}">
+      <select name="project">${projectOptions()}</select>
+      <select name="from"><option value="${BV.owner}">you ask</option><option value="@claude">Claude asks</option></select>
+      <select name="to"><option value="@claude">Claude</option><option value="${BV.owner}">you</option></select>
+      <input name="text" placeholder="the question, about this section…" required>
+      <button class="btn primary" type="submit">Ask</button><button class="btn" type="button" data-askclose>cancel</button>
+    </form>
+    <p class="meta">It lands on that ledger carrying <code>${esc(PATH)}#${esc(sl)}</code>, so its link opens right back here.</p>`;
+  const hd = sec.querySelector(":scope > .hd");
+  if (hd) hd.after(box); else sec.querySelector(":scope > .mctl").after(box);
+  sec.classList.add("asking");
+  box.querySelector("input[name=text]").focus();
+}
+
+// ---- events --------------------------------------------------------------------------------------------------
+document.addEventListener("click", async e => {
+  if (e.target.closest("#layersw")) { setLayer(!LAYER); return; }
+  if (e.target.closest("#railbtn")) { setRail(!RAILOPEN); return; }
+
+  const go = e.target.closest("[data-go]");
+  if (go) { openSection(go.dataset.go, true); if (narrow()) setRail(false); return; }
+  const wg = e.target.closest("[data-waitgo]");
+  if (wg) {
+    if (narrow()) setRail(true);
+    const at = $(`#railfoot [data-at="${CSS.escape(wg.dataset.waitgo)}"]`), foot = $("#railfoot");
+    if (at && foot) { foot.scrollTop = Math.max(0, at.offsetTop - 6); at.classList.add("landed"); setTimeout(() => at.classList.remove("landed"), 2600); }
+    return;
+  }
+  // a wikilink inside the text (2026-09-09): a document opens in the drawer (viewer-common takes it first, 0.53.0); a
+  // drawing is left to this handler and opens in the Forge; a bare name is resolved first
+  const wl = e.target.closest("a.wikilink");
+  if (wl) {
+    e.preventDefault();
+    let t = (wl.dataset.wikilink || "").split("#")[0].trim(); if (!t) return;
+    if (!t.includes("/")) { try { const r = await fetch(`/api/resolve?name=${encodeURIComponent(t)}`); const j = await r.json(); if (j.path) t = j.path; } catch (err) {} }
+    if (/\.canvas$/i.test(t)) location.href = BV.forgeHref(t);
+    else if (BV.isDoc(t) || !/\.[a-z0-9]+$/i.test(t)) location.href = BV.readerHref(t.endsWith(".md") ? t : t + ".md");
+    return;
+  }
+
+  const ctl = e.target.closest(".ctl button");
+  if (ctl) {
+    e.preventDefault();
+    const li = ctl.closest("li"), i = Number(li.dataset.line);
+    const p = pieces(LINES[i]) || { text: "" };
+    const what = clip(p.text.replace(/^~~|~~.*$/g, ""), 60);
+    if (ctl.dataset.act === "strike") {
+      const back = isStruck(i);
+      if (!strike(i)) { setStatus("that line is not a list item any more; reload"); return; }
+      await save(`Reader: ${back ? "unstruck" : "struck"} ${what}`);
+    } else {
+      const dir = ctl.dataset.act === "up" ? -1 : 1;
+      if (!li._mv || !li._mv.move(i, dir)) { setStatus(`nothing to swap with: that item is at the ${dir < 0 ? "top" : "bottom"} of its list`); return; }
+      await save(`Reader: moved ${dir < 0 ? "up" : "down"} ${what}`);
+    }
+    return;
+  }
+
+  const ed = e.target.closest("[data-edit]");
+  if (ed) { closeAsk(); EDITING = EDITING === ed.dataset.edit ? "" : ed.dataset.edit; OPEN = ed.dataset.edit; render(true); return; }
+
+  const sv = e.target.closest("[data-savesec]");
+  if (sv) {
+    const s = SECTIONS.find(x => x.slug === sv.dataset.savesec); if (!s) return;
+    const ta = sv.closest("section.s").querySelector("textarea.raw");
+    // the parser has already taken back the leading newline the textarea was written with, so nothing is stripped here
+    const fresh = ta.value.replace(/\r\n/g, "\n").split("\n");
+    LINES.splice(s.start, s.end - s.start, ...fresh);
+    EDITING = "";
+    await save(`Reader: edited the section "${clip(s.title, 60)}"`);
+    return;
+  }
+
+  const ak = e.target.closest("[data-askopen]");
+  if (ak) { openAsk(ak.dataset.askopen); return; }
+  if (e.target.closest("[data-askclose]")) { closeAsk(); return; }
+
+  // a section ask is answered where it is shown -- the same components and the same write path as /projects
+  const cb = e.target.closest("input[type=checkbox][data-id]");
+  if (cb) { e.preventDefault(); await ledgerWrite(cb.dataset.project, { action: cb.checked ? "done" : "reopen", id: cb.dataset.id }); return; }
+  const ro = e.target.closest("[data-reopen]");
+  if (ro) { await ledgerWrite(ro.dataset.project, { action: "reopen", id: ro.dataset.reopen }); return; }
+  const pc = e.target.closest(".badge.person");
+  if (pc) { location.href = `/people?open=${encodeURIComponent(pc.dataset.person)}`; return; }
+});
+
+document.addEventListener("keydown", e => { if (BV.typing(e)) return; if (e.key === "Escape") closeAsk(); });
+
+async function ledgerWrite(project, payload) {
+  const res = await ledgerAct(project, payload);
+  setStatus(res.message);
+  if (res.ok) await load(res.message);
+  return res.ok;
+}
+
+document.addEventListener("submit", async e => {
+  const q = e.target.closest("form[data-q]");
+  if (q) { e.preventDefault(); await ledgerWrite(q.dataset.project, { action: "answer", id: q.dataset.q, text: q.querySelector("textarea").value, by: BV.owner }); return; }
+  const f = e.target.closest("form[data-ask]"); if (!f) return;
+  e.preventDefault();
+  const sl = f.dataset.ask, fd = new FormData(f), btn = f.querySelector("button[type=submit]");
+  btn.disabled = true; setStatus("asking…");
+  const res = await ledgerAct(fd.get("project"), { action: "ask", text: fd.get("text"), from: fd.get("from"), to: fd.get("to"),
+                                                   links: [`${PATH}#${sl}`] });
+  btn.disabled = false;
+  if (!res.ok) { setStatus(res.message); return; }
+  f.reset();
+  await load(res.message);
+});
+
+window.addEventListener("hashchange", () => { const h = decodeURIComponent(location.hash.replace(/^#/, "")); if (h) openSection(h, true); });
+
+let settling = 0, userMoved = false;   // while a jump is settling the spy leaves the rail alone
+const SCROLL_KEYS = new Set([" ", "PageUp", "PageDown", "Home", "End", "ArrowUp", "ArrowDown"]);
+document.addEventListener("wheel", () => { userMoved = true; }, { passive: true });
+document.addEventListener("touchmove", () => { userMoved = true; }, { passive: true });
+document.addEventListener("keydown", e => { if (BV.typing(e)) return; if (SCROLL_KEYS.has(e.key)) userMoved = true; }, { passive: true });
+// The jump is HELD until the layout stops moving, because the first frame is not the final one: measured 2026-09-09,
+// the page laid out at a 103px main and settled at 664px, so a single scroll landed a screen and a half past the
+// section it was asked for. A ResizeObserver re-asserts it on every reflow for up to five seconds, and the whole thing
+// gives up the moment Zak scrolls himself. `lead` is how far below the top the place sits: a heading at the top, a line
+// a third of the way down so the text before it is in view.
+function jumpTo(el, lead) {
+  if (!el) return;
+  const main = $("#main");
+  userMoved = false;
+  settling = Date.now() + 400;
+  const at = () => { const ld = lead == null ? 8 : lead; main.scrollTop += el.getBoundingClientRect().top - main.getBoundingClientRect().top - ld; settling = Date.now() + 300; };
+  requestAnimationFrame(at);
+  const until = Date.now() + 5000;
+  const stop = () => { try { ro.disconnect(); } catch (e) {} };
+  const ro = new ResizeObserver(() => { if (userMoved || !el.isConnected || Date.now() > until) return stop(); at(); });
+  ro.observe(main); ro.observe(document.documentElement);
+  setTimeout(stop, 5200);
+  for (const ms of [120, 400, 900, 1800]) setTimeout(() => { if (!userMoved && el.isConnected) at(); }, ms);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!userMoved && el.isConnected) at(); });
+}
+function openSection(sl, scroll) {
+  const s = SECTIONS.find(x => x.slug === sl); if (!s) return;
+  if (s.side === "history" && !LAYER) { LAYER = true; render(true); }   // an anchor into a dated block puts the layer on for this view
+  OPEN = sl; markRail();
+  if (scroll) { markLanded(sl, 0); jumpTo(headEl(sl)); }
+  history.replaceState(null, "", `/reader?path=${encodeURIComponent(PATH)}#${sl}`);
+  // a section move is a place in the app's own trail, so the back button steps back through the sections you opened
+  // rather than out of the document (2026-09-10, T-0061). The URL is replaced above, so nothing else would record it.
+  BV.back.push(`${PATH.split("/").pop()} · ${s.title}`);
+}
+
+// ---- the scroll-spy: which heading the eye is on ------------------------------------------------------------
+// An IntersectionObserver watches every heading against a band across the top quarter of the page; whenever one crosses
+// it, the current heading is the last one whose top has passed the band's lower edge. At the very bottom of a document
+// the last heading in view wins, since a short closing section never reaches the band.
+let SPY = null, tick = 0;
+function spyPick() {
+  if (Date.now() < settling) return;
+  const main = $("#main"), hs = [...document.querySelectorAll("#doc .hd")]; if (!hs.length) return;
+  const r = main.getBoundingClientRect(), line = r.top + main.clientHeight * 0.25;
+  let cur = hs[0];
+  if (main.scrollTop > 0 && main.scrollTop + main.clientHeight >= main.scrollHeight - 4) { for (const h of hs) if (h.getBoundingClientRect().top < r.bottom - 40) cur = h; }
+  else for (const h of hs) { if (h.getBoundingClientRect().top <= line) cur = h; else break; }
+  const sec = cur.closest("section.s"), sl = sec && sec.dataset.slug;
+  if (sl && sl !== OPEN) { OPEN = sl; markRail(); }
+}
+function spy() {
+  if (SPY) SPY.disconnect();
+  if (!window.IntersectionObserver) return;
+  SPY = new IntersectionObserver(() => spyPick(), { root: $("#main"), rootMargin: "0px 0px -75% 0px", threshold: [0, 1] });
+  for (const h of document.querySelectorAll("#doc .hd")) SPY.observe(h);
+}
+$("#main").addEventListener("scroll", () => {
+  if (tick) return;
+  tick = requestAnimationFrame(() => { tick = 0; const m = $("#main"); if (m.scrollTop > 0 && m.scrollTop + m.clientHeight >= m.scrollHeight - 4) spyPick(); });
+}, { passive: true });
+
+// ---- load ----------------------------------------------------------------------------------------------------
+// A file that is not a document (code, json, csv) is shown whole in one read-only block: headings and the list controls
+// are for markdown. It is reached from the Files page (0.52.0, T-0259); the back button returns to the table.
+const CODE_VIEW = /\.(py|js|html|css|csv|json)$/i;
+function paintCode(j) {
+  const lines = String(j.text || "").replace(/\r\n/g, "\n").split("\n");
+  $("#crumb").textContent = `${PATH} · read-only`;
+  $("#rail").innerHTML = `<div class="codeinfo"><p><code>${esc(PATH)}</code></p>${j.mtime ? `<p>changed ${esc(j.mtime.replace("T", " ").slice(0, 16))}</p>` : ""}<p><a href="/files">every file</a></p></div>`;
+  $("#main").innerHTML = `<pre class="codeview">${esc(lines.join("\n"))}</pre>`;
+}
+
+let LANDING = false;   // the first load was sent to a place (a #slug, a line, or the build doc's section 8)
+async function load(keepStatus) {
+  const [rf, ra, rb] = await Promise.all([
+    fetch(`/api/file?path=${encodeURIComponent(PATH)}`),
+    fetch(`/api/docasks?path=${encodeURIComponent(PATH)}`),
+    BADGES ? Promise.resolve(null) : fetch("/api/badges")
+  ]);
+  const j = await rf.json();
+  if (j.error) { $("#main").innerHTML = `<div class="note">Could not open <code>${esc(PATH)}</code>: ${esc(j.error)}</div>`; $("#crumb").textContent = PATH; return; }
+  if (CODE_VIEW.test(PATH)) return paintCode(j);   // 0.52.0: code, data and csv opened from the Files page, read-only
+  if (rb) BADGES = rb.ok ? await rb.json() : null;
+  RAW = j.text; LINES = RAW.replace(/\r\n/g, "\n").split("\n");
+  TODAY = j.today || new Date().toISOString().slice(0, 10);
+  EDITABLE = !!j.editable; EDIT_REASON = j.editReason || ""; MTIME = j.mtime || "";
+  SECTIONS = markSides(mapSections(LINES));
+  for (const s of SECTIONS) s.chunks = chunkSection(s);
+  LAYER_N = countLayer();
+
+  ASKS = new Map(); LOOSE = [];
+  const asks = ra.ok ? await ra.json() : { items: [] };
+  ALLASKS = asks.items || [];
+  for (const it of ALLASKS) {
+    const key = it.fragment && SECTIONS.some(s => s.slug === it.fragment) ? it.fragment : "";
+    if (!key) { LOOSE.push(it); continue; }
+    if (!ASKS.has(key)) ASKS.set(key, []);
+    ASKS.get(key).push(it);
+  }
+
+  const first = !document.body.dataset.jumped;
+  if (!OPEN) {
+    const want = decodeURIComponent(location.hash.replace(/^#/, ""));
+    // a search hit names a LINE: the section that owns it is the place (T-0158)
+    const byLine = WANT_LINE ? SECTIONS.find(x => x.head < WANT_LINE && WANT_LINE - 1 < x.end) || SECTIONS.find(x => x.start <= WANT_LINE - 1 && WANT_LINE - 1 < x.end) : null;
+    const byHash = want ? SECTIONS.find(s => s.slug === want) : null;
+    // no file named and no section named: the build doc opens at section 8, the list Zak strikes and reorders
+    const fallback = NAMED ? null : SECTIONS.find(s => /^8[.)\s]/.test(s.title));
+    const place = byLine || byHash || fallback;
+    LANDING = !!place;
+    OPEN = (place || SECTIONS.find(s => s.head >= 0 && s.side !== "history") || SECTIONS[0] || { slug: "" }).slug;
+  }
+  // a link into the agent layer turns it on for this view: a history section, or a line in a note or the frontmatter
+  if (first && LANDING) {
+    const s = SECTIONS.find(x => x.slug === OPEN);
+    if ((s && s.side === "history") || (WANT_LINE && lineInLayer(WANT_LINE - 1))) LAYER = true;
+  }
+  // 0.55.1 (T-0284): no counts in the crumb, the rail or the agent-layer button. A heading count or a line count changes
+  // nothing he does (Correction #95's family; Zak, 9/25: "6 lines, or 5 lines"). What waits on him is said, not counted.
+  $("#crumb").textContent = `${PATH}${ALLASKS.length ? " · something here waits on you" : ""}`;
+  if (keepStatus) STATUS = keepStatus;
+  render(true);
+  if (first) {
+    document.body.dataset.jumped = "1";
+    if (LANDING) {
+      const t = markLanded(OPEN, WANT_LINE);
+      jumpTo(t, t && !t.classList.contains("hd") && t.tagName !== "SECTION" ? Math.round($("#main").clientHeight / 3) : 8);
+    }
+  }
+}
+
+// the rail is dragged wider or narrower and stays that way in this browser (2026-09-09, ledger T-0060)
+BV.resizable($("#rail"), "reader.rail", { min: 180, max: 640,
+  title: "drag to make the outline rail wider or narrower · double-click to put it back",
+  apply: w => document.querySelector(".layout").style.setProperty("--railw", w ? w + "px" : "") });
+
+BV.ledger.prime();   // a code in a Where it stands line reads as the item it names (T-0284)
+load().then(() => BV.glossary.mount("reader"))
+      .catch(e => { $("#main").innerHTML = `<div class="note">Could not open the document: ${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

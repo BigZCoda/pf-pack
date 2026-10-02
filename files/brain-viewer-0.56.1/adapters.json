@@ -1,0 +1,79 @@
+{
+ "_schema": "adapters/1",
+ "_what": "The adapter registry: one entry per boundary the brain calls across. An `**Adapter · <name>**` head on ANY canvas binds to the entry whose `name` matches, case-insensitive, and double-clicking it opens /forge?adapter=<name>. Read by skills/brain-viewer/adapter.py (GET /api/adapter, GET /api/adapters) and by the Ferryman pull when it rewrites a twin.",
+ "_fields": {
+  "name": "the word on the canvas head, lowercase",
+  "label": "how the sheet titles it",
+  "app": "the system on the other side, as the sheet's app column is headed",
+  "base": "the base URL the callers actually use; its path is the prefix every port is spelled against",
+  "catalog": "the machine-readable inventory the ports are read from, brain-relative, or null when the system does not describe itself",
+  "twin": "where the markdown twin of the sheet is written",
+  "manualGroups": "port groups written BY HAND and merged with the catalog's (Zak, 2026-09-18, viewer Q-0024: 'the port groups can also be manually added as well'). Each is {resource, ports:[{method, path, purpose, auth, callers}]}; every port it carries is marked source: manual and the sheet draws it with a dotted edge, so a hand-written claim never passes for the app's own word."
+ },
+ "_note": "Operational detail the file does not carry (which folders to scan for callers, the brain-side mirror per resource, which log lines count as this adapter's) lives beside the defaults in adapter.py. A name here that adapter.py has no defaults for still works: the host and the prefix are read off `base`, the scan defaults to skills/.",
+ "adapters": [
+  {
+   "name": "ferryman",
+   "label": "Ferryman",
+   "app": "PF App",
+   "appHref": "https://app.prospectforge.us",
+   "base": "https://app.prospectforge.us/api/v1",
+   "catalog": "pf-app-holon/pf-app-api-catalog.json",
+   "twin": "pf-app-holon/pf-app-adapter-ferryman.md",
+   "runner": "skills/ferryman/pull.py",
+   "refresh": "python skills/ferryman/pull.py --pull",
+   "manualGroups": []
+  },
+  {
+   "name": "onboarding",
+   "label": "Onboarding pull",
+   "app": "Onboarding App",
+   "appHref": "https://onboarding.prospectforge.us",
+   "base": "https://onboarding.prospectforge.us/api/external",
+   "catalog": null,
+   "twin": "onboarding-app-holon/onboarding-adapter-onboarding.md",
+   "runner": "skills/onboarding-api-pull/pull.py",
+   "refresh": "python skills/onboarding-api-pull/pull.py --full",
+   "_catalogNote": "The onboarding app publishes no self-description: there is no GET on this base that lists its own routes, so `catalog` is null and the ports below are the five calls skills/onboarding-api-pull/pull.py actually makes, written by hand. Ledger T-0190 is the item that replaces them with the app's own answer, or confirms there will never be one.",
+   "manualGroups": [
+    {
+     "resource": "candidates",
+     "ports": [
+      {
+       "method": "GET",
+       "path": "/candidates?format=summary",
+       "purpose": "Every candidate in one line each. The diff baseline the SessionStart holon poll compares against; refreshed as a side effect of any pull.",
+       "callers": [{"skill": "onboarding-api-pull", "file": "skills/onboarding-api-pull/pull.py", "line": 57}]
+      },
+      {
+       "method": "GET",
+       "path": "/candidates?format=full",
+       "purpose": "Every candidate with every field. FULL_REFRESH reads this and rebuilds the mirror from it.",
+       "callers": [{"skill": "onboarding-api-pull", "file": "skills/onboarding-api-pull/pull.py", "line": 93}]
+      },
+      {
+       "method": "GET",
+       "path": "/candidates?id=:id",
+       "purpose": "One candidate by uuid. SINGLE_PULL, the cheap call, used for interview prep and for a candidate the poll has just surfaced.",
+       "callers": [{"skill": "onboarding-api-pull", "file": "skills/onboarding-api-pull/pull.py", "line": 66}]
+      },
+      {
+       "method": "GET",
+       "path": "/candidates/:id/download?version=mentor",
+       "purpose": "The admin .docx of one candidate's profile. A JSON content type back means the app has not generated it.",
+       "callers": [{"skill": "onboarding-api-pull", "file": "skills/onboarding-api-pull/pull.py", "line": 81},
+                   {"skill": "onboarding-api-pull", "file": "skills/onboarding-api-pull/pull.py", "line": 111}]
+      },
+      {
+       "method": "GET",
+       "path": "/candidates/:id/download?version=mentee",
+       "purpose": "The mentee .docx of the same profile, the version a candidate may see.",
+       "callers": [{"skill": "onboarding-api-pull", "file": "skills/onboarding-api-pull/pull.py", "line": 81},
+                   {"skill": "onboarding-api-pull", "file": "skills/onboarding-api-pull/pull.py", "line": 111}]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The call</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from the look's tokens (looks/default.css through viewer-tokens.css) */
+  main { padding: 28px 34px 120px; }
+  .sheet { max-width: 1180px; margin: 0 auto; }
+  .ch { display: flex; gap: 18px 28px; align-items: flex-end; flex-wrap: wrap; margin: 0 0 26px; padding: 0 0 22px; border-bottom: 1px solid var(--rule); }
+  .ch .l { flex: 1 1 360px; min-width: 0; }
+  .ch h2 { font-family: var(--font-title); font-weight: 500; color: var(--accent); font-size: 38px; line-height: 1.05; margin: 0; }
+  .ch .when { font-family: var(--font-mono); font-size: 14px; color: var(--muted); margin: 8px 0 0; }
+  .ch .when .d { color: var(--ink); }
+  .ch .when .d.live { color: var(--accent); font-weight: 600; }
+  .ch .r { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .press { display: inline-block; text-decoration: none; font-family: var(--font-ui); font-size: 12.5px; letter-spacing: .12em;
+           text-transform: uppercase; padding: 11px 18px; border-radius: var(--radius); border: 1px solid var(--accent);
+           color: var(--accent); background: transparent; cursor: pointer; }
+  .press.go { background: var(--accent); color: var(--bg); }
+  .press:hover { background: var(--hover); color: var(--accent-deep); }
+  .press.go:hover { background: var(--accent-deep); color: var(--bg); }
+  .press.quiet { border-color: var(--rule); color: var(--ink-soft); }
+  .press[disabled] { opacity: .6; cursor: default; }
+  h3.sec { font-family: var(--font-ui); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+           font-weight: 600; margin: 34px 0 12px; }
+  /* (b) the people: one card per person, the whole card a link */
+  .people { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  a.pc { display: block; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--rule-soft);
+         border-radius: var(--radius-lg); padding: 14px 16px; }
+  a.pc:hover { border-color: var(--accent); }
+  .pc .n { font-family: var(--font-title); font-size: 20px; color: var(--ink); margin: 0 0 4px; }
+  .pc .role { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 8px; line-height: 1.4; }
+  .pc .st { font-size: 13px; color: var(--ink); margin: 0; line-height: 1.45; }
+  .pc .st .dt { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-right: 6px; }
+  .pc.nocard { background: transparent; border-style: dashed; }
+  .pc.nocard .role { color: var(--muted); }
+  /* (c) due */
+  ol.due { margin: 0; padding-left: 26px; font-size: 16px; line-height: 1.55; }
+  ol.due > li { margin: 0 0 12px; }
+  ol.due ul { margin: 6px 0 0; padding-left: 20px; font-size: 14.5px; color: var(--ink-soft); }
+  .duebox article.md > ol { font-size: 16px; line-height: 1.55; }
+  .duebox article.md > ol > li { margin-bottom: 12px; }
+  .duebox article.md ul { font-size: 14.5px; color: var(--ink-soft); }
+  /* (d) the questions: a box per line, ticked ones sink */
+  .qgroup { margin: 0 0 24px; }
+  .qgroup h4 { font-family: var(--font-title); font-weight: 500; font-size: 22px; color: var(--ink); margin: 0 0 8px; }
+  .qgroup ul { list-style: none; margin: 0; padding: 0; }
+  .qgroup li { display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; border-top: 1px solid var(--rule-soft); font-size: 16px; line-height: 1.5; }
+  .qgroup li:first-child { border-top: 0; }
+  .qgroup li input { width: 19px; height: 19px; margin: 3px 0 0; flex: none; accent-color: var(--accent); cursor: pointer; }
+  .qgroup li label { cursor: pointer; min-width: 0; }
+  /* a must-ask question: the prep marks it `_must_` at the end of the line; the page shows a small tag, never the underscores (Zak, 9/25) */
+  .qgroup li .must { display: inline-block; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+                     color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; padding: 0 6px; margin-left: 8px; vertical-align: 2px; }
+  .qgroup li.done label { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--rule); }
+  .qgroup li .more { display: block; font-size: 14px; color: var(--ink-soft); margin-top: 4px; }
+  /* (e) points per person */
+  .points { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px 30px; }
+  .points .pp h4 { font-family: var(--font-title); font-weight: 500; font-size: 20px; margin: 0 0 6px; color: var(--ink); }
+  .points .pp ul { margin: 0 0 14px; padding-left: 20px; font-size: 15px; line-height: 1.5; }
+  .points .pp li { margin: 0 0 6px; }
+  /* (f) notes */
+  textarea.notes { width: 100%; min-height: 220px; box-sizing: border-box; font: inherit; font-size: 16px; line-height: 1.55;
+                   padding: 14px 16px; border: 1px solid var(--rule); border-radius: var(--radius-lg); background: var(--surface); color: var(--ink); resize: vertical; }
+  textarea.notes:focus { outline: none; border-color: var(--accent); }
+  .saved { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; min-height: 1.2em; }
+  .saved.err { color: var(--danger); }
+  /* a ledger id: the item's words, the id beside them */
+  a.lref { text-decoration: none; border-bottom: 1px solid var(--rule); color: inherit; }
+  a.lref:hover { border-bottom-color: var(--accent); color: var(--accent-deep); }
+  a.lref .rid { font-family: var(--font-mono); font-size: .78em; color: var(--muted); }
+  a.lref .rw { font-style: italic; }
+  span.lref { font-family: var(--font-mono); font-size: .85em; color: var(--muted); }
+  .rest article.md { font-size: 14.5px; }
+  .rest h4 { font-family: var(--font-title); font-weight: 500; font-size: 19px; margin: 22px 0 6px; color: var(--ink-soft); }
+  .lead { color: var(--muted); font-size: 14px; }
+  .empty { color: var(--muted); font-family: var(--font-display); font-size: 15px; }
+  .intro { color: var(--ink-soft); font-size: 13.5px; margin: 0 0 6px; }
+  @media (max-width: 760px) {
+    main { padding: 18px 16px 90px; }
+    .ch h2 { font-size: 30px; }
+    .people, .points { grid-template-columns: 1fr; }
+    .qgroup li { font-size: 15.5px; }
+    .press { padding: 12px 14px; }
+  }
+</style>
+</head>
+<body data-noquest>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>The call</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="call"></nav>
+</header>
+<main id="main"><div class="sheet" id="sheet"><p class="lead">Reading the call…</p></div></main>
+<script src="/static/viewer-common.js"></script>
+<script>
+// ---- the call screen (0.47.0, 2026-09-23; ledger T-0168, T-0202 part 4, T-0206) ----
+// Zak, 9/23: "The call prep layout also still looks like shit and its really confusing, we need to have a better
+// format, I don't want to have all of the drop down menus for questions and we need to make it more organized,
+// theres just too many things to click on." One flat page: the call and its two presses, a card per person, what is
+// due, the questions as boxes, the points per person, the notes box. No folds. One read (GET /api/call); two writes,
+// both into the prep file itself (POST /api/call/tick, POST /api/call/notes), so the Reader shows the same file.
+const { esc } = BV;
+const $ = s => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+let DATA = null, NOTES_SENT = null;
+
+const clockOf = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase().replace(" ", ""); };
+function dayOf(iso) { const d = new Date(String(iso).slice(0, 10) + "T12:00:00"); return isNaN(d) ? "" : d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }); }
+function span(m) {
+  if (m < 60) return m + " min";
+  const h = Math.floor(m / 60), rm = m % 60;
+  if (h < 24) return h + (h === 1 ? " hour" : " hours") + (rm ? " " + rm + " min" : "");
+  const d = Math.floor(h / 24), rh = h % 24;
+  return d + (d === 1 ? " day" : " days") + (rh ? " " + rh + (rh === 1 ? " hour" : " hours") : "");
+}
+function distance(s0, e0) {
+  const now = Date.now(), s = new Date(s0).getTime(), e = new Date(e0 || s0).getTime();
+  if (!isNaN(s) && now < s) return { text: "in " + span(Math.max(1, Math.round((s - now) / 60000))), live: false };
+  if (!isNaN(e) && now <= e) return { text: "now", live: true };
+  if (isNaN(s)) return { text: "", live: false };
+  return { text: "ended " + span(Math.max(1, Math.round((now - (isNaN(e) ? s : e)) / 60000))) + " ago", live: false };
+}
+
+// ---- ledger ids: every T-#### / Q-#### reads as the item's words, linked to it, with the id beside them ----
+const REF = /\b(?:(pf-build|asprey|brain-central|brain-viewer|viewer|pf-app|onboarding)\s+)?([TQ]-\d{4})\b/g;
+function resolveRef(pre, id) {
+  const refs = DATA.refs || {}, al = DATA.aliases || {};
+  if (pre) return refs[(al[pre] || pre) + "/" + id] || null;
+  if (refs[DATA.defaultProject + "/" + id]) return refs[DATA.defaultProject + "/" + id];
+  const hits = Object.values(refs).filter(r => r.id === id);
+  return hits.length === 1 ? hits[0] : null;
+}
+function linkRefs(root) {
+  const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: n => (n.parentElement && n.parentElement.closest("a, code, textarea, script, style")) ? NodeFilter.FILTER_REJECT
+      : (REF.test(n.nodeValue) ? (REF.lastIndex = 0, NodeFilter.FILTER_ACCEPT) : NodeFilter.FILTER_REJECT) });
+  const nodes = []; while (walk.nextNode()) nodes.push(walk.currentNode);
+  for (const n of nodes) {
+    const frag = document.createDocumentFragment(), s = n.nodeValue;
+    let last = 0; REF.lastIndex = 0;
+    for (let m; (m = REF.exec(s));) {
+      frag.appendChild(document.createTextNode(s.slice(last, m.index)));
+      const it = resolveRef(m[1], m[2]);
+      if (it) {
+        const a = document.createElement("a");
+        a.className = "lref"; a.href = it.href;
+        if (n.parentElement.closest("h1, h2, h3, h4, h5, h6")) {
+          // inside a heading the id stays short: the item's words are its hover and appear nowhere else (0.47.1)
+          a.title = it.words + (m[1] ? " (" + m[1] + " ledger)" : ""); a.innerHTML = `<span class="rid">${esc(it.id)}</span>`;
+        } else {
+          a.title = (m[1] ? m[1] + " " : "") + it.id + " on " + it.project;
+          a.innerHTML = `<span class="rid">${esc(it.id)}</span> · <span class="rw">${esc(it.words)}</span>`;
+        }
+        frag.appendChild(a);
+      } else {
+        const sp = document.createElement("span");
+        sp.className = "lref"; sp.title = "not found on any ledger this viewer reads"; sp.textContent = m[0];
+        frag.appendChild(sp);
+      }
+      last = m.index + m[0].length;
+    }
+    frag.appendChild(document.createTextNode(s.slice(last)));
+    n.replaceWith(frag);
+  }
+}
+
+const inl = s => BV.inline(String(s || ""));
+// the card's role line up to its first "(" or " — ", so the brain's own asides stay off the card; the whole line is the hover (0.47.1)
+const roleShort = s => { const t = plain(s); const cut = [t.indexOf("("), t.indexOf(" — ")].filter(i => i > 0); return (cut.length ? t.slice(0, Math.min(...cut)) : t).trim().replace(/[.,;:]+$/, ""); };
+const plain = s => String(s || "").replace(/\*\*|__/g, "").replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (m, a, b) => b || a.split("/").pop().replace(/\.md$/, ""));
+
+function header(ev, prep) {
+  const title = (ev && ev.title) || (prep && prep.title) || "A call";
+  const when = ev ? distance(ev.start, ev.end) : { text: "" };
+  const at = ev ? dayOf(ev.start) + ", " + clockOf(ev.start) + (ev.end ? " to " + clockOf(ev.end) : "")
+               : (prep && prep.fm && prep.fm.call ? dayOf(prep.fm.call) : "");
+  const presses = [];
+  if (ev && ev.join) presses.push(`<a class="press go" href="${esc(ev.join)}" target="_blank" rel="noopener">join the call</a>`);
+  if (ev && ev.calendarLink) presses.push(`<a class="press quiet" href="${esc(ev.calendarLink)}" target="_blank" rel="noopener">in the calendar</a>`);
+  if (DATA.reader) presses.push(`<a class="press quiet" href="${esc(DATA.reader)}">the prep as a document</a>`);
+  presses.push(`<a class="press quiet" href="/">back to the board</a>`);
+  return `<div class="ch"><div class="l"><h2>${esc(title)}</h2>
+      <p class="when">${when.text ? `<span class="d${when.live ? " live" : ""}" id="dist">${esc(when.text)}</span> · ` : ""}${esc(at)}</p>
+      ${prep && ev && prep.title && prep.title !== ev.title ? `<p class="intro">${esc(prep.title)}</p>` : ""}</div>
+    <div class="r">${presses.join("")}</div></div>`;
+}
+
+function peopleHTML(people) {
+  const rows = (people || []).filter(p => !p.self);
+  if (!rows.length) return "";
+  return `<h3 class="sec">On the call</h3><div class="people">${rows.map(p => {
+    if (!p.slug) return `<div class="pc nocard"><p class="n">${esc(p.name)}</p><p class="role meta">no card</p></div>`;
+    const st = p.stands ? `<p class="st"><span class="dt">${esc(p.stands.date || "")}</span>${esc(plain(p.stands.text))}</p>`
+                        : p.status ? `<p class="st">${esc(plain(p.status))}</p>` : "";
+    return `<a class="pc" href="/people?open=${encodeURIComponent(p.slug)}"><p class="n">${esc(p.cardName || p.name)}</p>
+      ${p.role ? `<p class="role" title="${esc(plain(p.role))}">${esc(roleShort(p.role))}</p>` : ""}${st}</a>`;
+  }).join("")}</div>`;
+}
+
+function questionsHTML(groups) {
+  if (!groups || !groups.length) return "";
+  return `<h3 class="sec">Questions</h3>` + groups.map((g, gi) => {
+    const items = g.items.slice().sort((a, b) => (a.checked === b.checked ? a.line - b.line : a.checked ? 1 : -1));
+    return `<div class="qgroup" data-g="${gi}">${g.subject ? `<h4>${inl(g.subject)}</h4>` : ""}<ul>${items.map(it =>
+      `<li class="${it.checked ? "done" : ""}" data-line="${it.line}"><input type="checkbox" id="q${it.line}" ${it.checked ? "checked" : ""}>
+        <label for="q${it.line}">${inl(it.text.replace(/\s*_must_\s*/g, " ").trim())}${/_must_/.test(it.text) ? `<span class="must">must</span>` : ""}${it.more && it.more.length ? `<span class="more">${inl(it.more.map(s => s.trim()).join(" "))}</span>` : ""}</label></li>`).join("")}</ul></div>`;
+  }).join("");
+}
+
+function pointsHTML(points) {
+  if (!points || !points.length) return "";
+  return `<h3 class="sec">Points per person</h3><div class="points">${points.map(p => `<div class="pp">${p.name ? `<h4>${inl(p.name)}</h4>` : ""}
+    <ul>${p.items.map(t => `<li>${inl(String(t).split("\n").map(s => s.trim()).join(" "))}</li>`).join("")}</ul></div>`).join("")}</div>`;
+}
+
+function render() {
+  const ev = DATA.event, prep = DATA.prep;
+  $("#crumb").textContent = prep ? prep.path.split("/").pop() : (ev ? "no prep yet" : "");
+  document.title = ((ev && ev.title) || (prep && prep.title) || "The call") + " · the call";
+  let h = header(ev, prep) + peopleHTML(DATA.people);
+  if (!prep) {
+    h += `<h3 class="sec">The prep</h3>` + (DATA.canWrite
+      ? `<p class="empty">No prep is written for this call yet.</p><p><button class="press" id="write">no prep yet, write one</button></p><p class="saved" id="writemsg"></p>`
+      : `<p class="empty">No prep is written for this call, and nobody on it has a card to write one from.</p>`);
+    $("#sheet").innerHTML = h;
+    return;
+  }
+  if (prep.intro) h += `<div class="intro">${BV.md(prep.intro)}</div>`;
+  if (prep.due) h += `<h3 class="sec">${esc(prep.due.title)}</h3><div class="duebox">${BV.md(prep.due.md)}</div>`;
+  h += questionsHTML(prep.questions);
+  h += pointsHTML(prep.points);
+  h += `<h3 class="sec">Your notes</h3><textarea class="notes" id="notes" placeholder="notes for this call, saved into the prep when you click away">${esc(prep.notes ? prep.notes.text : "")}</textarea><p class="saved" id="savemsg"></p>`;
+  if (prep.sections && prep.sections.length)
+    h += `<h3 class="sec">The rest of the prep</h3><div class="rest">${prep.sections.map(s => `<h4>${inl(s.title.replace(/^\d+\.\s*/, ""))}</h4><article class="md">${BV.md(s.md)}</article>`).join("")}</div>`;
+  $("#sheet").innerHTML = h;
+  NOTES_SENT = prep.notes ? prep.notes.text : "";
+  linkRefs($("#sheet"));
+}
+
+async function post(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || (url + " answered " + r.status));
+  return j;
+}
+
+document.addEventListener("change", async e => {
+  const box = e.target.closest(".qgroup input[type=checkbox]"); if (!box) return;
+  const li = box.closest("li"), line = +li.dataset.line;
+  const g = DATA.prep.questions[+box.closest(".qgroup").dataset.g];
+  const it = g.items.find(x => x.line === line);
+  try {
+    await post("/api/call/tick", { path: DATA.prep.path, line, checked: box.checked, text: it.text });
+    it.checked = box.checked;
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+  } catch (err) {
+    box.checked = !box.checked;
+    alert(err.message);
+  }
+});
+
+document.addEventListener("focusout", async e => {
+  if (e.target.id !== "notes") return;
+  const text = e.target.value, msg = $("#savemsg");
+  if (text === NOTES_SENT) return;
+  try {
+    await post("/api/call/notes", { path: DATA.prep.path, text });
+    NOTES_SENT = text;
+    msg.className = "saved"; msg.textContent = "saved into the prep at " + clockOf(new Date().toISOString());
+  } catch (err) { msg.className = "saved err"; msg.textContent = "not saved: " + err.message; }
+});
+
+document.addEventListener("click", async e => {
+  const w = e.target.closest("#write"); if (!w) return;
+  w.disabled = true; w.textContent = "writing the prep";
+  try {
+    const j = await post("/api/prep", { event_start: DATA.event.start, purpose: DATA.event.title || "" });
+    location.href = "/call?prep=" + encodeURIComponent(j.path);
+  } catch (err) { w.disabled = false; w.textContent = "no prep yet, write one"; $("#writemsg").className = "saved err"; $("#writemsg").textContent = err.message; }
+});
+
+window.addEventListener("beforeunload", () => {
+  const n = $("#notes");
+  if (n && DATA && DATA.prep && n.value !== NOTES_SENT)
+    navigator.sendBeacon && navigator.sendBeacon("/api/call/notes", new Blob([JSON.stringify({ path: DATA.prep.path, text: n.value })], { type: "application/json" }));
+});
+
+setInterval(() => {
+  const d = $("#dist"); if (!d || !DATA || !DATA.event) return;
+  const x = distance(DATA.event.start, DATA.event.end); d.textContent = x.text; d.classList.toggle("live", x.live);
+}, 30000);
+
+async function load() {
+  const qs = params.get("prep") ? "prep=" + encodeURIComponent(params.get("prep"))
+           : params.get("start") ? "start=" + encodeURIComponent(params.get("start")) + (params.get("date") ? "&date=" + encodeURIComponent(params.get("date")) : "")
+           : "";
+  if (!qs) { $("#sheet").innerHTML = `<p class="empty">Open a call from the board's Next, or from a prep in the Reader.</p><p><a class="press quiet" href="/">back to the board</a></p>`; return; }
+  const r = await fetch("/api/call?" + qs);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { $("#sheet").innerHTML = `<p class="empty">${esc(j.error || ("the call could not be read: " + r.status))}</p><p><a class="press quiet" href="/">back to the board</a></p>`; return; }
+  DATA = j;
+  render();
+}
+load();
+</script>
+</body>
+</html>

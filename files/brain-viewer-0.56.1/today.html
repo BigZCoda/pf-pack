@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Today</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { flex: 1; position: relative; min-height: 0; overflow: hidden; display: flex; }
+  main { flex: 1; overflow: auto; padding: 26px 34px 90px; }
+  .sheet { max-width: 1020px; margin: 0 auto; }
+  section.card, details.card { padding: 14px 18px 16px; margin: 0 0 18px; }
+  section.card > h2, details.card > summary { margin: 0 0 10px; font-family: var(--font-display); font-size: 21px; font-weight: 400; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  section.card > h2 .meta, details.card > summary .meta { font-family: var(--font-ui); font-size: 12.5px; }
+  details.card > summary { cursor: pointer; list-style: none; margin-bottom: 0; }
+  details.card[open] > summary { margin-bottom: 10px; }
+  details.card > summary::-webkit-details-marker { display: none; }
+  details.card > summary::before { content: "▸"; font-size: 11px; color: var(--muted); }
+  details.card[open] > summary::before { content: "▾"; }
+  /* the two groups of Waiting on you: Blocking first, then the rest (2026-09-16, T-0163). Layout only; the line down the
+     blocking group's side is the same --blocked the blocks strip uses, so the two read as one thing. */
+  .grp + .grp { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--rule-soft); }
+  .grp > h3 { margin: 0 0 8px; font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 400; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .grp > h3 .meta { letter-spacing: 0; text-transform: none; font-size: 12px; }
+  .grp.blocking { border-left: 2px solid var(--blocked); padding-left: 12px; margin-left: -2px; }
+  .grp.blocking > h3 { color: var(--blocked); }
+  .grp .none { margin: 0; }
+  /* what a question blocks, inside the question's own card, above the answer box */
+  .holdsup { margin: 0 0 8px; padding: 4px 8px; border-left: 2px solid var(--blocked); background: var(--blocked-tint); border-radius: var(--radius); font-size: 12.5px; color: var(--ink-soft); }
+  .holdsup .kicker { margin-right: 6px; font-size: 10px; }
+  /* one entry of Due today or earlier: a task row or a question card, in one order, divided by a line */
+  .dueitem + .dueitem { border-top: 1px solid var(--rule-soft); margin-top: 8px; padding-top: 8px; }
+  .dueitem ul.items { margin: 0; }
+  .btn.nottoday { padding: 1px 8px; font-size: 11px; color: var(--muted); }
+  .btn.nottoday:hover { color: var(--ink); }
+  /* the three sections that are NOT the ledgers (2026-09-16, T-0150 second stretch): what the app holds for review,
+     today's calls, what landed. Layout only; every color comes from viewer-tokens.css. A row here carries no checkbox,
+     so it uses its own grid rather than li.item's, whose first column means "tick me". */
+  .row { display: grid; grid-template-columns: 20px 1fr; gap: 10px; padding: 7px 0; border-top: 1px solid var(--rule-soft); align-items: start; }
+  .row:first-child { border-top: 0; }
+  .row .mark { font-size: 12px; line-height: 1.5; color: var(--muted); text-align: center; }
+  .row .t { font-size: 14.5px; }
+  .row .m { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 2px; }
+  /* Your open tasks (2026-09-18, T-0185, layout A): a row with its two presses in their own column, so the eye runs
+     down one line of buttons rather than hunting for a checkbox. Layout only; every color comes from viewer-tokens.css. */
+  .mine { position: relative; display: grid; grid-template-columns: 108px 1fr; gap: 12px; padding: 8px 26px 8px 0; border-top: 1px solid var(--rule-soft); align-items: start; }
+  .mine:first-child { border-top: 0; }
+  .mine .press { display: flex; gap: 6px; padding-top: 1px; }
+  .mine .press .btn { padding: 2px 9px; font-size: 11.5px; }
+  .mine .press .btn.done:hover { border-color: var(--done); color: var(--done); }
+  .mine .press .btn:not(.done) { color: var(--muted); }
+  .mine .press .btn:not(.done):hover { color: var(--ink); }
+  .mine .t { font-size: 14.5px; }
+  .mine .m { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 3px; }
+  .mine .keep { margin-top: 3px; }
+  .mine.going { opacity: .45; }
+  @media (max-width: 560px) { .mine { grid-template-columns: 1fr; gap: 4px; } .mine .press { order: 2; padding-top: 4px; } }
+  /* Pending in the app, folded per conversation (2026-09-18, T-0017): 504 items over 61 conversations, so the block is
+     one row a conversation and the items live inside it. Layout only; every color comes from viewer-tokens.css. */
+  details.conv { border-top: 1px solid var(--rule-soft); padding: 2px 0; }
+  details.conv:first-child { border-top: 0; }
+  details.conv > summary { cursor: pointer; list-style: none; padding: 8px 0; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 14.5px; }
+  details.conv > summary::-webkit-details-marker { display: none; }
+  details.conv > summary::before { content: "\25B8"; font-size: 11px; color: var(--muted); }
+  details.conv[open] > summary::before { content: "\25BE"; }
+  details.conv > summary .n { font-size: 12px; color: var(--muted); }
+  details.conv .inside { padding: 2px 0 10px 18px; }
+  details.conv .allline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); padding: 0 0 6px; }
+  .pend { display: grid; grid-template-columns: 148px 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--rule-soft); align-items: start; }
+  .pend:first-child { border-top: 0; }
+  .pend .press { display: flex; gap: 6px; padding-top: 1px; }
+  .pend .press .btn { padding: 2px 9px; font-size: 11.5px; color: var(--muted); }
+  .pend .press .btn.yes:hover { border-color: var(--done); color: var(--done); }
+  .pend .press .btn.no:hover { border-color: var(--blocked); color: var(--blocked); }
+  .pend .t { font-size: 14.5px; }
+  .pend .m { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 3px; }
+  .pend.going { opacity: .45; }
+  .btn.armed { border-color: var(--blocked); color: var(--blocked); }
+  /* the one line the block shows by default (2026-09-18, T-0191): the count, a way into the app, and the press that
+     opens the queue. Layout only; every color comes from viewer-tokens.css. */
+  .appline { margin: 0; font-size: 13.5px; color: var(--ink-soft); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  @media (max-width: 560px) { .pend { grid-template-columns: 1fr; gap: 4px; } .pend .press { order: 2; padding-top: 4px; } details.conv .inside { padding-left: 6px; } }
+  .whereto { margin: 12px 0 0; padding-top: 9px; border-top: 1px solid var(--rule-soft); font-size: 12.5px; color: var(--muted); max-width: 78ch; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  /* a second sentence in the same foot starts on its own line (T-0192's call line under T-0185's app line) */
+  .whereto .brk { flex-basis: 100%; height: 0; }
+  /* a call: the clock in its own column, the prep one press away */
+  .call { display: grid; grid-template-columns: 96px 1fr; gap: 14px; padding: 10px 0; border-top: 1px solid var(--rule-soft); align-items: baseline; }
+  .call:first-child { border-top: 0; }
+  .call .when { font-family: var(--font-display); font-size: 15.5px; white-space: nowrap; }
+  .call .when .to { display: block; font-size: 11.5px; color: var(--muted); }
+  .call .title { font-size: 15.5px; font-family: var(--font-display); }
+  .call .who { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+  .call .prepline { margin-top: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+  .call .ready { color: var(--done); }
+  .call.now .when, .call.next .when { color: var(--accent); }
+  details.older { margin-top: 10px; }
+  details.older > summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  details.older[open] { margin-top: 14px; }
+  .lead { color: var(--ink-soft); margin: 0 0 14px; max-width: 76ch; }
+  header.bar .status-line { font-size: 12px; color: var(--muted); }
+  @media (max-width: 900px) { main { padding: 18px 16px 80px; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Today</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="today"></nav>
+</header>
+<div class="stage">
+  <main id="main">
+    <div class="sheet">
+      <p class="lead" id="lead">Reading the ledgers…</p>
+      <section class="card" id="waitcard">
+        <h2>Waiting on you <span class="meta" id="waitSum"></span></h2>
+        <div id="waitBody"></div>
+      </section>
+      <section class="card" id="duecard">
+        <h2>Due today or earlier <span class="meta" id="dueSum"></span></h2>
+        <div id="dueBody"></div>
+      </section>
+      <section class="card" id="minecard">
+        <h2>Your open tasks <span class="meta" id="mineSum">reading the ledgers…</span></h2>
+        <div id="mineBody"></div>
+        <p class="whereto" id="mineFoot" hidden></p>
+      </section>
+      <section class="card" id="appcard">
+        <h2>Pending in the app <span class="meta" id="appSum">asking the app…</span></h2>
+        <p class="appline" id="appLine">Asking the app what it is holding…</p>
+        <div id="appBody" hidden></div>
+      </section>
+      <section class="card" id="callcard">
+        <h2>Today's calls <span class="meta" id="callSum">reading the calendar…</span></h2>
+        <div id="callBody"></div>
+      </section>
+      <section class="card" id="landcard">
+        <h2>Transcripts landed today <span class="meta" id="landSum">looking in the folders…</span></h2>
+        <div id="landBody"></div>
+      </section>
+      <details class="card" id="closedcard">
+        <summary>Closed today <span class="meta" id="closedSum"></span></summary>
+        <div id="closedBody"></div>
+      </details>
+      <p class="status-line meta" id="status"></p>
+    </div>
+  </main>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script src="/static/attach.js"></script>
+<script>BVAttach.watch(document.getElementById("main"));   // pictures on questions and answers: thumbnails, attach, paste (T-0219)</script>
+<script>
+// ---- the Today page (2026-09-15, ledger T-0150, first stretch) ----
+// Zak: "I need a place to be able to see the questions that are prohibiting us from moving forwards." One page composed
+// in the browser from GET /api/projects -- the same read /projects makes -- so there is no second copy of the ledgers
+// anywhere and nothing new on the server (rules 1 and 2). Every control here is the one /projects uses: the question
+// card and its answer box, the task row and its checkbox, the reply box, hold and bring back, all from viewer-common.js
+// writing through PUT /api/tasks -> tasks.py (clock-stamped, logged). "Not today" is the hold verb with tomorrow's date.
+const { esc, md, isImage, lightbox, fileLink: link, itemRow: row, questionCard: qCard, ledgerAct, refreshBadges, showAll, mountShowAll } = BV;
+const $ = s => document.querySelector(s);
+let DATA = null, MODEL = null;
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const key = i => i.project + "/" + i.id;
+
+// ---- painting ----
+function paint() {
+  if (!MODEL) return;
+  const all = showAll("today");
+  const c = MODEL.counts;
+  $("#crumb").textContent = `${MODEL.today} · ${c.total} for you · ${c.closed} closed`;
+  $("#lead").textContent = c.total
+    ? `${plural(c.waiting, "question")} waiting on you, ${c.due ? plural(c.due, "item") + " due today or earlier" : "nothing due"}.`
+    : "Nothing is waiting on you and nothing is due. The ledgers are clear for today.";
+
+  // ---- 1. Waiting on you: the blocking questions first, then the rest ----
+  // Zak, 2026-09-16: "I want to be able to see the most important questions up in an easy place to access first... those
+  // are the primary ones blocking." Blocking is read off the ledgers, never judged here: an open task carries `blocked:`
+  // naming the question (BV.day.model does the matching), so the group is exactly the questions that, answered, free
+  // work. Most held up first, then newest. The rest keep what they had: newest first, the older ones behind their fold.
+  const opts = q => ({ project: q.project, today: MODEL.today, showProject: true });
+  $("#waitSum").textContent = `${c.blocking} blocking · ${c.rest} more`;
+  const blockingHTML = c.blocking
+    ? MODEL.blocking.map(q => qCard(q, opts(q))).join("")
+    : `<p class="meta none">No open question is blocking a task right now.</p>`;
+  const restHTML = c.rest
+    ? MODEL.restRecent.map(q => qCard(q, opts(q))).join("")
+      + (c.restOlder ? `<details class="older"${all ? " open" : ""}><summary>${plural(c.restOlder, "older question")} · asked before ${esc(MODEL.cut)}</summary>${MODEL.restOlder.map(q => qCard(q, opts(q))).join("")}</details>` : "")
+    : `<p class="meta none">${c.blocking ? "Every question open for you is blocking something." : "Nothing is waiting on you."}</p>`;
+  $("#waitBody").innerHTML = `<div class="grp blocking"><h3>Blocking <span class="meta">${c.blocking ? "answer these and the work moves" : "nothing is blocked"}</span></h3>${blockingHTML}</div>
+    <div class="grp"><h3>The rest <span class="meta">${c.rest ? "newest first" : "nothing else"}</span></h3>${restHTML}</div>`;
+  paintHolds();
+
+  // ---- 2. Due today or earlier: any owner, overdue marked plainly, held items whose day has come ----
+  $("#dueSum").textContent = c.due ? `${plural(c.due, "item")} · oldest first` : "nothing is due";
+  $("#dueBody").innerHTML = c.due
+    ? MODEL.due.map(i => `<div class="dueitem" data-key="${esc(key(i))}">${i.kind === "question"
+        ? qCard(i, opts(i))
+        : `<ul class="items">${row(i, { project: i.project, today: MODEL.today, showProject: true })}</ul>`}</div>`).join("")
+    : `<p class="meta" style="margin:0">Nothing is due today or was due earlier, and nothing comes back today.</p>`;
+  // a question addressed to Zak that also carries a due date is in both sections, and the shared card names itself
+  // `q-<project>-<id>`: the copy down here is renamed so two elements never answer to one id (the answer box, the
+  // reopen button and the ledger it writes to are all carried on the form's own data attributes, not on the id)
+  for (const el of $("#dueBody").querySelectorAll(".q[id]")) el.id = "due-" + el.id;
+  paintDueControls();
+
+  // ---- 3. Closed today, folded at the bottom ----
+  const done = MODEL.closed.filter(i => i.kind === "task"), answered = MODEL.closed.filter(i => i.kind === "question");
+  $("#closedSum").textContent = c.closed
+    ? `${plural(done.length, "task")} done · ${plural(answered.length, "question")} answered`
+    : "nothing closed yet today";
+  $("#closedBody").innerHTML = c.closed
+    ? (done.length ? `<ul class="items">${done.map(i => row(i, { project: i.project, today: MODEL.today, showProject: true })).join("")}</ul>` : "")
+      + answered.map(q => qCard(q, opts(q))).join("")
+    : `<p class="meta" style="margin:0">Nothing has been closed today.</p>`;
+  if (all) $("#closedcard").open = true;
+  BV.glossary.scan($("#main"));
+}
+
+// A question that is blocking something says so, inside its own card and above the answer box: the open task carries
+// `blocked:` naming this question, which is exactly what Zak asked to see ("the questions that are prohibiting us from
+// moving forwards"). Placed after the card is drawn rather than inside the shared component, so /projects and /people
+// keep the card they have.
+function paintHolds() {
+  const scope = $("#waitBody");
+  for (const q of MODEL.questions) {
+    if (!q.holds || !q.holds.length) continue;
+    const card = scope.querySelector(`.q[id="${CSS.escape(`q-${q.project}-${q.id}`)}"]`); if (!card) continue;
+    const form = card.querySelector("form");
+    for (const t of q.holds) {
+      const d = document.createElement("div");
+      d.className = "holdsup";
+      d.innerHTML = `<span class="kicker">blocks:</span>${esc(t)}`;
+      card.insertBefore(d, form || null);
+    }
+  }
+}
+
+// "Not today" beside the tick: one press writes `until:` tomorrow through the same hold verb the rest of the app uses,
+// so the item leaves today's list and comes back tomorrow, still open and still owed. Only an OPEN TASK can be held --
+// tasks.py refuses a question ("a question is answered, not held") and refuses anything already closed or blocked -- so
+// the button is only put where it will work.
+function paintDueControls() {
+  for (const i of MODEL.due) {
+    if (i.kind !== "task" || i.mark !== " ") continue;
+    const wrap = $(`#dueBody .dueitem[data-key="${CSS.escape(key(i))}"]`); if (!wrap) continue;
+    const li = wrap.querySelector("li.item"); if (!li) continue;
+    if (i.why === "back today") {
+      const m = li.querySelector(".m");
+      if (m) m.insertAdjacentHTML("afterbegin", `<span class="badge" title="this was on hold until ${esc(i.until)}; it is back">back today</span>`);
+    }
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn nottoday";
+    b.dataset.not = i.id; b.dataset.project = i.project;
+    b.textContent = "not today";
+    b.title = "push this to tomorrow: it leaves today and comes back tomorrow, still open";
+    const holdrow = li.querySelector(".holdrow");
+    if (holdrow) holdrow.insertBefore(b, holdrow.firstChild);
+    else { const s = document.createElement("span"); s.className = "holdrow"; s.appendChild(b); (li.children[1] || li).appendChild(s); }
+  }
+}
+
+// ---- Your open tasks (2026-09-18, ledger T-0185; Zak chose layout A on Q-0023) ----
+// Zak, 9/17: "Those should have been tasks I could have clicked in the today area btw, that working area could be a lot
+// more dynamic by now." Everything above this block is DATED -- a question waiting, a day that has come. This block is
+// the rest of his open work: every open task of his on every ledger, grouped by project in the registry's order, newest
+// first, folded past ten a project. One read of its own (GET /api/today/tasks) so it paints as soon as it answers, and
+// two presses a row that write through POST /api/today/tasks/action -> tasks.py. A pressed row goes on the spot; the
+// blocks above are refreshed quietly behind it, because a task closed here belongs in "Closed today" up there.
+let MINE = null;
+const mineKey = i => i.project + "/" + i.id;
+
+function mineRow(i) {
+  // the id is the corner tag (BV.idTag), not the first thing in the line (2026-09-18, Zak)
+  const meta = [`<span class="badge">${esc(i.projectName || i.project)}</span>`,
+                `<span title="created ${esc(i.created)}">${i.age_days == null ? esc(i.created) : i.age_days === 0 ? "from today" : plural(i.age_days, "day") + " old"}</span>`];
+  if (i.due) meta.push(`<span class="badge">due ${esc(i.due)}</span>`);
+  for (const t of i.tags || []) meta.push(`<span class="tag">#${esc(t)}</span>`);
+  for (const s of i.people || []) meta.push(`<span class="badge person" data-person="${esc(s)}" title="this item is about ${esc(s)}">${esc(s.replace(/-/g, " "))}</span>`);
+  for (const l of i.links || []) meta.push(link(l));
+  return `<li class="mine" data-key="${esc(mineKey(i))}" data-id="${esc(i.id)}">${BV.idTag(i.id, i.ledger || "")}
+    <div class="press">
+      <button type="button" class="btn done" data-mine="done" title="close it on its own ledger">done</button>
+      <button type="button" class="btn" data-mine="hold" title="put it down for three days; it comes back on its own, still open">hold</button>
+    </div>
+    <div>
+      <div class="t">${BV.ledgerText(i.text, i.project)}</div>
+      <div class="m">${meta.join("")}</div>
+      ${i.note ? `<div class="keep"><span class="kicker">note</span> ${esc(i.note)}</div>` : ""}
+      ${BV.replies.box(i, i.project)}
+    </div></li>`;
+}
+
+function paintMine() {
+  const sum = $("#mineSum"), body = $("#mineBody");
+  if (!MINE || MINE.error) {
+    sum.textContent = "not read";
+    body.innerHTML = `<p class="note">Could not read your open tasks: ${esc((MINE && MINE.error) || "the server did not answer")}</p>`;
+    return;
+  }
+  const groups = MINE.groups.filter(g => g.items.length);
+  const shown = groups.reduce((n, g) => n + g.items.length, 0);
+  sum.textContent = shown
+    ? `${plural(shown, "task")} · ${plural(groups.length, "project")}${MINE.dated ? ` · ${MINE.dated} of them are up there with a day on them` : ""}`
+    : "nothing open for you";
+  body.innerHTML = shown
+    ? groups.map(g => {
+        const first = g.items.slice(0, MINE.fold), more = g.items.slice(MINE.fold);
+        return `<div class="grp"><h3>${esc(g.name)} <span class="meta">${plural(g.items.length, "task")}, newest first</span></h3>
+          <ul class="items">${first.map(mineRow).join("")}</ul>
+          ${more.length ? `<details class="older"><summary>${more.length} more</summary><ul class="items">${more.map(mineRow).join("")}</ul></details>` : ""}</div>`;
+      }).join("")
+    : `<p class="meta" style="margin:0">${MINE.total
+        ? "Everything open for you carries a day, and it is already in the blocks above."
+        : "No ledger has an open task for you. Nothing is owed."}</p>`;
+  paintMineFoot();
+  BV.glossary.scan($("#minecard"));
+}
+
+// The one line about the app, at the foot of the block. Zak on Q-0023: "we can start to think about the crossover
+// between this and the PF App and the tasks that exist there." So: how big that other pile is, and a way in. No approve
+// and no reject here -- that is its own piece of work, and the API has no route for either yet.
+// The app's count used to sit here too (T-0185). It moved out on 2026-09-18 with T-0191: the pending block below now
+// leads with that exact sentence, so saying it twice on one page was the buildup Zak asked to be rid of. What is left
+// is the one thing only this block can say -- the call-scoped items are not missing, they are somewhere else (T-0192,
+// Zak: "Stuff that is relevant to a Collin call should not appear in my today tasks and should be specifically located
+// inside of the call prep"). The server counts them; this says how many and opens the page where their preps live.
+function paintMineFoot() {
+  const foot = $("#mineFoot");
+  const n = MINE && MINE.calls;
+  const who = (MINE && MINE.callPeople || []).map(c => c.slug.replace(/-/g, " ")).slice(0, 3).join(", ");
+  foot.innerHTML = n
+    ? `<span>${n === 1 ? "1 call item is" : n + " call items are"} waiting in their call preps${who ? ` (${esc(who)})` : ""}, not here.</span>
+       <a class="btn" href="/people" style="text-decoration:none">open People</a>`
+    : "";
+  foot.hidden = !n;
+}
+
+async function mine() {
+  try {
+    const r = await fetch("/api/today/tasks");
+    const j = await r.json();
+    MINE = r.ok && !j.error ? j : { error: j.error || ("the server answered " + r.status) };
+  } catch (e) { MINE = { error: e.message }; }
+  // second belt: the server already leaves out what the dated blocks own (due or a hold whose day has come), and this
+  // drops anything the model up there is showing for a reason the server has not learned about. Dedupe is ledger + id.
+  if (MINE && MINE.groups && MODEL) {
+    const up = new Set(MODEL.due.map(key));
+    for (const g of MINE.groups) g.items = g.items.filter(i => !up.has(mineKey(i)));
+  }
+  paintMine();
+  paintMineFoot();
+}
+
+// one press: written on the ledger, then the row goes. The blocks above are read again quietly afterwards, because the
+// task just closed belongs in "Closed today" and the counts on the nav move with it.
+async function minePress(li, action) {
+  const [project, id] = String(li.dataset.key || "").split("/");
+  const g = MINE && MINE.groups.find(x => x.project === project);
+  const it = g && g.items.find(x => x.id === id);
+  if (!it) return;
+  li.classList.add("going");
+  const r = await fetch("/api/today/tasks/action", { method: "POST", headers: { "Content-Type": "application/json" },
+                                                     body: JSON.stringify({ ledger: it.ledger, id, action }) });
+  const j = await r.json().catch(() => ({}));
+  li.classList.remove("going");
+  if (!r.ok) { $("#status").textContent = "refused: " + (j.error || r.status); return; }
+  g.items = g.items.filter(x => x.id !== id);
+  const wrap = li.closest(".grp");
+  li.remove();
+  if (wrap && !g.items.length) wrap.remove();
+  else if (wrap) { const h = wrap.querySelector("h3 .meta"); if (h) h.textContent = `${plural(g.items.length, "task")}, newest first`; }
+  const shown = MINE.groups.reduce((n, x) => n + x.items.length, 0);
+  $("#mineSum").textContent = shown ? `${plural(shown, "task")} · ${plural(MINE.groups.filter(x => x.items.length).length, "project")}` : "nothing open for you";
+  if (!shown) paintMine();
+  $("#status").textContent = j.message + " · written to the ledger and logged";
+  await load(); refreshBadges(); BV.quests.refresh();
+  $("#status").textContent = j.message + " · written to the ledger and logged";
+}
+
+// ---- the three halves of a day that are not on a ledger (2026-09-16, T-0150 second stretch) ----
+// Each is one read of its own, painted as it answers, so a slow call to the PF App never holds up the ledger sections
+// above. Nothing here is computed in the browser beyond the ordering the server already sent.
+
+// 3. Pending in the app (2026-09-18, ledger T-0017: real presses). The transcript pushes create these ("## Action
+// Items" lines land as approvalStatus `suggested`), and there are 504 of them over 61 conversations -- so this is never
+// a flat list: one row a conversation, opened on a press to its items. Approve and reject write to the app itself
+// through POST /api/pending/action -> POST /api/v1/action-items/:id/status, rehearsed with ?dryRun=1 on the server
+// before anything is written. Approve-all takes two presses and stops at the first refusal, saying how far it got.
+let APP = null;
+
+function pendRow(i) {
+  const meta = [];
+  if (i.owner) meta.push(`<span class="badge">${esc(i.owner)}</span>`);
+  if (i.due) meta.push(`<span class="badge">due ${esc(i.due)}</span>`);
+  if (i.at) meta.push(`<span>${esc(i.at)}</span>`);
+  return `<li class="pend" data-id="${esc(i.id)}">
+    <div class="press">
+      <button type="button" class="btn yes" data-pend="approve" title="approve it in the app; it becomes a real task there">approve</button>
+      <button type="button" class="btn no" data-pend="reject" title="reject it in the app; it leaves the review queue">reject</button>
+    </div>
+    <div>
+      <div class="t">${esc(i.text)}</div>
+      <div class="m">${meta.join("")}</div>
+    </div></li>`;
+}
+
+function pendConv(c) {
+  return `<details class="conv" data-conv="${esc(c.id)}">
+    <summary><span>${esc(c.title)}</span><span class="n">${plural(c.count, "item")}${c.newest ? ` · newest ${esc(c.newest)}` : ""}${c.kind ? ` · ${esc(c.kind)}` : ""}</span></summary>
+    <div class="inside">
+      <div class="allline">
+        <button type="button" class="btn" data-all="${esc(c.id)}" title="approve every item on this record, one at a time; it asks once more first">approve all ${c.count}</button>
+        <span class="allsay"></span>
+      </div>
+      <ul class="items">${c.items.map(pendRow).join("")}</ul>
+    </div></details>`;
+}
+
+function appSum() {
+  const d = APP;
+  const convs = (d.conversations || []).filter(c => c.count);
+  $("#appSum").textContent = d.count
+    ? `${plural(d.count, "item")} · ${plural(convs.length, "conversation")} · newest first`
+    : "nothing waiting";
+  return convs;
+}
+
+// ---- the block is ONE LINE until it is asked for (2026-09-18, T-0191) ----
+// Zak, 9/18: "we keep the approvals inside of the PF App for now ... a bunch of buildup that I don't really want to
+// deal with." So the queue is still here and still writable -- nothing about the routes or the write path changed --
+// but what the page shows by default is the count and a way into the app. One press, "open the queue", reveals the
+// per-conversation fold exactly as it was built. The choice is a view choice, so it lives in this browser and nowhere
+// in the brain (rules 4b): one `bv.` key, read in a try/catch so a browser with storage off still draws the page, and
+// CLOSED is the default for a browser that has never pressed it.
+const QUEUE_KEY = "bv.today.queueopen";
+const pref = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+const prefSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+let QUEUE = pref(QUEUE_KEY, "0") === "1";
+
+function paintAppLine() {
+  const line = $("#appLine"), body = $("#appBody"), d = APP;
+  const app = (d && d.app) || "https://app.prospectforge.us/action-items";
+  if (!d || d.error) {
+    line.innerHTML = `<span>Could not read the app's review queue: ${esc((d && d.error) || "the server did not answer")}</span>`;
+    body.hidden = true;
+    return;
+  }
+  line.innerHTML = `<span>${d.count
+      ? `The app is holding ${plural(d.count, "action item")} for review.`
+      : `The app is holding nothing for review${d.read ? ` (${plural(d.read, "action item")} read)` : ""}.`}</span>
+    <a class="btn" href="${esc(app)}" target="_blank" rel="noreferrer" style="text-decoration:none">open the app</a>
+    ${d.count ? `<button type="button" class="btn" id="queueToggle">${QUEUE ? "close the queue" : "open the queue"}</button>` : ""}`;
+  body.hidden = !(d.count && QUEUE);
+}
+
+function paintApp(d) {
+  APP = d;
+  const body = $("#appBody");
+  if (!d || d.error) {
+    $("#appSum").textContent = "not read";
+    body.innerHTML = "";
+    paintAppLine();
+    return;
+  }
+  const convs = appSum();
+  body.innerHTML = (d.count
+    ? `<div id="convs">${convs.map(pendConv).join("")}</div>`
+    : `<p class="meta" style="margin:0">Nothing a push left for you is waiting for review${d.read ? ` (${plural(d.read, "action item")} read)` : ""}.</p>`)
+    + `<p class="whereto"><span>${esc(d.note)}</span><a class="btn" href="${esc(d.app || "https://app.prospectforge.us/action-items")}" target="_blank" rel="noreferrer">open the app</a></p>`;
+  paintAppLine();
+}
+
+// one press on one item: the server rehearses it against the app with ?dryRun=1, writes it, logs it, and the row goes.
+// A refusal (already approved, not yours, not visible any more) comes back as a sentence and the row stays where it is.
+async function pendPress(li, action) {
+  const id = String(li.dataset.id || "");
+  li.classList.add("going");
+  let r, j;
+  try {
+    r = await fetch("/api/pending/action", { method: "POST", headers: { "Content-Type": "application/json" },
+                                             body: JSON.stringify({ id, action }) });
+    j = await r.json().catch(() => ({}));
+  } catch (e) { li.classList.remove("going"); return { ok: false, say: e.message }; }
+  li.classList.remove("going");
+  if (!r.ok) return { ok: false, say: j.error || ("the server answered " + r.status) };
+  pendGone(li, id);
+  return { ok: true, say: j.message || (action + "d") };
+}
+
+// the row leaves the list without a reload, its conversation's count moves, and an emptied conversation goes with it
+function pendGone(li, id) {
+  const det = li.closest("details.conv");
+  li.remove();
+  const c = APP && (APP.conversations || []).find(x => x.id === (det && det.dataset.conv));
+  if (c) {
+    c.items = c.items.filter(x => x.id !== id);
+    c.count = c.items.length;
+    if (!c.count) { if (det) det.remove(); }
+    else if (det) {
+      const n = det.querySelector("summary .n");
+      if (n) n.textContent = `${plural(c.count, "item")}${c.newest ? ` · newest ${c.newest}` : ""}${c.kind ? ` · ${c.kind}` : ""}`;
+      const all = det.querySelector("[data-all]");
+      if (all && !all.dataset.armed) all.textContent = `approve all ${c.count}`;
+    }
+  }
+  if (APP) { APP.count = Math.max(0, (APP.count || 0) - 1); appSum(); paintAppLine(); }
+  if (APP && !APP.count) paintApp(APP);
+}
+
+// approve all, on this one conversation. TWO presses: the first arms it and says what it will do, the second runs it.
+// One item at a time, and it STOPS at the first refusal rather than carrying on, saying how far it got.
+async function pendAll(btn) {
+  const det = btn.closest("details.conv");
+  const say = det.querySelector(".allsay");
+  const c = APP && (APP.conversations || []).find(x => x.id === det.dataset.conv);
+  if (!c || !c.count) return;
+  if (!btn.dataset.armed) {
+    btn.dataset.armed = "1";
+    btn.classList.add("armed");
+    btn.textContent = `press again to approve ${c.count}`;
+    say.textContent = "each one is written to the app; this cannot be undone from here.";
+    btn.dataset.timer = String(setTimeout(() => { delete btn.dataset.armed; btn.classList.remove("armed");
+      btn.textContent = `approve all ${c.count}`; say.textContent = ""; }, 8000));
+    return;
+  }
+  clearTimeout(Number(btn.dataset.timer));
+  delete btn.dataset.armed;
+  btn.classList.remove("armed");
+  btn.disabled = true;
+  const total = c.count;
+  let done = 0;
+  for (const item of c.items.slice()) {
+    const li = det.querySelector(`li.pend[data-id="${item.id}"]`);
+    if (!li) continue;
+    btn.textContent = `approving ${done + 1} of ${total}…`;
+    const out = await pendPress(li, "approve");
+    if (!out.ok) {
+      say.textContent = `stopped after ${done} of ${total}: ${out.say}`;
+      $("#status").textContent = `approve all stopped after ${done} of ${total} — ${out.say}`;
+      btn.disabled = false;
+      btn.textContent = `approve all ${c.count}`;
+      return;
+    }
+    done++;
+  }
+  $("#status").textContent = `${done} of ${total} approved in the app and logged`;
+  if (det.isConnected) { btn.disabled = false; btn.textContent = `approve all ${c.count}`; say.textContent = `${done} approved`; }
+}
+
+// 4. Today's calls. The calendar is only reachable through the Claude Code MCP tool, so the /start-session recap writes
+// what it already read into context/today-calendar.json and this draws THAT: no file, one plain line, never a guess.
+const hm = t => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || "")); return m ? (+m[1]) * 60 + (+m[2]) : null; };
+const clock = t => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || "")); if (!m) return String(t || ""); const h = +m[1];
+  return `${((h % 12) || 12)}:${m[2]}${h < 12 ? "am" : "pm"}`; };
+function paintCalls(d) {
+  const sum = $("#callSum"), body = $("#callBody");
+  if (!d || d.error) {
+    sum.textContent = "not read";
+    body.innerHTML = `<p class="note">Could not read the calendar file: ${esc((d && d.error) || "the server did not answer")}</p>`;
+    return;
+  }
+  if (!d.exists || !d.count) {
+    sum.textContent = d.exists ? "nothing on the calendar" : "no calendar file yet";
+    body.innerHTML = `<p class="meta" style="margin:0">${d.exists
+      ? `Nothing was on the calendar for today when the recap last read it.`
+      : `No <code>${esc(d.file)}</code> yet. The <em>${esc(d.writtenBy)}</em> writes it from the one calendar call it already makes; until a session has run today, this page has no calendar to show and will not invent one.`}</p>`;
+    return;
+  }
+  const now = new Date().getHours() * 60 + new Date().getMinutes();
+  let nextDone = false;
+  sum.textContent = `${plural(d.count, "call")} · ${d.withPrep} with a prep${d.stale ? ` · WRITTEN FOR ${d.for}` : ""}`;
+  body.innerHTML = d.events.map(e => {
+    const s = hm(e.start), en = hm(e.end);
+    let when = "";
+    if (!d.stale && s !== null && en !== null && now >= s && now <= en) when = "now";
+    else if (!d.stale && s !== null && now < s && !nextDone) { when = "next"; nextDone = true; }
+    const prep = e.preps && e.preps[0];
+    return `<div class="call ${when}">
+      <div class="when">${esc(clock(e.start))}${e.end ? `<span class="to">to ${esc(clock(e.end))}</span>` : ""}</div>
+      <div>
+        <div class="title">${esc(e.title)}${when ? ` <span class="badge">${when}</span>` : ""}</div>
+        <div class="who">${e.people.filter(p => !p.self).map(p => {
+          const org = e.organizer && p.name === e.organizer ? " · organizes" : "";
+          return p.slug
+            ? `<span class="badge person" data-person="${esc(p.slug)}" title="open ${esc(p.name)} on the People page">${esc(p.name)}${org}</span>`
+            : `<span title="nobody in people/ answers to this name — flagged, never created for you">${esc(p.name)}${org} <span class="meta">no card</span></span>`;
+        }).join("") || `<span class="meta">no attendees on the invite</span>`}</div>
+        <div class="prepline">${prep
+          ? `<span class="ready">prep ready</span><span class="filelink" data-open="${esc(prep.path)}" title="${esc(prep.path)}">open it</span>${BV.readerLink(prep.path)}${prep.purpose ? `<span class="meta">${esc(prep.purpose)}</span>` : ""}`
+          : `<span class="meta">no prep</span><span class="meta">write one on the People page, or with <code>/call-prep</code></span>`}</div>
+      </div></div>`;
+  }).join("") + (d.stale
+    ? `<p class="whereto"><span>This is the calendar for ${esc(d.for)}, not today: the recap has not run today, so nothing here is current.</span></p>` : "");
+}
+
+// 5. Transcripts landed today, and whether each has been taken in. "Intaken" means its import-checkup report exists --
+// the runbook's retained artifact -- not that a file merely arrived.
+function paintLanded(d) {
+  const sum = $("#landSum"), body = $("#landBody");
+  if (!d || d.error) {
+    sum.textContent = "not read";
+    body.innerHTML = `<p class="note">Could not read the transcript folders: ${esc((d && d.error) || "the server did not answer")}</p>`;
+    return;
+  }
+  sum.textContent = d.count ? `${plural(d.count, "transcript")} · ${d.intaken} intaken` : "nothing landed today";
+  body.innerHTML = d.count
+    ? `<ul class="items">${d.landed.map(r => `<li class="row"><span class="mark" title="${r.report ? "intaken" : "not intaken yet"}">${r.report ? "✓" : "◇"}</span><div>
+        <div class="t">${esc(r.stem)}</div>
+        <div class="m">${r.files.map(f => `<span class="filelink" data-open="${esc(f.path)}" title="${esc(f.path)}">.${esc(f.ext)}</span>`).join("")}<span class="badge">${esc(r.mirror ? "app mirror" : "brain")}</span><span>${esc(r.mtime)}</span>${r.report
+          ? `<span class="badge done">intaken${r.match === "by name" ? " · matched by name" : ""}</span><span class="filelink" data-open="${esc(r.report)}" title="${esc(r.report)}">the report</span>${BV.readerLink(r.report, "read it")}`
+          : `<span class="badge overdue">not intaken yet</span><span class="meta">run the import-checkup chain on it</span>`}</div>
+      </div></li>`).join("")}</ul>`
+    : `<p class="meta" style="margin:0">Nothing with today's date landed in ${d.folders.map(f => `<code>${esc(f)}</code>`).join(" or ")}.</p>`;
+}
+
+async function outside() {
+  const get = async (u, paint) => {
+    try { const r = await fetch(u); paint(await r.json()); }
+    catch (e) { paint({ error: e.message }); }
+  };
+  await Promise.all([get("/api/pending", paintApp), get("/api/calls", paintCalls), get("/api/landed", paintLanded)]);
+  BV.glossary.scan($("#main"));
+}
+
+// ---- one ledger write, then the page reads itself back ----
+async function act(project, payload) {
+  const res = await ledgerAct(project, payload);
+  $("#status").textContent = res.message;
+  if (!res.ok) return null;
+  await load();
+  refreshBadges(); BV.quests.refresh();
+  $("#status").textContent = res.message;   // the repaint above clears it: the message is written after, not before
+  return res.json;
+}
+
+// ---- the read drawer (the same one /projects opens) ----
+async function openFile(path, frag) { return BV.drawer.open(path, frag); }   // the one shared drawer, viewer-common.js (0.54.1, T-0152)
+
+document.addEventListener("click", async e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  const mp = e.target.closest("#mineBody [data-mine]");
+  if (mp) { e.preventDefault(); const li = mp.closest("li.mine"); if (li) await minePress(li, mp.dataset.mine); return; }
+  const ap = e.target.closest("#appBody [data-pend]");
+  if (ap) { e.preventDefault(); const li = ap.closest("li.pend");
+            if (li) { const out = await pendPress(li, ap.dataset.pend); $("#status").textContent = out.ok ? out.say + " · written to the app and logged" : "refused: " + out.say; } return; }
+  const aa = e.target.closest("#appBody [data-all]");
+  if (aa) { e.preventDefault(); await pendAll(aa); return; }
+  const qt = e.target.closest("#queueToggle");
+  if (qt) { e.preventDefault(); QUEUE = !QUEUE; prefSet(QUEUE_KEY, QUEUE ? "1" : "0"); paintAppLine(); return; }
+  const cb = e.target.closest("input[type=checkbox][data-id]");
+  if (cb) {
+    e.preventDefault();
+    const pend = BV.replies.pending(cb);      // words left in the reply box are written before the item closes (T-0078)
+    if (pend && cb.checked) { const r = await BV.replies.act(pend.project, pend.id, pend.text, pend.ledger); if (r.ok) pend.form.querySelector("textarea").value = ""; }
+    await act(cb.dataset.project, { action: cb.checked ? "done" : "reopen", id: cb.dataset.id }); return;
+  }
+  const nt = e.target.closest("[data-not]");
+  if (nt) { e.preventDefault(); await act(nt.dataset.project, { action: "hold", id: nt.dataset.not, until: BV.day.tomorrow() }); return; }
+  const ro = e.target.closest("[data-reopen]"); if (ro) { await act(ro.dataset.project, { action: "reopen", id: ro.dataset.reopen }); return; }
+  const pc = e.target.closest(".badge.person"); if (pc) { location.href = `/people?open=${encodeURIComponent(pc.dataset.person)}`; return; }
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); const t = w.dataset.wikilink.split("#")[0].trim(); if (t.endsWith(".canvas")) location.href = BV.forgeHref(t); else openFile(t, w.dataset.wikilink.split("#")[1]); return; }
+  const o = e.target.closest(".filelink[data-open]"); if (o) { openFile(o.dataset.open, o.dataset.frag); }
+});
+document.addEventListener("submit", async e => {
+  const f = e.target;
+  if (f.dataset.reply) return;                 // the reply box is wired once, in viewer-common (BV.replies.wire)
+  if (!f.dataset.q) return;
+  e.preventDefault();
+  await act(f.dataset.project, { action: "answer", id: f.dataset.q, text: f.querySelector("textarea").value, by: BV.owner });
+});
+document.addEventListener("keydown", e => { if (BV.typing(e)) return; if (e.key === "Escape") $("#drawer").hidden = true; });
+
+mountShowAll("today", () => paint(), { liveLabel: "showing today", allLabel: "showing everything" });
+BV.replies.wire(document, { status: m => { $("#status").textContent = m; }, onDone: async () => { await load(); refreshBadges(); } });
+BV.holds.wire(document, { status: m => { $("#status").textContent = m; }, onDone: async () => { await load(); refreshBadges(); } });
+
+async function load() {
+  DATA = await BV.day.load();
+  MODEL = BV.day.model(DATA);
+  paint();
+  return MODEL;
+}
+load().then(mine)   // the open-tasks block waits only for the model above it, so its dedupe has something to check against
+  .catch(e => { $("#lead").textContent = ""; $("#main").innerHTML = `<div class="note">Could not read the ledgers: ${esc(e.message)}</div>`; });
+outside();   // the app, the calendar and the transcript folders: painted as each answers, never holding up the ledgers
+</script>
+</body>
+</html>

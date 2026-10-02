@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { flex: 1; position: relative; min-height: 0; overflow: hidden; display: flex; }
+  main { flex: 1; overflow: auto; padding: 26px 34px 90px; }
+  .sheet { max-width: 880px; margin: 0 auto; }
+  .lead { color: var(--ink-soft); margin: 0 0 6px; max-width: 78ch; }
+  .rule { color: var(--muted); font-size: 12.5px; margin: 0 0 16px; max-width: 78ch; }
+  .rule .kicker { margin-right: 6px; }
+  /* one proposal, one card */
+  article.rcard { position: relative; padding: 14px 30px 13px 18px; margin: 0 0 14px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-lg); box-shadow: var(--frame); }
+  article.rcard.on { border-color: var(--accent); }
+  article.rcard.rated { opacity: .5; }
+  .rhead { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 7px; }
+  /* what the card IS, in one line of plain words, above everything else (2026-09-18, Zak: "this whole review page is
+     still really confusing, I don't understand what the 'its note+evidence' means") */
+  .what { font-family: var(--font-display); font-size: 17px; font-weight: 400; margin: 0 0 5px; }
+  .prop { font-size: 16px; margin: 0 0 8px; }
+  .rline { font-size: 13px; color: var(--ink-soft); margin: 0 0 6px; display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .rline .kicker { flex: none; }
+  .rate { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--rule-soft); }
+  .rate .btn { align-self: flex-start; }
+  .rate .btn kbd { margin-left: 5px; border: 1px solid var(--rule-soft); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: var(--code); font-size: 10.5px; }
+  /* the note on a rating: a box that starts at two lines and grows with what is written in it, with no cap on the
+     words (2026-09-18, Zak: "answered another review thing with an extended answer, can we please allow for more room
+     for responses?"). It used to be a one-line input capped at 200 characters, which cut an answer mid-sentence. */
+  textarea.rnote { flex: 1 1 260px; min-width: 150px; min-height: 46px; padding: 5px 9px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); font-size: 13px; line-height: 1.45; resize: vertical; }
+  textarea.rnote:focus { outline: none; border-color: var(--accent); }
+  .rrow .changer textarea.rnote { flex: 1 1 220px; min-width: 130px; min-height: 40px; padding: 4px 8px; font-size: 12.5px; }
+  .rate .said { font-size: 12.5px; }
+  /* the fourth press: a line with no answer at all (2026-09-18, Zak: "when changing I have to change the answer even
+     if I wanted to leave a note"). Quieter than the three verdicts, because it decides nothing. */
+  .rate .btn.note, .rrow .changer .btn.note { color: var(--muted); }
+  .rate .btn.note:hover, .rrow .changer .btn.note:hover { color: var(--ink); }
+  /* what was done to this item before, shut: the rewrites and the ratings appended to its note over time */
+  details.rhist { flex-basis: 100%; margin: 0 0 6px; }
+  details.rhist > summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  details.rhist ul { margin: 5px 0 0; padding-left: 18px; }
+  details.rhist li { font-size: 12.5px; color: var(--muted); margin-bottom: 3px; max-width: 86ch; }
+  .counter { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; margin: 0 0 16px; font-size: 12.5px; color: var(--muted); }
+  /* what each press does, said under the presses (2026-09-18, T-0194) */
+  .says { flex-basis: 100%; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  /* the Rated fold: every card already answered, newest first, each one changeable (2026-09-18, T-0194) */
+  details.rfold.how { margin: 0 0 16px; }
+  details.rfold.how > summary { font-size: 17px; }
+  details.rfold.how ol { margin: 8px 0 0; padding-left: 20px; }
+  details.rfold.how li { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 5px; max-width: 82ch; }
+  details.rfold { padding: 12px 16px 14px; margin: 18px 0 0; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-lg); }
+  details.rfold > summary { cursor: pointer; list-style: none; font-family: var(--font-display); font-size: 19px; font-weight: 400; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  details.rfold > summary::-webkit-details-marker { display: none; }
+  details.rfold > summary::before { content: "\25B8"; font-size: 11px; color: var(--muted); }
+  details.rfold[open] > summary::before { content: "\25BE"; }
+  details.rfold > summary .meta { font-family: var(--font-ui); font-size: 12.5px; }
+  details.rfold[open] > summary { margin-bottom: 8px; }
+  .rrow { position: relative; display: grid; grid-template-columns: 92px 1fr; gap: 12px; padding: 8px 26px 8px 0; border-top: 1px solid var(--rule-soft); align-items: start; }
+  .rrow:first-child { border-top: 0; }
+  .rrow .v { font-size: 13px; }
+  .rrow .v .badge { text-transform: none; }
+  .rrow .t { font-size: 14px; }
+  .rrow .m { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 3px; }
+  .rrow .changer { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; font-size: 12px; }
+  .rrow .changer .btn { padding: 2px 9px; font-size: 11.5px; }
+  @media (max-width: 900px) { .rrow { grid-template-columns: 1fr; gap: 4px; } }
+  .status-line { font-size: 12px; color: var(--muted); }
+  /* the Test press (2026-09-24, T-0198): the card's route in a second window beside this one */
+  .rtest { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; margin: 0 0 6px; font-size: 12.5px; }
+  .rtest .btn { padding: 2px 11px; }
+  /* undo, for a minute after a press (2026-09-24, T-0200) */
+  .btn.undo { padding: 1px 9px; font-size: 11.5px; margin-left: 4px; }
+  /* the Rated fold's search and filters (2026-09-24, T-0200) */
+  .rtools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 10px; font-size: 12.5px; }
+  .rtools input[type=search] { flex: 1 1 220px; min-width: 150px; padding: 4px 9px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--bg); font-size: 13px; }
+  .rtools input[type=search]:focus { outline: none; border-color: var(--accent); }
+  .rtools select { padding: 3px 6px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--bg); font-size: 12.5px; }
+  .rrow:focus { outline: none; box-shadow: inset 3px 0 0 var(--accent); }
+  @media (max-width: 900px) {
+    main { padding: 18px 16px 80px; }
+    article.rcard { padding: 12px 26px 11px 13px; }
+    .prop { font-size: 15px; }
+    .rate textarea.rnote { flex: 1 1 100%; order: 9; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Review</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="review"></nav>
+</header>
+<div class="stage">
+  <main id="main">
+    <div class="sheet">
+      <p class="lead" id="lead">Reading the ledgers…</p>
+      <details class="card rfold how" id="how">
+        <summary>How this page works</summary>
+        <ol id="howBody"></ol>
+      </details>
+      <div class="counter" id="counter"></div>
+      <div id="body"></div>
+      <details class="card rfold" id="ratedcard">
+        <summary>Rated <span class="meta" id="ratedSum"></span></summary>
+        <div class="rtools" id="ratedTools">
+          <input type="search" id="rq" placeholder="search the rated cards: words, a project, an item" aria-label="search the rated cards">
+          <select id="rv" aria-label="show one answer"><option value="">every answer</option><option value="good">good</option><option value="off">off</option><option value="wrong">wrong</option></select>
+          <select id="rd" aria-label="show one day"><option value="">every day</option></select>
+          <span class="meta" id="rcount"></span>
+        </div>
+        <div id="ratedBody"></div>
+      </details>
+      <p class="status-line" id="status"></p>
+    </div>
+  </main>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// ---- the rating surface (2026-09-17, ledger T-0166; Zak's yes on Q-0018) ----
+// Zak, 9/16: "a way for me to look through a bunch of examples ... and i can rate the quality of those" without typing
+// a reply. One card per proposal; one press rates it. The server builds the cards and composes the line it writes, so
+// nothing about a rating is decided in the browser -- this page sends {card, verdict, note} and paints what comes back.
+// It also sends {card, note} with NO verdict, which is a line on the item and nothing else (2026-09-18).
+// The auto-close bar Zak set (18 of the last 20 good) is counted and shown here and acted on by nothing; the line under
+// the counter says so, and it is not a hedge -- it is the state of this build.
+const { esc, md, isImage, lightbox } = BV;
+const $ = s => document.querySelector(s);
+let DATA = null, CUR = 0;
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const VERDICTS = [["good", "1"], ["off", "2"], ["wrong", "3"]];
+// ---- plain words on the face of the page (2026-09-18, Zak) ----
+// Zak, 9/18: "this whole review page is still really confusing, I don't understand what the 'its note+evidence'
+// means." Nothing on a card is labelled in the words the code uses any more: no "closure", no "evidence", no
+// "verdict". A card opens by saying what it is in one line, then its own words, then what changed since it was
+// written, then the three presses and a box.
+const KINDWORD = { closure: "test", review: "proposal", correction: "correction" };
+const KINDS = { closure: "tests", review: "proposals", correction: "corrections" };
+const shortDay = d => { const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(String(d || "")); return m ? `${+m[1]}/${m[2]}` : String(d || ""); };
+function whatItIs(c) {
+  if (c.kind === "closure") return `A test from ${shortDay(c.date)} that may already be covered`;
+  if (c.kind === "review") return "A proposal to rate";
+  return `A ${KINDWORD[c.kind] || c.kind} to rate`;
+}
+// where a card came from, in words rather than in the code's own name for the pass that found it
+const sourceWords = src => /evidence/i.test(String(src || "")) ? "I found this by reading what has closed since"
+                         : /tag/i.test(String(src || "")) ? "you tagged this for a look"
+                         : `put here by ${src || "me"}`;
+const HOW = [
+  "A card is one item off a ledger that I think needs your eye: a test whose work looks like it was already rebuilt, or something I tagged for you to judge.",
+  "Good means the proposal is right, and on a test card it also checks that test off.",
+  "Off means it is not right as it stands, and it puts a task on me to rewrite that test against what is actually built.",
+  "Wrong means it should not have been put to you at all: the item is left exactly as it is and never comes back as a card.",
+  "Note only writes what you typed onto the item and answers nothing: the card stays where it is, unanswered, and in the Rated fold the answer it already carries is left alone. Ctrl+Enter in the box does the same thing.",
+  "A card only appears where work has actually closed since the test was written that rebuilt what it checks; rewriting the test itself does not count. Tests with nothing behind them are counted at the top and are run from Today.",
+  "Everything you answer drops into the Rated fold at the bottom, where one press gives it a different answer, and if you ever want an item's code or the file it lives on, they are under the small mark in its corner.",
+  "Test opens the page a card is about in a second window beside this one, so you can try it and rate it side by side. The card then says when you opened it.",
+  "Pressed the wrong answer? An undo press sits beside what the press did for one minute and puts the card back exactly as it was.",
+  "In the Rated fold, search by words or project and narrow by answer or day. Click a row, then 1, 2 or 3 gives it that answer."
+];
+
+// a link becomes whatever that link actually is: a route opens as a page, a document in the Reader, a picture in the
+// lightbox, anything else in the read drawer (the same ladder the quest log uses, so links behave the same everywhere)
+function linkHTML(raw, label) {
+  const t = BV.quests.target(raw);
+  if (!t) return `<span class="filelink" data-open="${esc(raw)}" title="${esc(raw)}">${esc(label || String(raw).split("/").filter(Boolean).pop() || raw)}</span>`;
+  if (t.kind === "image") return `<span class="filelink" data-img="${esc(t.path)}" title="${esc(raw)}">${esc(label || t.label)}</span>`;
+  return `<a class="filelink" href="${esc(t.href)}" title="${esc(raw)}">${esc(label || t.label)}</a>`;
+}
+
+// ---- what the item says now, and what was done to it before (2026-09-18, Zak: "These still feel like they are
+// referencing old things") ----
+// A ledger note grows by appending, so a 9/09 test carries its whole 9/09 wording inside its note ("rewritten <day>
+// against viewer 0.31; the 9/09 steps read: ..."), plus every rating ever written on it. The server hands the face of
+// the card only what the item says NOW and puts the rewrite, rating, retire and move markers in `history`, which sits
+// behind this press, shut.
+function historyHTML(hist) {
+  const h = hist || [];
+  if (!h.length) return "";
+  return `<details class="rhist"><summary>history <span class="meta">${plural(h.length, "line")}</span></summary>`
+    + `<ul>${h.map(t => `<li>${esc(t)}</li>`).join("")}</ul></details>`;
+}
+
+// ---- the Test press (2026-09-24, T-0198; Zak 9/18: "Can I open these review tests in a pop up window so that I can
+// easily navigate or click on the linked place that I am supposed to go test the thing and have it automatically pop
+// out? Maybe even a button that says test") ----
+// The route is found the way the quest log finds a test's route: the item's own route link first, then the first
+// /route in its words. The window is ONE named window, reused, sized into the room beside this one (or the right half
+// of the screen when this window already fills it). That a card's target was opened is remembered in this browser only
+// (bv.review.opened), which is a convenience and never a record: every touch is wrapped.
+const OPENED_KEY = "bv.review.opened";
+function openedMap() { try { return JSON.parse(localStorage.getItem(OPENED_KEY) || "{}") || {}; } catch (e) { return {}; } }
+function markOpened(cid) {
+  const m = openedMap(); m[cid] = new Date().toISOString();
+  try { localStorage.setItem(OPENED_KEY, JSON.stringify(m)); } catch (e) {}
+}
+function cardRoute(c) {
+  const t = (c.links || []).map(BV.quests.target).find(x => x && x.kind === "route");
+  if (t) return t.href;
+  const r = BV.quests.route(c.text || "");
+  return r || null;
+}
+const clock = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString([], { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }); };
+function testHTML(c) {
+  const href = cardRoute(c);
+  if (!href) return "";
+  const when = openedMap()[c.cardId];
+  return `<div class="rtest"><button type="button" class="btn" data-test="${esc(c.cardId)}" data-href="${esc(href)}" title="open ${esc(href)} in a window beside this one">${when ? "test again" : "test"}</button>`
+    + `<span class="meta" data-opened="${esc(c.cardId)}">${when ? `opened ${esc(clock(when))}` : `opens ${esc(href)} beside this page`}</span></div>`;
+}
+function popOut(href, cid) {
+  const sx = screen.availLeft || 0, sy = screen.availTop || 0, sw = screen.availWidth || 1440, sh = screen.availHeight || 900;
+  const right = (window.screenX || 0) + (window.outerWidth || sw);
+  let left = right, w = sx + sw - right;
+  if (w < 520) { w = Math.round(sw / 2); left = sx + sw - w; }      // no room beside it: the right half of the screen
+  const top = Math.max(sy, window.screenY || sy), h = Math.min(sh, window.outerHeight || sh);
+  const win = window.open(href, "bv-review-test", `popup=yes,width=${w},height=${h},left=${left},top=${top}`);
+  if (win) { try { win.moveTo(left, top); win.resizeTo(w, h); } catch (e) {} try { win.focus(); } catch (e) {} }
+  markOpened(cid);
+  const b = $(`button[data-test="${CSS.escape(cid)}"]`); if (b) b.textContent = "test again";
+  const m = $(`[data-opened="${CSS.escape(cid)}"]`); if (m) m.textContent = win ? `opened ${clock(new Date().toISOString())}` : "the browser blocked the window: allow pop-ups for this page";
+}
+
+function cardHTML(c, i) {
+  const head = [`<span class="badge">${esc(c.projectName || c.project)}</span>`];
+  if (c.age_days !== null) head.push(`<span class="meta" title="written ${esc(c.date)}">${plural(c.age_days, "day")} old</span>`);
+  // who put the card here, said plainly: the server's own word for it ("viewer evidence read") is kept on the hover
+  head.push(`<span class="meta" title="who put this card here: ${esc(c.source)}">${esc(sourceWords(c.source))}</span>`);
+  for (const t of c.tags || []) head.push(`<span class="tag">#${esc(t)}</span>`);
+
+  // top to bottom: what it is, whose it is and how old, its own words, what changed since, the presses, the box
+  const parts = [`<p class="what">${esc(whatItIs(c))}</p>`, `<div class="rhead">${head.join("")}</div>`,
+                 `<p class="prop">${BV.ledgerText(c.kind === "closure" ? c.text : c.proposal, c.project)}</p>`, testHTML(c)];
+  if (c.kind !== "closure" && c.text && c.text !== c.proposal) parts.push(`<div class="rline"><span class="kicker">the item says</span><span>${BV.ledgerText(c.text, c.project)}</span></div>`);
+  if (c.note) parts.push(`<div class="rline"><span class="kicker">already written on it</span><span>${esc(c.note)}</span></div>`);
+  parts.push(historyHTML(c.history));
+  // the closed work that says this may already be covered, in words: what was done, the day it closed, and the page
+  // or the file it points at, as a link. The item codes stay off the face -- on the hover, and in the corner mark.
+  const since = (c.evidence || []).map(e => `<span title="${esc(e.id)}">${esc(e.text)} <span class="meta">closed ${esc(shortDay(e.done))}</span></span> ${linkHTML(e.link)}`)
+    .concat((c.links || []).map(l => linkHTML(l)));
+  if (since.length) parts.push(`<div class="rline"><span class="kicker">what changed since</span><span>${since.join(" · ")}</span></div>`);
+  parts.push(`<div class="rate">`
+    + VERDICTS.map(([v, k]) => `<button type="button" class="btn${v === "good" ? " primary" : ""}" data-v="${v}" data-card="${esc(c.cardId)}">${v}<kbd>${k}</kbd></button>`).join("")
+    + `<button type="button" class="btn note" data-noteonly="${esc(c.cardId)}" title="write the line and leave the card exactly as it is">note only</button>`
+    + `<textarea class="rnote grow" rows="2" data-note="${esc(c.cardId)}" placeholder="anything you noticed" title="as much as you want to say, or nothing — Enter makes a new line, Ctrl+Enter writes the line on its own and leaves the card unanswered"></textarea>`
+    + `<span class="said meta" data-said="${esc(c.cardId)}"></span>`
+    + `<span class="says">${esc((DATA.presses || {})[c.kind] || "")}</span></div>`);
+  // the id and the ledger sit in the card's corner, off the reading line (2026-09-18, Zak: "for my ADHD it makes me
+  // space out and get distracted, far better for you to have it on the backend"). One hover or one press shows them.
+  return `<article class="rcard${i === CUR ? " on" : ""}" data-cardid="${esc(c.cardId)}" data-id="${esc(c.id)}">${BV.idTag(c.id, c.file)}${parts.join("")}</article>`;
+}
+
+function counterHTML() {
+  const a = DATA.autoClose, c = DATA.counter || {};
+  const kinds = Object.keys(c).sort();
+  const bits = kinds.length
+    ? kinds.map(k => `<span class="badge${c[k].met ? " done" : ""}" title="${esc(c[k].rated)} rated altogether">${esc(KINDS[k] || k)}: ${c[k].good} of the last ${c[k].window} good</span>`)
+    : [`<span class="badge">nothing rated yet</span>`];
+  // the server writes this sentence in the code's word for a test card; it is said in the page's words here
+  const says = String(a.says || "").replace(/closures/g, "test cards").replace(/closure/g, "test card");
+  return `<span class="kicker">the bar</span>${bits.join("")}<span>${esc(says)}</span>`;
+}
+
+// ---- the Rated fold (2026-09-18, viewer Q-0018) ----
+// Zak: a rated card no longer disappears. Every answer already given sits here with its verdict, the day it was given
+// and one press to change it. A card rated WRONG is still never offered again as a new card -- review_cards() skips
+// anything in the ratings folder -- it simply lives here, which is where the answer is changed rather than re-asked.
+const VBADGE = { good: "done", off: "", wrong: "blocked" };
+
+function ratedRowHTML(r) {
+  const meta = [`<span class="badge">${esc(r.project)}</span>`,
+                `<span class="badge type">${esc(KINDWORD[r.kind] || r.kind)}</span>`, `<span>${esc(r.day || "")}</span>`];
+  if (r.changedFrom) meta.push(`<span class="meta">changed from ${esc(r.changedFrom)}</span>`);
+  if (r.gone) meta.push(`<span class="badge">no longer on the ledger</span>`);
+  else if (r.state) meta.push(`<span class="badge${r.state === "done" ? " done" : ""}">${esc(r.state)} on the ledger</span>`);
+  if (r.note) meta.push(`<span class="meta">“${esc(r.note)}”</span>`);
+  if (r.itemNote) meta.push(`<span class="meta">written on it: ${esc(r.itemNote)}</span>`);
+  return `<div class="rrow" tabindex="0" data-rated="${esc(r.cardId)}" data-id="${esc(r.id)}" title="click the row, then 1 2 3 gives it that answer">${BV.idTag(r.id, r.file)}
+    <div class="v"><span class="badge ${esc(VBADGE[r.verdict] || "")}">${esc(r.verdict)}</span></div>
+    <div>
+      <div class="t">${BV.ledgerText(r.text, r.project)}</div>
+      <div class="m">${meta.join("")}</div>
+      ${historyHTML(r.history)}
+      <div class="changer">${r.gone
+        ? `<span class="meta">the item is gone, so there is nothing to change</span>`
+        : `<button type="button" class="btn" data-change="${esc(r.cardId)}">change</button><button type="button" class="btn note" data-addnote="${esc(r.cardId)}" title="write a line on it and leave your answer as it is">add a note</button><span class="csaid meta"></span>`}</div>
+    </div></div>`;
+}
+
+// ---- search and filters on the fold (2026-09-24, T-0200; Zak 9/18: "Changing an already rated card is a pain in the
+// ass when there are a lot of them") ----
+// Words match the item's text, its project, its code and both notes; the two selects narrow to one answer and one day.
+// Newest first stays the order. The filters are read from the controls on every paint, so a re-rate keeps them.
+function ratedFilter(rows) {
+  const q = (($("#rq") || {}).value || "").trim().toLowerCase(), v = ($("#rv") || {}).value || "", d = ($("#rd") || {}).value || "";
+  const words = q.split(/\s+/).filter(Boolean);
+  return rows.filter(r => (!v || r.verdict === v) && (!d || r.day === d) && (!words.length || words.every(w =>
+    [r.text, r.project, r.id, r.note, r.itemNote, KINDWORD[r.kind] || r.kind].join(" ").toLowerCase().includes(w))));
+}
+function paintDays(rows) {
+  const sel = $("#rd"); if (!sel) return;
+  const keep = sel.value, days = [...new Set(rows.map(r => r.day).filter(Boolean))].sort().reverse();
+  sel.innerHTML = `<option value="">every day</option>` + days.map(d => `<option value="${esc(d)}">${esc(shortDay(d))}</option>`).join("");
+  sel.value = days.includes(keep) ? keep : "";
+}
+function paintRated() {
+  const all = (DATA.rated || []).slice().sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
+  paintDays(all);
+  const rows = ratedFilter(all);
+  $("#ratedTools").hidden = !all.length;
+  $("#ratedSum").textContent = all.length
+    ? `${plural(all.length, "card")} answered · newest first · press change, or click a row and press 1 2 3`
+    : "nothing rated yet";
+  $("#rcount").textContent = all.length && rows.length !== all.length ? `${rows.length} of ${all.length} shown` : "";
+  $("#ratedBody").innerHTML = !all.length
+    ? `<p class="meta" style="margin:0">Nothing has been rated yet. Once you press good, off or wrong on a card it moves down here, and you can change the answer from this fold.</p>`
+    : rows.length ? rows.map(ratedRowHTML).join("")
+    : `<p class="meta" style="margin:0">No rated card matches that. Clear the search or pick every answer and every day.</p>`;
+}
+
+function paint() {
+  $("#crumb").textContent = `${DATA.today} · ${DATA.ledgers.length} ledgers`;
+  // the untested line is not a hedge: a test with no rebuilt work behind it is not a card at all, and saying how many
+  // there are is the only honest thing this page can say about them (2026-09-18)
+  const untested = DATA.untested
+    ? ` ${plural(DATA.untested, "test")} ${DATA.untested === 1 ? "has" : "have"} no rebuild behind them — run those from Today.` : "";
+  $("#lead").textContent = (DATA.waiting
+    ? `${plural(DATA.waiting, "card")} waiting, ${DATA.shown} in this sitting. Press good, off or wrong on each — or note only to leave a line without answering.`
+    : "Nothing to rate right now.") + untested;
+  $("#howBody").innerHTML = HOW.map(t => `<li>${esc(t)}</li>`).join("");
+  $("#counter").innerHTML = counterHTML();
+  $("#body").innerHTML = DATA.cards.length
+    ? DATA.cards.map(cardHTML).join("")
+    : `<p class="empty">Nothing to rate right now. A card turns up here when I think a test may already be covered by work that has closed since it was written, or when I have tagged an item for you to judge. Nothing on this page is waiting on you until then.</p>`;
+  paintRated();
+  $("#status").textContent = `${DATA.ratedTotal} ratings written so far, kept in ${DATA.ratingsFolder} · a sitting is at most ${DATA.sitting} cards · read ${(DATA._servedAt || "").replace("T", " ")}`;
+  BV.glossary.scan($("#main"));
+}
+
+async function load() {
+  const r = await fetch("/api/review");
+  const j = await r.json();
+  if (!r.ok || j.error) throw new Error(j.error || ("the server answered " + r.status));
+  DATA = j; CUR = 0;
+  paint();
+}
+
+// ---- a line with no answer (2026-09-18, Zak: "when changing I have to change the answer even if I wanted to leave a
+// note") ----
+// POST /api/review carrying {card, note} and NO verdict. The server writes `note (viewer, <day>): ...` onto the item
+// through the same tool a rating uses and moves nothing else: an unanswered card stays unanswered and stays where it
+// is, an answered one keeps the answer it has. The box empties, and the face of the card shows the new line.
+async function sendNote(cardId, box, say) {
+  const text = ((box && box.value) || "").trim();
+  if (!text) { if (say) say.textContent = "type a line first"; return null; }
+  if (say) say.textContent = "writing…";
+  const r = await fetch("/api/review", { method: "POST", headers: { "Content-Type": "application/json" },
+                                         body: JSON.stringify({ card: cardId, note: text }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) { if (say) say.textContent = j.error || ("the server answered " + r.status); return null; }
+  if (box) { box.value = ""; BV.grow(box); }
+  const c = (DATA.cards || []).find(x => x.cardId === cardId);
+  if (c) { c.note = j.itemNote || ""; c.history = j.history || []; }
+  const rr = (DATA.rated || []).find(x => x.cardId === cardId);
+  if (rr) { rr.itemNote = j.itemNote || ""; rr.history = j.history || []; }
+  return j;
+}
+
+// the one card redrawn from what the server just said the item says, with its place in the sitting kept
+function repaintCard(cardId, said) {
+  const i = (DATA.cards || []).findIndex(c => c.cardId === cardId);
+  const el = $(`article.rcard[data-cardid="${CSS.escape(cardId)}"]`);
+  if (i < 0 || !el) return;
+  el.outerHTML = cardHTML(DATA.cards[i], i);
+  const fresh = $(`article.rcard[data-cardid="${CSS.escape(cardId)}"]`);
+  if (!fresh) return;
+  if (said) fresh.querySelector("[data-said]").textContent = said;
+  BV.glossary.scan(fresh);
+}
+
+async function noteOnlyCard(cardId) {
+  const card = $(`article.rcard[data-cardid="${CSS.escape(cardId)}"]`);
+  if (!card || card.classList.contains("rated")) return;
+  const said = card.querySelector("[data-said]"), box = card.querySelector(".rnote");
+  const btn = card.querySelector("button[data-noteonly]");
+  if (btn) btn.disabled = true;
+  const j = await sendNote(cardId, box, said);
+  if (btn) btn.disabled = false;
+  if (j) repaintCard(cardId, `note written ${j.day} — this card is still unanswered`);
+}
+
+async function noteOnlyRow(cid) {
+  const row = $(`.rrow[data-rated="${CSS.escape(cid)}"]`); if (!row) return;
+  const say = row.querySelector(".csaid"), box = row.querySelector("[data-cnote]");
+  const j = await sendNote(cid, box, say);
+  if (!j) return;
+  paintRated();
+  $("#status").textContent = `${j.id} — note written ${j.day}; the answer it carries did not change`;
+}
+
+// ---- one rating ----
+async function rate(cardId, verdict) {
+  const card = $(`article.rcard[data-cardid="${CSS.escape(cardId)}"]`);
+  if (!card || card.classList.contains("rated")) return;
+  const said = card.querySelector("[data-said]"), box = card.querySelector(".rnote");
+  for (const b of card.querySelectorAll("button[data-v]")) b.disabled = true;
+  said.textContent = "writing…";
+  const r = await fetch("/api/review", { method: "POST", headers: { "Content-Type": "application/json" },
+                                         body: JSON.stringify({ card: cardId, verdict, note: box ? box.value : "" }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) {
+    said.textContent = j.error || ("the server answered " + r.status);
+    for (const b of card.querySelectorAll("button[data-v]")) b.disabled = false;
+    return;
+  }
+  card.classList.add("rated");
+  if (box) box.disabled = true;
+  said.textContent = saidFor(j, verdict);
+  offerUndo(said, cardId);
+  DATA.counter = j.counter || DATA.counter; DATA.ratedTotal = (DATA.ratedTotal || 0) + 1;
+  $("#counter").innerHTML = counterHTML();
+  intoFold(j);
+  move(1);
+}
+
+// what the press actually left behind, in the same plain words the line under the buttons promised
+function saidFor(j, verdict) {
+  const bits = [`rated ${verdict}`];
+  if (j.changedFrom) bits.push(`changed from ${j.changedFrom}`);
+  if (j.closed) bits.push(`${j.item} checked off`);
+  if (j.reopened) bits.push(`${j.item} open again`);
+  if (j.retestId) bits.push(`${j.retest === "repeated" ? "rewrite already filed" : "rewrite filed"} as ${j.retestId}`);
+  else if (j.retest) bits.push(j.retest);
+  return bits.join(" — ");
+}
+
+// the card joins the Rated fold without a reload: the row the server just wrote, at the top, where it can be changed
+function intoFold(j) {
+  const cid = `${j.project}:${j.item}`;
+  DATA.rated = [{ cardId: cid, project: j.project, file: j.file, id: j.item, kind: j.kind, verdict: j.verdict,
+                  day: j.day, at: j.at, note: j.note || "", itemNote: j.itemNote || "", history: j.history || [],
+                  changedFrom: j.changedFrom, line: j.line,
+                  text: j.text, proposal: j.proposal,
+                  state: j.closed ? "done" : j.reopened ? "open" : undefined, gone: false, links: [] }]
+    .concat((DATA.rated || []).filter(r => r.cardId !== cid));
+  paintRated();
+}
+
+// ---- changing an answer, from the fold ----
+// One press opens the three verdicts on that row; pressing one sends the same POST the cards send. The server knows
+// the card is already rated, so it writes the change: a new note line saying what it changed from, a SECOND line in
+// the day's ratings file, and the item reopened or closed to match.
+function openChanger(cid) {
+  const row = $(`.rrow[data-rated="${CSS.escape(cid)}"]`); if (!row) return;
+  const was = (DATA.rated || []).find(r => r.cardId === cid);
+  const box = row.querySelector(".changer");
+  box.innerHTML = VERDICTS.map(([v]) => `<button type="button" class="btn${v === (was && was.verdict) ? " on" : ""}" data-newv="${v}" data-rcard="${esc(cid)}"${v === (was && was.verdict) ? " disabled title=\"this is the answer it already carries\"" : ""}>${v}</button>`).join("")
+    + `<textarea class="rnote grow" rows="2" data-cnote="${esc(cid)}" placeholder="why it changed, or just a line — Enter makes a new line, Ctrl+Enter writes the line on its own"></textarea>`
+    + `<button type="button" class="btn note" data-writenote="${esc(cid)}" title="write the line and leave the answer as it is">note only</button>`
+    + `<button type="button" class="btn" data-cancel="${esc(cid)}">cancel</button><span class="csaid meta"></span>`;
+}
+
+// the same box without the three verdicts: a line on an item already answered, which changes nothing about the answer
+function openNoteBox(cid) {
+  const row = $(`.rrow[data-rated="${CSS.escape(cid)}"]`); if (!row) return;
+  const box = row.querySelector(".changer");
+  box.innerHTML = `<textarea class="rnote grow" rows="2" data-cnote="${esc(cid)}" placeholder="a line on this item; your answer stays as it is — Ctrl+Enter writes it"></textarea>`
+    + `<button type="button" class="btn note" data-writenote="${esc(cid)}">write note</button>`
+    + `<button type="button" class="btn" data-cancel="${esc(cid)}">cancel</button><span class="csaid meta"></span>`;
+  const ta = box.querySelector("textarea"); if (ta) ta.focus();
+}
+
+async function change(cid, verdict, refocus) {
+  const row = $(`.rrow[data-rated="${CSS.escape(cid)}"]`); if (!row) return;
+  const say = row.querySelector(".csaid"), box = row.querySelector("[data-cnote]");
+  for (const b of row.querySelectorAll("button")) b.disabled = true;
+  say.textContent = "writing…";
+  const r = await fetch("/api/review", { method: "POST", headers: { "Content-Type": "application/json" },
+                                         body: JSON.stringify({ card: cid, verdict, note: box ? box.value : "" }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) {
+    say.textContent = j.error || ("the server answered " + r.status);
+    for (const b of row.querySelectorAll("button")) b.disabled = false;
+    return;
+  }
+  DATA.counter = j.counter || DATA.counter; DATA.ratedTotal = (DATA.ratedTotal || 0) + 1;
+  $("#counter").innerHTML = counterHTML();
+  intoFold(j);
+  $("#status").textContent = `${j.item} — ${saidFor(j, verdict)} · written to the ledger and logged`;
+  offerUndo($("#status"), cid);
+  const back = $(`.rrow[data-rated="${CSS.escape(cid)}"]`); if (back && refocus) back.focus();
+}
+
+// ---- undo, for one minute (2026-09-24, T-0200) ----
+// The press sits after what the rating did and goes away on its own after sixty seconds. It sends {card, undo: true};
+// the server takes back only the newest rating on that card and only inside its own window, so a stale press can never
+// reach further back than the one just made. A first rating comes back as an unanswered card; a change goes back to
+// the answer it had.
+const UNDO_MS = 60000;
+function offerUndo(where, cid) {
+  if (!where) return;
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "btn undo"; b.dataset.undo = cid; b.textContent = "undo";
+  b.title = "take this answer back; the press goes away after a minute";
+  where.appendChild(document.createTextNode(" ")); where.appendChild(b);
+  setTimeout(() => { if (b.isConnected) b.remove(); }, UNDO_MS);
+}
+async function undo(cid, btn) {
+  if (btn) btn.disabled = true;
+  const r = await fetch("/api/review", { method: "POST", headers: { "Content-Type": "application/json" },
+                                         body: JSON.stringify({ card: cid, undo: true }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) { if (btn) { btn.disabled = false; btn.textContent = "undo failed"; btn.title = j.error || ("the server answered " + r.status); } return; }
+  const keep = $("#main").scrollTop;
+  await load();
+  const i = (DATA.cards || []).findIndex(c => c.cardId === cid);
+  if (i >= 0) { CUR = i; document.querySelectorAll("article.rcard").forEach((el, n) => el.classList.toggle("on", n === CUR)); }
+  $("#main").scrollTop = keep;
+  $("#status").textContent = `${j.item} — ${j.verdict === "undone" ? `the ${j.undone} answer was taken back; the card is unanswered again` : `changed back to ${j.verdict}`}${j.reopened ? ", and the item is open again" : ""}${j.withdrew ? `; the rewrite task ${j.withdrew} was withdrawn` : ""}`;
+}
+
+function move(step) {
+  const cards = [...document.querySelectorAll("article.rcard")];
+  if (!cards.length) return;
+  let i = CUR;
+  for (let n = 0; n < cards.length; n++) {
+    i = Math.max(0, Math.min(cards.length - 1, i + step));
+    if (!cards[i].classList.contains("rated") || i === 0 || i === cards.length - 1) break;
+  }
+  CUR = i;
+  cards.forEach((el, n) => el.classList.toggle("on", n === CUR));
+  cards[CUR].scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+// ---- the read drawer (the same one /projects and /findings open) ----
+async function openFile(path, frag) { return BV.drawer.open(path, frag); }   // the one shared drawer, viewer-common.js (0.54.1, T-0152)
+
+document.addEventListener("click", async e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  const v = e.target.closest("button[data-v]"); if (v) { await rate(v.dataset.card, v.dataset.v); return; }
+  const ts = e.target.closest("button[data-test]"); if (ts) { popOut(ts.dataset.href, ts.dataset.test); return; }
+  const un = e.target.closest("button[data-undo]"); if (un) { await undo(un.dataset.undo, un); return; }
+  const no = e.target.closest("button[data-noteonly]"); if (no) { await noteOnlyCard(no.dataset.noteonly); return; }
+  const an = e.target.closest("button[data-addnote]"); if (an) { openNoteBox(an.dataset.addnote); return; }
+  const wn = e.target.closest("button[data-writenote]"); if (wn) { await noteOnlyRow(wn.dataset.writenote); return; }
+  const ch = e.target.closest("button[data-change]"); if (ch) { openChanger(ch.dataset.change); return; }
+  const nv = e.target.closest("button[data-newv]"); if (nv) { await change(nv.dataset.rcard, nv.dataset.newv); return; }
+  const cx = e.target.closest("button[data-cancel]"); if (cx) { paintRated(); return; }
+  const im = e.target.closest(".filelink[data-img]"); if (im) { lightbox(im.dataset.img); return; }
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); const t = w.dataset.wikilink.split("#")[0].trim(); if (t.endsWith(".canvas")) location.href = BV.forgeHref(t); else openFile(t, w.dataset.wikilink.split("#")[1]); return; }
+  const o = e.target.closest(".filelink[data-open]"); if (o) { openFile(o.dataset.open, o.dataset.frag); return; }
+  if (e.target.closest("details.rfold")) return;        // the fold has its own presses; a click in it never moves the sitting
+  const card = e.target.closest("article.rcard");
+  if (card) { const cards = [...document.querySelectorAll("article.rcard")]; CUR = cards.indexOf(card); cards.forEach((el, n) => el.classList.toggle("on", n === CUR)); }
+});
+
+document.addEventListener("keydown", e => {
+  // Ctrl+Enter (Cmd+Enter) out of a note box WRITES THE LINE ON ITS OWN (2026-09-18, Zak: "Still unable to submit
+  // text only in the review thing"). It used to move focus onto the three presses, which meant a line could not be
+  // left without also answering. Now it sends {card, note} with no verdict: the line lands on the item, the box
+  // empties, and the card keeps whatever answer it had, or none. Enter alone stays a newline; the rating is still the
+  // three presses, and 1 / 2 / 3 still work once the box is left.
+  const ta = e.target && e.target.closest ? e.target.closest("textarea.rnote") : null;
+  if (ta && e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    const card = ta.closest("article.rcard");
+    if (card) { noteOnlyCard(card.dataset.cardid); return; }
+    const row = ta.closest(".rrow");
+    if (row) { noteOnlyRow(row.dataset.rated); return; }
+    return;
+  }
+  if (BV.typing(e)) return;                                  // a line being typed into a card's note owns the keyboard
+  if (e.key === "Escape") { $("#drawer").hidden = true; return; }
+  if (!DATA) return;
+  const hit = VERDICTS.find(([, k]) => e.key === k);
+  // a rated row that has the focus takes 1 2 3 as a new answer (2026-09-24, T-0200)
+  const fr = document.activeElement && document.activeElement.closest ? document.activeElement.closest(".rrow") : null;
+  if (hit && fr && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    const was = (DATA.rated || []).find(r => r.cardId === fr.dataset.rated);
+    if (!was || was.gone) return;
+    if (was.verdict === hit[0]) { $("#status").textContent = `${was.id} is already ${hit[0]}`; return; }
+    change(fr.dataset.rated, hit[0], true);
+    return;
+  }
+  if (!DATA.cards.length) return;
+  if (hit) { e.preventDefault(); const c = document.querySelectorAll("article.rcard")[CUR]; if (c) rate(c.dataset.cardid, hit[0]); return; }
+  if (e.key === "Enter" || e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); move(1); return; }
+  if (e.key === "Backspace" || e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); move(-1); }
+});
+
+for (const id of ["#rq", "#rv", "#rd"]) { const el = $(id); if (el) el.addEventListener(id === "#rq" ? "input" : "change", () => { if (DATA) paintRated(); }); }
+BV.ledger.prime();   // one read of the ledgers so a T-#### / Q-#### on a card reads as the item it names (viewer Q-0028)
+load().catch(e => { $("#lead").textContent = ""; $("#body").innerHTML = `<div class="note">Could not read the ledgers: ${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

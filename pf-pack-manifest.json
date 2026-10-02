@@ -2,7 +2,7 @@
   "pack": "prospectforge-base",
   "manifestVersion": 2,
   "updatedAt": "2026-10-02",
-  "manifestChangelog": "2026-10-02 release: ferryman 1.3.1 (User-Agent on every call, the Cloudflare 1010 fix; BRAIN_ROOT override). 2026-09-23 release: brain-viewer 0.48.0 (The viewer is now a pf-pack component, replaced whole on update, and what you make lives outside it. Your settings, board layouts, looks and widgets live in viewer/ at the brain root, which no update). 2026-09-23 release: brain-viewer 0.48.0 (The viewer is now a pf-pack component, replaced whole on update, and what you make lives outside it. Your settings, board layouts, looks and widgets live in viewer/ at the brain root, which no update). 2026-09-23 release: update 1.1.0 (folder components: install-component.py replaces a component folder whole; the Brain Viewer ships as one). 2026-09-03 release: ferryman 1.3.0 (push.py was sending a `source` key the import schema rejects 422, so every 1.2.0 push failed at validate -- removed; --participants ships as a frontmatter YAML list; --base flag; runbook example corrected; participants matrix row LIVE). 2026-08-28 release: ferryman 1.2.0 (PATCH correction path, API catalog, owner rules, Topics trap, participants gap documented), transcript-processor 1.2.1 (owner rules + corrected push facts + verbatim check), people-adapter 1.0.1 (career-arc facet), shell v0.2 (standing reminders folded into current-focus, dispatcher-cursor dropped, Ferret reference removed). v2 (2026-07-28): per-skill files[] mappings (src in this repo -> dest in a brain) so the assembler can build a new brain straight from the registry; shell component versioned; update-skill + ferryman-adapter-contract now bundled. All v1 fields unchanged — /update keeps working.",
+  "manifestChangelog": "2026-10-02 release: brain-survey 1.0.0, mentee-project 0.1.0 and brain-status 0.1.0 join the pack as folder components. 2026-10-02 release: ferryman 1.3.1 (User-Agent on every call, the Cloudflare 1010 fix; BRAIN_ROOT override). 2026-09-23 release: brain-viewer 0.48.0 (The viewer is now a pf-pack component, replaced whole on update, and what you make lives outside it. Your settings, board layouts, looks and widgets live in viewer/ at the brain root, which no update). 2026-09-23 release: brain-viewer 0.48.0 (The viewer is now a pf-pack component, replaced whole on update, and what you make lives outside it. Your settings, board layouts, looks and widgets live in viewer/ at the brain root, which no update). 2026-09-23 release: update 1.1.0 (folder components: install-component.py replaces a component folder whole; the Brain Viewer ships as one). 2026-09-03 release: ferryman 1.3.0 (push.py was sending a `source` key the import schema rejects 422, so every 1.2.0 push failed at validate -- removed; --participants ships as a frontmatter YAML list; --base flag; runbook example corrected; participants matrix row LIVE). 2026-08-28 release: ferryman 1.2.0 (PATCH correction path, API catalog, owner rules, Topics trap, participants gap documented), transcript-processor 1.2.1 (owner rules + corrected push facts + verbatim check), people-adapter 1.0.1 (career-arc facet), shell v0.2 (standing reminders folded into current-focus, dispatcher-cursor dropped, Ferret reference removed). v2 (2026-07-28): per-skill files[] mappings (src in this repo -> dest in a brain) so the assembler can build a new brain straight from the registry; shell component versioned; update-skill + ferryman-adapter-contract now bundled. All v1 fields unchanged — /update keeps working.",
   "shell": {
     "component": "brain-shell",
     "version": "0.2",
@@ -654,6 +654,142 @@
           "src": "files/brain-log-0.48.0/readme.md",
           "dest": "skills/brain-log/readme.md",
           "sha256": "e00d6a204d4400f16272c2149d23c872963173e0f735e02cd0d9b3529d85b805"
+        }
+      ]
+    },
+    {
+      "skill": "brain-survey",
+      "version": "1.0.0",
+      "installedAs": "1.0.0",
+      "changelog": "Survey a person's existing files by type (names, sizes and dates only; nothing opened), with a question for everything the count raises, then ingest one type at a time. First pack release; was copied into brains by hand.",
+      "promptUrl": null,
+      "blurb": "seeds a new brain from a person's existing files: survey.py counts them by type without opening any and writes the inventory and its questions into inbox/, then the agent ingests one type at a time in the order the answers allow",
+      "specPath": "skills/brain-survey/brain-survey-skill.md",
+      "update": "replace-folder",
+      "installRoot": "skills/brain-survey",
+      "files": [
+        {
+          "src": "files/brain-survey-1.0.0/brain-survey-skill.md",
+          "dest": "skills/brain-survey/brain-survey-skill.md",
+          "sha256": "e52acb4f284690fff1736c191f7f5a3835b8b51a275f3cce994e6fb6074804f2"
+        },
+        {
+          "src": "files/brain-survey-1.0.0/component.json",
+          "dest": "skills/brain-survey/component.json",
+          "sha256": "e03814aae519691fe6c0c34713655e7bc070b0d8753d692ef75bb4c3195c35ab"
+        },
+        {
+          "src": "files/brain-survey-1.0.0/readme.md",
+          "dest": "skills/brain-survey/readme.md",
+          "sha256": "7e3599a623ab5dd9a34e2806061c02b4edb208f8e66faf41db38eca3b7ca9e70"
+        },
+        {
+          "src": "files/brain-survey-1.0.0/survey.py",
+          "dest": "skills/brain-survey/survey.py",
+          "sha256": "4c03ff926a9e54eda0e16013fd8c8ea78e156d441418eebd331d3f0c771741ec"
+        }
+      ]
+    },
+    {
+      "skill": "mentee-project",
+      "version": "0.1.0",
+      "installedAs": "0.1.0",
+      "changelog": "Start a project and walk it through purpose, interviews, confines and outfitter on its ledger. First pack release; was copied into brains by hand. Requires brain-tasks and brain-log.",
+      "promptUrl": null,
+      "blurb": "start a project and walk it through four steps (purpose, interviews, confines, outfitter) on its own ledger; project.py writes the ledger through tasks.py and one log line per run",
+      "specPath": "skills/mentee-project/mentee-project-skill.md",
+      "update": "replace-folder",
+      "installRoot": "skills/mentee-project",
+      "requires": [
+        "brain-tasks",
+        "brain-log"
+      ],
+      "files": [
+        {
+          "src": "files/mentee-project-0.1.0/check.py",
+          "dest": "skills/mentee-project/check.py",
+          "sha256": "67275ac8f49ff591a2508283f2d63ec61279e71a33ea24a430f40d4d21d8174c"
+        },
+        {
+          "src": "files/mentee-project-0.1.0/component.json",
+          "dest": "skills/mentee-project/component.json",
+          "sha256": "f8ff4ca73ce3137fee10b3e7804f9711f3c2abb9e4d1349500bbcdbc10941d52"
+        },
+        {
+          "src": "files/mentee-project-0.1.0/mentee-project-skill.md",
+          "dest": "skills/mentee-project/mentee-project-skill.md",
+          "sha256": "8ed7e31a77973fabe129958445b49747fae5dd20cc0f28eaa0a3b6bc4acabb58"
+        },
+        {
+          "src": "files/mentee-project-0.1.0/project.py",
+          "dest": "skills/mentee-project/project.py",
+          "sha256": "595e2ad57e789fb3882c91124e2062e08e27cfa13ad25f9b423c646e9a3730c1"
+        },
+        {
+          "src": "files/mentee-project-0.1.0/prompts/mentee-project-confines-prompt.md",
+          "dest": "skills/mentee-project/prompts/mentee-project-confines-prompt.md",
+          "sha256": "5cfe9f5704872d39fda5115648cea6f1b4d03450b29c43b843b9183cdf2b17a2"
+        },
+        {
+          "src": "files/mentee-project-0.1.0/prompts/mentee-project-interviews-prompt.md",
+          "dest": "skills/mentee-project/prompts/mentee-project-interviews-prompt.md",
+          "sha256": "df0e42696f236d70e477f64f465215127a59fc0b1a8e1c8c1b4e33f74db3adbd"
+        },
+        {
+          "src": "files/mentee-project-0.1.0/prompts/mentee-project-outfitter-prompt.md",
+          "dest": "skills/mentee-project/prompts/mentee-project-outfitter-prompt.md",
+          "sha256": "c22ad8ac2df3e1dedb33cb00e7ec13ac0cee60b6528e191d63c445a208e5cca2"
+        },
+        {
+          "src": "files/mentee-project-0.1.0/prompts/mentee-project-purpose-prompt.md",
+          "dest": "skills/mentee-project/prompts/mentee-project-purpose-prompt.md",
+          "sha256": "61ad0531415d60dd2942cb88e227efd88a19bf886db9622bb02618f5da0029e2"
+        },
+        {
+          "src": "files/mentee-project-0.1.0/readme.md",
+          "dest": "skills/mentee-project/readme.md",
+          "sha256": "838b43e76b9ea92833543401f3cd3c0f5d1ba323bedb3449519aa23931178634"
+        }
+      ]
+    },
+    {
+      "skill": "brain-status",
+      "version": "0.1.0",
+      "installedAs": "0.1.0",
+      "changelog": "One read of a brain's state (pack versions against the manifest, offline-safe; features on and off; local changes inside folder components) into context/brain-status.json. First pack release. Requires brain-log.",
+      "promptUrl": null,
+      "blurb": "one read of a brain's state into context/brain-status.json: pack versions against the manifest, extras, local changes inside folder components, features on and off, log activity; runs at session start and rounds",
+      "specPath": "skills/brain-status/brain-status-skill.md",
+      "update": "replace-folder",
+      "installRoot": "skills/brain-status",
+      "requires": [
+        "brain-log"
+      ],
+      "files": [
+        {
+          "src": "files/brain-status-0.1.0/brain-status-skill.md",
+          "dest": "skills/brain-status/brain-status-skill.md",
+          "sha256": "080faba2e7d8baa60edea3b9784acc5d82888eb42daee46218ebe2eacf62139f"
+        },
+        {
+          "src": "files/brain-status-0.1.0/check.py",
+          "dest": "skills/brain-status/check.py",
+          "sha256": "077356f485a815da193442b6a0f5decb2d2fb31ab7f378678384923caa07d0a2"
+        },
+        {
+          "src": "files/brain-status-0.1.0/component.json",
+          "dest": "skills/brain-status/component.json",
+          "sha256": "c4af18f2091ce9fdce912a84c8eb0ff553b6eac519485cec58efbdbf2d9f6b84"
+        },
+        {
+          "src": "files/brain-status-0.1.0/readme.md",
+          "dest": "skills/brain-status/readme.md",
+          "sha256": "306349de8d0880de0b0258a6b8c7522c6077dd8af102441a4ed7102fe902d3d1"
+        },
+        {
+          "src": "files/brain-status-0.1.0/status.py",
+          "dest": "skills/brain-status/status.py",
+          "sha256": "6dc138156996f97a0326a2ec3ccf6286ab93c879fcead0d5bc90ce2726063295"
         }
       ]
     }

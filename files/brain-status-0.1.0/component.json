@@ -1,0 +1,10 @@
+{
+  "component": "brain-status",
+  "version": "0.1.0",
+  "releasedAt": "2026-10-02",
+  "installRoot": "skills/brain-status",
+  "requires": [
+    "brain-log"
+  ],
+  "note": "Released into pf-pack 2026-10-02 as a folder component; install or update with python skills/update/install-component.py brain-status."
+}

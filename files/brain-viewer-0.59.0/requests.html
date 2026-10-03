@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Requests</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { flex: 1; position: relative; min-height: 0; overflow: hidden; display: flex; }
+  main { flex: 1; overflow: auto; padding: 26px 34px 80px; }
+  .hh { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .hh h2 { margin: 0; font-size: 30px; line-height: 1.1; }
+  .desc { color: var(--ink-soft); max-width: 78ch; margin: 6px 0 18px; }
+  .card { padding: 6px 4px 8px; margin: 0 0 16px; overflow-x: auto; }
+  .filters { display: flex; gap: 4px; margin: 0 0 14px; flex-wrap: wrap; align-items: center; }
+  .filelink { cursor: pointer; color: var(--accent); border-bottom: 1px dotted var(--accent); }
+  td.kind .badge { text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
+  details.fold { border-top: 1px solid var(--rule-soft); padding: 6px 0; margin-top: 6px; }
+  details.fold > summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; font-family: var(--font-display); font-size: 15px; padding: 3px 0; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary::before { content: "▸"; color: var(--muted); font-size: 11px; font-family: var(--font-ui); }
+  details.fold[open] > summary::before { content: "▾"; }
+  details.fold > summary:hover { color: var(--accent); }
+  /* the inbox (2026-09-16): what another person's viewer sent into a shared exchange */
+  .hh .spacer { flex: 1; }
+  .xg { margin: 0 0 26px; }
+  .xg > h3 { margin: 0 0 2px; font-size: 19px; font-family: var(--font-display); font-weight: 500; }
+  .xrow { display: grid; grid-template-columns: max-content max-content 1fr max-content; gap: 4px 12px; align-items: baseline;
+          padding: 9px 0; border-top: 1px solid var(--rule-soft); }
+  .xrow .xtitle { font-family: var(--font-display); font-size: 16px; }
+  .xrow .xmsg { grid-column: 3 / span 2; color: var(--ink-soft); margin: 2px 0 0; }
+  .xrow .xfiles { grid-column: 3 / span 2; }
+  .xrow .xpath { grid-column: 1 / span 4; margin-top: 4px; }
+  .xrow .xpath code { user-select: all; word-break: break-all; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Requests</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="requests"></nav>
+</header>
+<div class="stage">
+  <main id="main"><div id="inbox"></div><div id="reqs"><div class="empty"></div></div></main>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /requests -- every change request under requests/<member>/ (the team-brain-request/1 files), newest first.
+// In a team copy this is what the member proposed; on the owner's side it is what a pull brought back. Nothing here is edited: the files are the record.
+const { esc, md, isImage, lightbox, mode, showAll, mountShowAll } = BV;
+const $ = s => document.querySelector(s);
+let DATA = null, XD = null, MEMBER = "all", KIND = "all", PULLING = false, PULLSAID = "";
+
+const link = (path, label) => path ? `<span class="filelink" data-open="${esc(path)}" title="${esc(path)}">${esc(label || path.split("/").filter(Boolean).pop() || path)}</span>` : `<span class="meta">(no file)</span>`;
+const when = at => at ? String(at).replace("T", " ").replace("Z", " UTC") : "";
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+const RHEAD = `<tr><th>member</th><th>when</th><th>kind</th><th>target</th><th>note</th><th>request</th></tr>`;
+const rRow = r => `<tr>
+        <td>${esc(r.member)}</td>
+        <td class="when">${esc(when(r.at)) || "<span class=meta>unstamped</span>"}</td>
+        <td class="kind"><span class="badge ${r.error ? "missing" : ""}">${esc(r.kind || (r.error ? "unreadable" : "?"))}</span></td>
+        <td>${link(r.target)}${r.before_sha256 === null && r.target && r.kind !== "note" ? ` <span class="badge open" title="the target did not exist in the copy when this was written">new file</span>` : ""}</td>
+        <td class="note">${esc(r.note || "")}${r.closed ? `<div class="meta">${esc(r.closed.outcome)} ${esc(r.closed.on)}${r.closed.why ? " · " + esc(r.closed.why) : ""}</div>` : ""}${r.error ? `<div class="meta">${esc(r.error)}</div>` : ""}</td>
+        <td>${link(r.file, "open")}</td>
+      </tr>`;
+
+// The filtering rule (2026-09-09): the requests nobody has dealt with are on screen; the ones the inbox marks applied or
+// rejected (context/team-requests-inbox.md, read by serve.py) sit behind one fold. Closure is declared there, never guessed.
+function render() {
+  const rows = DATA.requests.filter(r => (MEMBER === "all" || r.member === MEMBER) && (KIND === "all" || r.kind === KIND));
+  const everything = showAll("requests");
+  const live = everything ? rows : rows.filter(r => !r.closed), closed = rows.filter(r => !live.includes(r));
+  const members = [...new Set(DATA.requests.map(r => r.member))].sort(), kinds = [...new Set(DATA.requests.map(r => r.kind).filter(Boolean))].sort();
+  const m = mode();
+  $("#crumb").textContent = `${XD && XD.available && XD.count ? `${plural(XD.count, "item")} in the inbox · ` : ""}${plural(DATA.count, "request")} on disk · ${DATA.open != null ? DATA.open + " still open · " : ""}${m.propose ? `this copy proposes as ${m.member}` : "normal mode: what pulls brought back"}`;
+  $("#reqs").innerHTML = `
+    <div class="hh"><h2>Requests</h2><span class="meta">${link("requests/", "requests/")} · ${plural(live.length, "open")}${closed.length ? ` · ${closed.length} closed, folded` : ""}</span></div>
+    <p class="desc">${m.propose
+      ? `Every save made in this team copy lands here as a request file instead of an edit, and goes to the brain's owner with the next pull. Nothing in this copy changes until the owner applies it.`
+      : `Request files that came back from team copies (\`skills/team-brain/pull.py\`). Each one names the file it is about, what would change, and the bytes it was written against. Applying is a separate, reviewed step; this page only shows them${DATA.inbox ? `, and marks one closed when ${link(DATA.inbox, "the inbox")} says it was applied or rejected` : ""}.`}</p>
+    ${DATA.requests.length ? `<div class="filters"><span class="kicker">member</span><button class="btn ${MEMBER === "all" ? "on" : ""}" data-member="all">all</button>${members.map(x => `<button class="btn ${MEMBER === x ? "on" : ""}" data-member="${esc(x)}">${esc(x)}</button>`).join("")}
+      <span class="kicker" style="margin-left:14px">kind</span><button class="btn ${KIND === "all" ? "on" : ""}" data-kind="all">all</button>${kinds.map(x => `<button class="btn ${KIND === x ? "on" : ""}" data-kind="${esc(x)}">${esc(x)}</button>`).join("")}</div>` : ""}
+    <div class="card">${live.length ? `<table class="requests">${RHEAD}${live.map(rRow).join("")}</table>`
+      : `<div class="empty">${DATA.requests.length ? (closed.length ? "Every request here has been applied or rejected." : "Nothing matches these filters.") : (m.propose ? "Nothing proposed yet from this copy. A save on any panel, or a “propose a change” box, puts a request here." : "No request files under requests/ yet. They arrive with a team-brain pull.")}</div>`}</div>
+    ${closed.length ? `<details class="fold"><summary>${closed.length} closed request${closed.length === 1 ? "" : "s"} <span class="meta">applied or rejected in the inbox</span></summary>
+      <div class="card"><table class="requests">${RHEAD}${closed.map(rRow).join("")}</table></div></details>` : ""}`;
+}
+
+// ---- the inbox (2026-09-16, T-0171, first build) ----
+// What another person's viewer SENT here, per exchange, newest first. The folders live beside the brain, never inside
+// it, so nothing here opens in the drawer yet: the one control is the folder's own path. Open-in-Forge and the read
+// state are the next builds (brain-viewer-holon/design-directions/exchange-2026-09-16.md).
+const xWhen = at => at ? String(at).replace("T", " ").replace("Z", " UTC") : "";
+function xItem(it) {
+  return `<div class="xrow">
+    <span class="badge ${it.new ? "open" : ""}">${esc(it.kind || "?")}</span>
+    <span class="meta">from ${esc(it.from || "?")}</span>
+    <span class="xtitle">${esc(it.title || it.name)}${it.new ? ` <span class="badge open">new</span>` : ""}</span>
+    <span class="when meta">${esc(xWhen(it.at)) || esc(it.name.slice(0, 8))}</span>
+    ${it.message ? `<p class="xmsg">${esc(it.message)}</p>` : ""}
+    ${(it.files || []).length ? `<div class="xfiles meta">${(it.files).map(f => esc(f)).join(" · ")}</div>` : ""}
+    ${it.error ? `<div class="xfiles note">could not be read: ${esc(it.error)}</div>` : ""}
+    <div class="xpath"><button class="btn" data-reveal="${esc(it.path)}">open the folder</button>
+      <span class="meta" data-revealed="${esc(it.path)}"></span></div>
+  </div>`;
+}
+function xGroup(x) {
+  const head = `<h3>${esc(x.name)} <span class="meta">with ${esc(x.them)}${x.repo ? " · " + esc(x.repo) : ""}</span></h3>`;
+  if (x.error) return `<section class="xg">${head}<div class="empty">${esc(x.error)}<br><span class="meta">${esc(x.path)}</span></div></section>`;
+  if (!x.items.length) return `<section class="xg">${head}<div class="empty">Nothing has been sent to you here yet.</div></section>`;
+  return `<section class="xg">${head}<div class="meta">${plural(x.items.length, "item")} for you${x.items.some(i => i.new) ? ` · ${x.items.filter(i => i.new).length} since your last pull` : ""}</div>
+    <div class="card">${x.items.map(xItem).join("")}</div></section>`;
+}
+function renderInbox() {
+  const el = $("#inbox");
+  if (!XD) { el.innerHTML = ""; return; }
+  const head = `<div class="hh"><h2>Inbox</h2><span class="meta">what someone else's viewer sent you</span>
+      <span class="spacer"></span>
+      <button class="btn" id="pullNow" ${PULLING ? "disabled" : ""}>${PULLING ? "pulling…" : "pull"}</button>
+      ${PULLSAID ? `<span class="meta">${esc(PULLSAID)}</span>` : ""}</div>`;
+  if (!XD.available || !XD.exchanges.length) {
+    el.innerHTML = `${head}<p class="desc">No exchange is set up yet. One is a private repository shared with one person, named in <code>skills/brain-viewer/viewer-settings.json</code> under <code>exchanges</code>; <code>skills/exchange/readme.md</code> says what goes in it.${XD.note ? ` <span class="meta">${esc(XD.note)}</span>` : ""}</p>`;
+    return;
+  }
+  el.innerHTML = `${head}<p class="desc">Drawings, notes and files another person sent you through a shared repository, newest first. Nothing here has been put into your brain: it sits in that folder until you move it.</p>
+    ${XD.exchanges.map(xGroup).join("")}`;
+}
+async function pullNow() {
+  PULLING = true; PULLSAID = ""; renderInbox();
+  try {
+    const r = await fetch("/api/exchange/pull", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const j = await r.json();
+    PULLSAID = j.error ? `pull failed: ${j.error}` : (j.new ? `${plural(j.new, "new item")}` : "nothing new");
+    XD = await (await fetch("/api/exchange")).json();
+  } catch (e) { PULLSAID = `pull failed: ${e.message}`; }
+  PULLING = false; renderInbox(); if (DATA) render();
+}
+
+// ---- the read drawer (same shape as the Projects panel; close is delegated below) ----
+async function openFile(path, frag) { return BV.drawer.open(path, frag); }   // the one shared drawer, viewer-common.js (0.54.1, T-0152)
+
+document.addEventListener("click", e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  if (e.target.closest("#pullNow")) { pullNow(); return; }
+  const rv = e.target.closest("[data-reveal]");
+  if (rv) {   // "open the folder": the exchange sits outside the brain, so the app hands over its path rather than pretending to open it
+    const p = rv.dataset.reveal, out = document.querySelector(`[data-revealed="${CSS.escape(p)}"]`);
+    if (out) out.innerHTML = `<code>${esc(p)}</code>`;
+    if (navigator.clipboard) navigator.clipboard.writeText(p).then(
+      () => { if (out) out.innerHTML = `<code>${esc(p)}</code> · copied`; }, () => {});
+    return;
+  }
+  const fm = e.target.closest("[data-member]"); if (fm) { MEMBER = fm.dataset.member; render(); return; }
+  const fk = e.target.closest("[data-kind]"); if (fk) { KIND = fk.dataset.kind; render(); return; }
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); openFile(w.dataset.wikilink.split("#")[0].trim(), w.dataset.wikilink.split("#")[1]); return; }
+  const o = e.target.closest(".filelink[data-open]"); if (o) openFile(o.dataset.open, o.dataset.frag);   // a real file link only (T-0065)
+});
+document.addEventListener("keydown", e => { if (BV.typing(e)) return; if (e.key === "Escape") $("#drawer").hidden = true; });
+
+mountShowAll("requests", () => { if (DATA) render(); });
+
+async function load() {
+  // the inbox first: it is what the page leads with, and a missing exchange must never stop the requests rendering
+  try { XD = await (await fetch("/api/exchange")).json(); } catch (e) { XD = { available: false, exchanges: [], note: e.message }; }
+  if (XD && XD.error) XD = { available: false, exchanges: [], note: XD.error };
+  renderInbox();
+  const r = await fetch("/api/requests"); DATA = await r.json();
+  if (DATA.error) throw new Error(DATA.error);
+  render();
+}
+load().catch(e => { $("#reqs").innerHTML = `<div class="note">Could not load the requests: ${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

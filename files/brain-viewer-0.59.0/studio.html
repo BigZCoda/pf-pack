@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Studio</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from the look tokens (looks/default.css via viewer-tokens.css) */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { flex: 1; position: relative; min-height: 0; overflow: hidden; display: flex; }
+  main { flex: 1; overflow: auto; padding: 22px 28px 90px; }
+  .wall { max-width: 1500px; margin: 0 auto; }
+  .notready { margin: 0 0 16px; padding: 10px 14px; border-left: 2px solid var(--blocked); background: var(--blocked-tint); border-radius: var(--radius); }
+  .notready p { margin: 0 0 4px; }
+  .notready p:last-child { margin: 0; }
+  .cols { display: grid; grid-template-columns: minmax(320px, 400px) 1fr; gap: 22px; align-items: start; }
+  @media (max-width: 980px) { .cols { grid-template-columns: 1fr; } main { padding: 16px 16px 80px; } }
+  section.card { padding: 14px 16px 16px; margin: 0 0 18px; }
+  section.card > h2 { margin: 0 0 10px; font-family: var(--font-display); font-size: 19px; font-weight: 400; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  section.card > h2 .meta { font-family: var(--font-ui); font-size: 12px; }
+  label.f { display: block; margin: 10px 0 4px; }
+  label.f:first-of-type { margin-top: 0; }
+  .fld { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); }
+  .fld:focus { outline: none; border-color: var(--accent); }
+  textarea.fld { resize: vertical; font-size: 13.5px; line-height: 1.45; }
+  #prompt { min-height: 190px; }
+  #negative { min-height: 64px; font-size: 12.5px; }
+  .line { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .line .fld { flex: 1; min-width: 120px; width: auto; }
+  .blocks { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+  .blocks button.btn { text-align: left; font-size: 12.5px; padding: 4px 9px; }
+  .refs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .refs:empty { display: none; }
+  .ref { position: relative; }
+  .ref img { width: 76px; height: 58px; object-fit: cover; border: 1px solid var(--rule-soft); border-radius: var(--radius); cursor: zoom-in; display: block; background: var(--bg); }
+  .ref button { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; padding: 0; line-height: 16px; font-size: 11px; border-radius: 50%; border: 1px solid var(--rule); background: var(--surface); cursor: pointer; }
+  .ref button:hover { color: var(--accent); border-color: var(--accent); }
+  .msg { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+  .msg.err { color: var(--danger); }
+  .provs { display: flex; flex-direction: column; gap: 6px; }
+  .prov { display: grid; grid-template-columns: 18px 1fr; gap: 6px; align-items: start; }
+  .prov.off { color: var(--muted); }
+  .prov .why { display: block; font-size: 12px; color: var(--muted); }
+  .dials { display: grid; grid-template-columns: 1fr 88px; gap: 8px; }
+  .gorow { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+  .gorow .meta { font-size: 12.5px; }
+  .reshead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .reshead h2 { flex: 1; }
+  .review { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; font-size: 12.5px; }
+  .review label.dis { color: var(--muted); }
+  .review .cap { font-size: 11.5px; color: var(--muted); font-style: italic; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .shot { border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--bg); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .shot img { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--code); border-radius: var(--radius); cursor: zoom-in; display: block; }
+  .shot .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .shot .acts .btn { padding: 2px 9px; font-size: 11.5px; }
+  .shot .acts .star { font-size: 14px; padding: 0 8px; color: var(--muted); }
+  .shot .acts .star.on { color: var(--open); border-color: var(--open); background: var(--open-tint); }
+  .shot .cap { font-size: 11.5px; color: var(--muted); }
+  .shot .sub { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; border-top: 1px solid var(--rule-soft); }
+  .shot .sub textarea { min-height: 54px; }
+  .shot .sub .line select, .shot .sub .line input { flex: 1; min-width: 90px; }
+  .runhead { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+  .runhead .p { color: var(--ink-soft); }
+  .running { display: flex; gap: 10px; align-items: center; padding: 14px; border: 1px dashed var(--rule); border-radius: var(--radius); margin-bottom: 14px; color: var(--muted); }
+  details.job { border-top: 1px solid var(--rule-soft); padding: 2px 0; }
+  details.job:first-of-type { border-top: 0; }
+  details.job > summary { cursor: pointer; list-style: none; padding: 8px 0; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  details.job > summary::-webkit-details-marker { display: none; }
+  details.job > summary::before { content: "\25B8"; font-size: 11px; color: var(--muted); }
+  details.job[open] > summary::before { content: "\25BE"; }
+  details.job > summary b { font-weight: 400; font-family: var(--font-display); font-size: 15px; }
+  details.job .inside { padding: 4px 0 14px 16px; }
+  details.job .inside h4 { margin: 12px 0 6px; font-family: var(--font-ui); font-weight: 400; }
+  details.job .inside h4:first-child { margin-top: 0; }
+  details.job .grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+  .empty { margin: 0; color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Studio</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="studio"></nav>
+</header>
+<div class="stage">
+  <main id="main">
+    <div class="wall">
+      <div class="notready" id="notready" hidden></div>
+      <div class="cols">
+        <div>
+          <section class="card" id="briefcard">
+            <h2>The brief <span class="meta" id="briefSum"></span></h2>
+            <label class="f kicker" for="job">Job</label>
+            <input class="fld" id="job" spellcheck="false" placeholder="a short name, letters and dashes">
+            <label class="f kicker" for="prompt">Prompt</label>
+            <textarea class="fld" id="prompt" placeholder="what the picture is; paste a picture here to use it as a reference"></textarea>
+            <label class="f kicker" for="negative">Leave out</label>
+            <textarea class="fld" id="negative" placeholder="what the picture must not have"></textarea>
+            <label class="f kicker" for="promptFile">Load a prompt from a file</label>
+            <div class="line">
+              <input class="fld" id="promptFile" spellcheck="false">
+              <button class="btn" type="button" id="loadBlocks">list prompts</button>
+            </div>
+            <div class="blocks" id="blocks"></div>
+            <p class="msg" id="blockMsg" hidden></p>
+            <label class="f kicker">References</label>
+            <div class="line">
+              <button class="btn" type="button" id="addRef">pick a picture</button>
+              <span class="meta" style="font-size:12px">or paste one into the prompt</span>
+            </div>
+            <div class="refs" id="refs"></div>
+            <p class="msg" id="refMsg" hidden></p>
+          </section>
+          <section class="card" id="dialcard">
+            <h2>The dials</h2>
+            <label class="f kicker">Provider</label>
+            <div class="provs" id="provs"><p class="empty">Asking the server which providers are wired…</p></div>
+            <div class="dials">
+              <div>
+                <label class="f kicker" for="model">Model</label>
+                <select class="fld" id="model"></select>
+              </div>
+              <div>
+                <label class="f kicker" for="count">Count</label>
+                <select class="fld" id="count"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+              </div>
+            </div>
+            <label class="f kicker" for="size" id="sizeLbl">Size</label>
+            <select class="fld" id="size"></select>
+            <div id="qualWrap" hidden>
+              <label class="f kicker" for="qual" id="qualLbl">Quality</label>
+              <select class="fld" id="qual"></select>
+            </div>
+            <p class="msg" id="modelNote" hidden></p>
+            <div class="gorow">
+              <button class="btn primary" type="button" id="go" disabled>Generate</button>
+              <span class="meta" id="goMeta"></span>
+            </div>
+            <p class="msg err" id="goErr" hidden></p>
+          </section>
+        </div>
+        <div>
+          <section class="card" id="rescard">
+            <div class="reshead">
+              <h2>The latest run <span class="meta" id="resSum"></span></h2>
+              <div class="review" id="review" title="what happens to each picture after it is made">
+                <span class="kicker">review</span>
+                <label><input type="radio" name="review" value="off" checked> off</label>
+                <label class="dis"><input type="radio" name="review" value="critique" disabled> critique</label>
+                <label class="dis"><input type="radio" name="review" value="revise" disabled> critique and revise</label>
+                <span class="cap">the design agent comes next</span>
+              </div>
+            </div>
+            <div id="running"></div>
+            <div id="latest"><p class="empty">Nothing made yet in this job.</p></div>
+          </section>
+          <section class="card" id="histcard">
+            <h2>History <span class="meta" id="histSum">reading the studio folder…</span></h2>
+            <div id="history"></div>
+          </section>
+        </div>
+      </div>
+      <p class="meta" id="status"></p>
+    </div>
+  </main>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script src="/static/attach.js"></script>
+<script>
+// ---- the Studio (2026-09-22, viewer T-0235) ----
+// A separate page so the layout can be shaped for deciding on and working with images.
+// The brief and the dials on the left, what came back on the right. Everything a provider does goes
+// through serve.py's /api/studio/* routes (the keys stay on the server); pictures land in deliverables/studio/<job>/ and
+// are served by /api/image like every other picture in the viewer. References go up through /api/paste, the route the
+// notepad uses; attaching a result to a ledger item reuses attach.js's upload, so it takes the same path /api/attach does.
+const { esc } = BV;
+const $ = s => document.querySelector(s);
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem("bv.studio." + k); return v == null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("bv.studio." + k, v); } catch (e) { /* private window: the page still works */ } },
+};
+// The brief's starting prompt file and negative prompt are this brain's own work, so they are settings
+// (viewer/settings.json `studio_prompt_file`, `studio_negative`), filled in once they are read; empty without them.
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const slugify = s => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+const imgUrl = im => im.url || ("/api/image?path=" + encodeURIComponent(im.path));
+const when = s => { const d = new Date(s); return isNaN(d) ? String(s || "") : d.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); };
+
+const ST = { providers: null, provErr: "", refs: [], latest: null, jobs: [], jobsErr: "", cands: new Set(), ledgers: [], busy: false };
+
+async function getJSON(url, opts) {
+  const r = await fetch(url, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(j.error || ("the server answered " + r.status)); e.status = r.status; throw e; }
+  return j;
+}
+const post = (url, body) => getJSON(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+// ---- the brief ----
+function initBrief() {
+  $("#job").value = LS.get("job", today());
+  $("#prompt").value = LS.get("prompt", "");
+  $("#negative").value = LS.get("negative", "");
+  $("#promptFile").value = LS.get("promptFile", "");
+  BV.prefs().then(pr => {
+    if (LS.get("negative", null) == null && !$("#negative").value) $("#negative").value = String(pr.studio_negative || "");
+    if (LS.get("promptFile", null) == null && !$("#promptFile").value) $("#promptFile").value = String(pr.studio_prompt_file || "");
+  });
+  $("#job").addEventListener("change", () => { const s = slugify($("#job").value) || today(); $("#job").value = s; LS.set("job", s); paintLatestFromJobs(); });
+  for (const id of ["prompt", "negative", "promptFile"]) $("#" + id).addEventListener("input", () => LS.set(id, $("#" + id).value));
+  $("#loadBlocks").onclick = loadBlocks;
+  $("#promptFile").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); loadBlocks(); } });
+  $("#addRef").onclick = () => {
+    const input = document.createElement("input");
+    input.type = "file"; input.accept = "image/png,image/jpeg,image/gif,image/webp"; input.multiple = true;
+    input.addEventListener("change", () => addRefs(input.files));
+    input.click();
+  };
+  $("#prompt").addEventListener("paste", e => {
+    const files = Array.from((e.clipboardData && e.clipboardData.items) || [])
+      .filter(i => i.kind === "file" && /^image\//.test(i.type)).map(i => i.getAsFile()).filter(Boolean);
+    if (!files.length) return;   // words paste as words
+    e.preventDefault(); addRefs(files);
+  });
+}
+
+function say(id, text, err) { const m = $(id); m.hidden = !text; m.textContent = text || ""; m.classList.toggle("err", !!err); }
+
+async function loadBlocks() {
+  const path = $("#promptFile").value.trim();
+  LS.set("promptFile", path);
+  $("#blocks").innerHTML = "";
+  if (!path) { say("#blockMsg", "name a markdown file in the brain first", true); return; }
+  say("#blockMsg", "reading " + path);
+  try {
+    const j = await getJSON("/api/studio/prompts?path=" + encodeURIComponent(path));
+    const blocks = j.blocks || j.prompts || [];   // the contract says blocks; the first server build answered prompts
+    if (!blocks.length) { say("#blockMsg", "that file has no fenced prompt blocks"); return; }
+    say("#blockMsg", `${blocks.length} prompt${blocks.length === 1 ? "" : "s"} in the file; pick one to fill the prompt`);
+    $("#blocks").innerHTML = blocks.map((b, i) => `<button class="btn" type="button" data-block="${i}" title="${esc(String(b.text || "").slice(0, 240))}">${esc(b.title || ("block " + (i + 1)))}</button>`).join("");
+    for (const b of $("#blocks").querySelectorAll("[data-block]")) b.onclick = () => {
+      $("#prompt").value = blocks[+b.dataset.block].text || ""; LS.set("prompt", $("#prompt").value);
+      for (const o of $("#blocks").querySelectorAll("[data-block]")) o.classList.toggle("on", o === b);
+    };
+  } catch (e) {
+    // a bare 404 (no error body) is the route missing; a 404 with a message is the server saying the file is missing
+    say("#blockMsg", e.status === 404 && /^(no such route|the server answered 404)$/.test(e.message)
+      ? "the studio's prompt reader is not wired yet (the server answered 404)" : "could not read the prompts: " + e.message, true);
+  }
+}
+
+function readB64(file) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(String(fr.result).split(",")[1] || "");
+    fr.onerror = () => rej(new Error("could not read the file"));
+    fr.readAsDataURL(file);
+  });
+}
+async function addRefs(files) {
+  const pics = Array.from(files || []).filter(f => /^image\//.test(f.type || ""));
+  if (!pics.length) { say("#refMsg", "only a picture can be a reference", true); return; }
+  for (const f of pics) {
+    say("#refMsg", "keeping " + (f.name || "the picture"));
+    try {
+      const j = await post("/api/paste", { name: f.name || "reference.png", type: f.type, kind: "note", data: await readB64(f) });
+      if (!ST.refs.includes(j.path)) ST.refs.push(j.path);
+      say("#refMsg", "");
+    } catch (e) { say("#refMsg", "the reference was not kept: " + e.message, true); }
+  }
+  paintRefs();
+}
+function paintRefs() {
+  $("#refs").innerHTML = ST.refs.map((p, i) => `<span class="ref"><img src="/api/image?path=${encodeURIComponent(p)}" data-img="${esc(p)}" alt="" title="${esc(p)}"><button type="button" data-unref="${i}" title="stop using this reference (the file stays in the notepad folder)">x</button></span>`).join("");
+  for (const b of $("#refs").querySelectorAll("[data-unref]")) b.onclick = () => { ST.refs.splice(+b.dataset.unref, 1); paintRefs(); };
+  $("#briefSum").textContent = ST.refs.length ? `${ST.refs.length} reference${ST.refs.length === 1 ? "" : "s"}` : "";
+}
+
+// ---- the dials ----
+async function loadProviders() {
+  try { ST.providers = (await getJSON("/api/studio/providers")).providers || []; ST.provErr = ""; }
+  catch (e) { ST.providers = []; ST.provErr = e.status === 404 ? "The studio's providers are not wired yet: the server answered 404 at /api/studio/providers." : "Could not ask the server for providers: " + e.message; }
+  paintProviders();
+}
+function currentProvider() { return (ST.providers || []).find(p => p.id === LS.get("provider", "")) || null; }
+function currentModel() { const p = currentProvider(); return p ? (p.models || []).find(m => m.id === $("#model").value) || null : null; }
+function paintProviders() {
+  const list = ST.providers || [];
+  const ready = list.filter(p => p.ready);
+  const nr = $("#notready");
+  if (ST.provErr) { nr.hidden = false; nr.innerHTML = `<p>${esc(ST.provErr)}</p><p class="meta">The brief can still be written and the history read; Generate waits for the providers.</p>`; }
+  else if (!ready.length) {
+    nr.hidden = false;
+    nr.innerHTML = `<p><b>No image provider is ready.</b></p>` + (list.length ? list.map(p => `<p>${esc(p.name || p.id)}: ${esc(p.reason || "not ready")}</p>`).join("") : `<p>The server lists no providers.</p>`);
+  } else nr.hidden = true;
+  if (!list.length) { $("#provs").innerHTML = `<p class="empty">${esc(ST.provErr ? "not wired yet" : "no providers listed")}</p>`; paintModels(); return; }
+  if (!currentProvider() || !currentProvider().ready) LS.set("provider", (ready[0] || {}).id || "");
+  const sel = LS.get("provider", "");
+  $("#provs").innerHTML = list.map(p => `<label class="prov${p.ready ? "" : " off"}"><input type="radio" name="prov" value="${esc(p.id)}"${p.ready ? "" : " disabled"}${p.id === sel ? " checked" : ""}><span>${esc(p.name || p.id)}${p.ready ? "" : `<span class="why">${esc(p.reason || "not ready")}</span>`}</span></label>`).join("");
+  for (const r of $("#provs").querySelectorAll("input[name=prov]")) r.onchange = () => { LS.set("provider", r.value); paintModels(); };
+  paintModels();
+}
+function paintModels() {
+  const p = currentProvider();
+  const models = p && p.ready ? (p.models || []) : [];
+  $("#model").innerHTML = models.map(m => `<option value="${esc(m.id)}">${esc(m.name || m.id)}</option>`).join("");
+  $("#model").disabled = !models.length;
+  const want = LS.get("model." + (p ? p.id : ""), "");
+  if (models.some(m => m.id === want)) $("#model").value = want;
+  paintSizes();
+}
+function paintSizes() {
+  const m = currentModel();
+  const sizes = m ? (m.sizes || m.aspects || []) : [];
+  $("#sizeLbl").textContent = m && !m.sizes && m.aspects ? "Aspect" : "Size";
+  $("#size").innerHTML = sizes.map(s => `<option>${esc(s)}</option>`).join("");
+  $("#size").disabled = !sizes.length;
+  const p = currentProvider(), want = LS.get("size." + (p ? p.id : "") + "." + (m ? m.id : ""), "");
+  if (sizes.includes(want)) $("#size").value = want;
+  // the second dial the server accepts: quality on OpenAI's models, image size (1K to 4K) on Gemini's
+  const quals = m ? (m.qualities || m.imageSizes || []) : [];
+  $("#qualWrap").hidden = !quals.length;
+  $("#qualLbl").textContent = m && !m.qualities && m.imageSizes ? "Image size" : "Quality";
+  $("#qual").innerHTML = quals.map(s => `<option>${esc(s)}</option>`).join("");
+  const wantQ = LS.get("qual." + (p ? p.id : "") + "." + (m ? m.id : ""), "");
+  if (quals.includes(wantQ)) $("#qual").value = wantQ;
+  const note = m ? [m.notes, m.edits ? "" : "this model makes new pictures only; edits go to the picture's own model"].filter(Boolean).join(" · ") : "";
+  say("#modelNote", note);
+  $("#go").disabled = ST.busy || !m;
+}
+
+let timer = null;
+function startRun(label) {
+  ST.busy = true; $("#go").disabled = true; say("#goErr", "");
+  const t0 = Date.now();
+  const tick = () => { const s = Math.round((Date.now() - t0) / 1000); $("#goMeta").textContent = `${label} · ${s}s`; };
+  tick(); clearInterval(timer); timer = setInterval(tick, 1000);
+  $("#running").innerHTML = `<div class="running">${esc(label)}; the rest of the page stays usable while it works</div>`;
+  return t0;
+}
+function endRun(t0, err) {
+  ST.busy = false; clearInterval(timer);
+  const s = Math.round((Date.now() - t0) / 1000);
+  $("#goMeta").textContent = err ? `failed after ${s}s` : `done in ${s}s`;
+  $("#running").innerHTML = "";
+  if (err) say("#goErr", err, true);
+  paintSizes();
+}
+
+async function generate() {
+  const p = currentProvider(), m = currentModel();
+  if (!p || !m || ST.busy) return;
+  const prompt = $("#prompt").value.trim();
+  if (!prompt) { say("#goErr", "write a prompt first", true); return; }
+  const job = slugify($("#job").value) || today(); $("#job").value = job; LS.set("job", job);
+  const body = { provider: p.id, model: m.id, prompt, n: +$("#count").value || 1, job };
+  const neg = $("#negative").value.trim(); if (neg) body.negative = neg;
+  if ($("#size").value) body.size = $("#size").value;
+  if (!$("#qualWrap").hidden && $("#qual").value) body[m.qualities ? "quality" : "imageSize"] = $("#qual").value;
+  if (ST.refs.length) body.references = ST.refs.slice();
+  const t0 = startRun(`${p.name || p.id} is drawing ${body.n} picture${body.n === 1 ? "" : "s"}`);
+  try {
+    const j = await post("/api/studio/generate", body);
+    ST.latest = { job: j.job || job, images: j.images || [], label: "made" };
+    endRun(t0); paintLatest(); loadJobs();
+  } catch (e) { endRun(t0, e.status === 404 ? "the studio's generate route is not wired yet (404)" : e.message); }
+}
+
+async function editImage(im, text) {
+  if (ST.busy) { return "wait for the run in progress to finish"; }
+  const p = currentProvider(), m = currentModel();
+  // the dials' model when it edits, otherwise the model that made the picture
+  const useDial = p && m && m.edits;
+  const body = { provider: useDial ? p.id : im.provider, model: useDial ? m.id : im.model, image: im.path, prompt: text,
+                 job: ST.latest && ST.latest.job ? ST.latest.job : (slugify($("#job").value) || today()) };
+  const t0 = startRun(`editing ${im.path.split("/").pop()}`);
+  try {
+    const j = await post("/api/studio/edit", body);
+    ST.latest = { job: j.job || body.job, images: j.images || [], label: "edited from " + im.path.split("/").pop() };
+    endRun(t0); paintLatest(); loadJobs();
+    return "";
+  } catch (e) { endRun(t0, e.status === 404 ? "the studio's edit route is not wired yet (404)" : e.message); return e.message; }
+}
+
+// ---- the results ----
+const isCand = im => ST.cands.has(im.path) || (im.candidate === true && !ST.uncand?.has(im.path));
+function shotHTML(im) {
+  const c = isCand(im);
+  return `<div class="shot" data-path="${esc(im.path)}">
+    <img src="${esc(imgUrl(im))}" data-img="${esc(im.path)}" alt="" loading="lazy" title="${esc(im.prompt || im.path)}">
+    <div class="acts">
+      <button class="btn star${c ? " on" : ""}" type="button" data-star title="${c ? "a candidate: press to take the star off" : "mark as a candidate"}">${c ? "★" : "☆"}</button>
+      <button class="btn" type="button" data-open>open</button>
+      <button class="btn" type="button" data-edit>edit</button>
+      <button class="btn" type="button" data-att>attach to an item</button>
+    </div>
+    <div class="cap">${esc(im.provider || "")} · ${esc(im.model || "")} · ${esc(when(im.createdAt))}</div>
+    <div class="subs"></div>
+  </div>`;
+}
+function wireShots(root, images) {
+  const byPath = new Map(images.map(i => [i.path, i]));
+  for (const el of root.querySelectorAll(".shot")) {
+    const im = byPath.get(el.dataset.path); if (!im) continue;
+    el.querySelector("[data-open]").onclick = () => BV.lightbox(im.path);
+    el.querySelector("[data-star]").onclick = () => star(im);
+    el.querySelector("[data-edit]").onclick = () => openSub(el, "edit", im);
+    el.querySelector("[data-att]").onclick = () => openSub(el, "att", im);
+  }
+}
+async function star(im) {
+  const next = !isCand(im);
+  try {
+    await post("/api/studio/candidate", { path: im.path, candidate: next });
+    ST.uncand = ST.uncand || new Set();
+    if (next) { ST.cands.add(im.path); ST.uncand.delete(im.path); } else { ST.cands.delete(im.path); ST.uncand.add(im.path); }
+    im.candidate = next;
+    for (const b of document.querySelectorAll(`.shot[data-path="${CSS.escape(im.path)}"] [data-star]`)) {
+      b.classList.toggle("on", next); b.textContent = next ? "★" : "☆";
+    }
+    loadJobs();
+  } catch (e) { $("#status").textContent = "the star was not saved: " + e.message; }
+}
+function openSub(el, kind, im) {
+  const host = el.querySelector(".subs");
+  if (host.dataset.kind === kind) { host.innerHTML = ""; host.dataset.kind = ""; return; }
+  host.dataset.kind = kind;
+  if (kind === "edit") {
+    host.innerHTML = `<div class="sub"><textarea class="fld" placeholder="what to change in this picture"></textarea>
+      <div class="line"><button class="btn primary" type="button">edit</button><span class="msg"></span></div></div>`;
+    const ta = host.querySelector("textarea"), b = host.querySelector("button"), m = host.querySelector(".msg");
+    ta.focus();
+    b.onclick = async () => {
+      const t = ta.value.trim(); if (!t) { m.textContent = "say what to change"; return; }
+      b.disabled = true; m.textContent = "sent; the result opens as a new run";
+      const err = await editImage(im, t);
+      b.disabled = false; m.textContent = err ? "not edited: " + err : "";
+    };
+  } else {
+    const last = LS.get("attLedger", "");
+    host.innerHTML = `<div class="sub"><div class="line">
+        <input class="fld" placeholder="T-0235 or Q-0012" spellcheck="false" value="${esc(LS.get("attItem", ""))}">
+        <select class="fld">${ST.ledgers.map(l => `<option value="${esc(l.id)}"${l.id === last ? " selected" : ""}>${esc(l.name || l.id)}</option>`).join("")}</select>
+      </div><div class="line"><button class="btn" type="button">attach</button><span class="msg"></span></div></div>`;
+    const inp = host.querySelector("input"), selL = host.querySelector("select"), b = host.querySelector("button"), m = host.querySelector(".msg");
+    inp.focus();
+    b.onclick = async () => {
+      const item = inp.value.trim().toUpperCase();
+      if (!/^[QT]-\d{4}$/.test(item)) { m.textContent = "an item id looks like T-0235 or Q-0012"; return; }
+      LS.set("attItem", item); LS.set("attLedger", selL.value);
+      b.disabled = true; m.textContent = "attaching";
+      try {
+        const blob = await (await fetch(imgUrl(im))).blob();
+        const file = new File([blob], im.path.split("/").pop(), { type: blob.type || "image/png" });
+        await BVAttach.upload(selL.value, item, file);   // the same POST /api/attach the question cards use
+        m.textContent = `attached to ${item} on ${selL.value}`;
+      } catch (e) { m.textContent = "not attached: " + e.message; }
+      b.disabled = false;
+    };
+  }
+}
+
+function paintLatest() {
+  const L = ST.latest;
+  if (!L || !L.images.length) {
+    $("#resSum").textContent = "";
+    $("#latest").innerHTML = `<p class="empty">Nothing made yet in this job. Write the brief, set the dials, press Generate.</p>`;
+    return;
+  }
+  const first = L.images[0];
+  $("#resSum").textContent = `${L.job} · ${L.images.length} picture${L.images.length === 1 ? "" : "s"} · ${L.label || ""}`;
+  $("#latest").innerHTML = `<p class="runhead">${esc(first.provider || "")} · ${esc(first.model || "")} · ${esc(when(first.createdAt))}${first.prompt ? ` · <span class="p">${esc(String(first.prompt).slice(0, 180))}${String(first.prompt).length > 180 ? "…" : ""}</span>` : ""}</p>
+    <div class="grid">${L.images.map(shotHTML).join("")}</div>`;
+  wireShots($("#latest"), L.images);
+}
+
+// a job's pictures folded into runs: the same prompt and model within two minutes of each other is one run
+function runsOf(images) {
+  const sorted = images.slice().sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  const runs = [];
+  for (const im of sorted) {
+    const r = runs[runs.length - 1], t = Date.parse(im.createdAt || "") || 0;
+    if (r && r.prompt === im.prompt && r.model === im.model && Math.abs(r.t - t) < 120000) { r.images.push(im); r.t = t; }
+    else runs.push({ prompt: im.prompt, model: im.model, provider: im.provider, at: im.createdAt, t, images: [im] });
+  }
+  return runs;
+}
+
+async function loadJobs() {
+  try { ST.jobs = (await getJSON("/api/studio/jobs")).jobs || []; ST.jobsErr = ""; }
+  catch (e) { ST.jobs = []; ST.jobsErr = e.status === 404 ? "the studio's history is not wired yet (the server answered 404 at /api/studio/jobs)" : "could not read the history: " + e.message; }
+  for (const j of ST.jobs) {
+    if (Array.isArray(j.candidates)) for (const c of j.candidates) ST.cands.add(typeof c === "string" ? c : c.path);
+    for (const im of j.images || []) if (im.candidate === true && !(ST.uncand && ST.uncand.has(im.path))) ST.cands.add(im.path);
+  }
+  paintHistory();
+  if (!ST.latest) paintLatestFromJobs();
+}
+function paintLatestFromJobs() {
+  const job = slugify($("#job").value);
+  const j = ST.jobs.find(x => x.slug === job);
+  if (j && (j.images || []).length) { const r = runsOf(j.images)[0]; ST.latest = { job: j.slug, images: r.images, label: "last run in this job" }; }
+  else if (!ST.latest || ST.latest.job !== job) ST.latest = null;
+  paintLatest();
+}
+function paintHistory() {
+  if (ST.jobsErr) { $("#histSum").textContent = ""; $("#history").innerHTML = `<p class="empty">${esc(ST.jobsErr)}</p>`; return; }
+  const jobs = ST.jobs.slice().sort((a, b) => String(b.latest || "").localeCompare(String(a.latest || "")));
+  const total = jobs.reduce((n, j) => n + (j.count || (j.images || []).length), 0);
+  $("#histSum").textContent = jobs.length ? `${jobs.length} job${jobs.length === 1 ? "" : "s"} · ${total} picture${total === 1 ? "" : "s"}` : "";
+  if (!jobs.length) { $("#history").innerHTML = `<p class="empty">No job has made a picture yet. Each job becomes a folder under deliverables/studio/.</p>`; return; }
+  const open = new Set(Array.from(document.querySelectorAll("details.job[open]")).map(d => d.dataset.slug));
+  $("#history").innerHTML = jobs.map(j => {
+    const imgs = j.images || [], cands = imgs.filter(isCand);
+    const nC = Array.isArray(j.candidates) ? j.candidates.length : (typeof j.candidates === "number" ? j.candidates : cands.length);
+    const runs = runsOf(imgs);
+    return `<details class="job" data-slug="${esc(j.slug)}"${open.has(j.slug) ? " open" : ""}>
+      <summary><b>${esc(j.slug)}</b><span class="meta">${j.count || imgs.length} picture${(j.count || imgs.length) === 1 ? "" : "s"} · ${runs.length} run${runs.length === 1 ? "" : "s"} · ${nC} candidate${nC === 1 ? "" : "s"}${j.latest ? " · last " + esc(when(j.latest)) : ""}</span>${j.history ? `<a class="meta" href="/reader?path=${encodeURIComponent(j.history)}" title="${esc(j.history)}">the job's record</a>` : ""}</summary>
+      <div class="inside">
+        ${cands.length ? `<h4 class="kicker">Candidates</h4><div class="grid">${cands.map(shotHTML).join("")}</div>` : ""}
+        ${runs.map(r => `<h4 class="meta">${esc(r.provider || "")} · ${esc(r.model || "")} · ${esc(when(r.at))} · ${esc(String(r.prompt || "").slice(0, 120))}${String(r.prompt || "").length > 120 ? "…" : ""}</h4>
+          <div class="grid">${r.images.map(shotHTML).join("")}</div>`).join("")}
+      </div></details>`;
+  }).join("");
+  for (const d of $("#history").querySelectorAll("details.job")) {
+    const j = jobs.find(x => x.slug === d.dataset.slug);
+    wireShots(d, (j && j.images) || []);
+  }
+}
+
+// ---- the review switch: stored now so the design agent's wiring is one line later ----
+function initReview() {
+  const v = LS.get("review", "off");
+  for (const r of document.querySelectorAll("input[name=review]")) {
+    if (r.value === v && !r.disabled) r.checked = true;
+    r.onchange = () => { if (r.checked) LS.set("review", r.value); };
+  }
+}
+
+async function loadLedgers() {
+  try { ST.ledgers = ((await getJSON("/api/projects")).projects || []).filter(p => p.exists !== false).map(p => ({ id: p.id, name: p.name })); }
+  catch (e) { ST.ledgers = []; }
+}
+
+// ---- the "?" panel ----
+BV.help.extra = () => ({
+  title: "On this page",
+  rows: [{ name: "Studio", line: "the brief and dials on the left make pictures through the provider you pick; each run lands in deliverables/studio/<job>/, a star marks a candidate, edit sends a picture back with a change, and attach puts it on a ledger item." }],
+});
+
+// ---- boot ----
+$("#model").onchange = () => { const p = currentProvider(); if (p) LS.set("model." + p.id, $("#model").value); paintSizes(); };
+$("#size").onchange = () => { const p = currentProvider(), m = currentModel(); if (p && m) LS.set("size." + p.id + "." + m.id, $("#size").value); };
+$("#qual").onchange = () => { const p = currentProvider(), m = currentModel(); if (p && m) LS.set("qual." + p.id + "." + m.id, $("#qual").value); };
+$("#count").value = LS.get("count", "1");
+$("#count").onchange = () => LS.set("count", $("#count").value);
+$("#go").onclick = generate;
+initBrief(); initReview(); paintRefs();
+$("#crumb").textContent = "make, compare and keep pictures";
+loadProviders(); loadJobs(); loadLedgers();
+if ($("#promptFile").value) loadBlocks();
+</script>
+</body>
+</html>

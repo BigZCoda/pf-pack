@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Holons</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .layout { flex: 1; display: grid; grid-template-columns: 340px minmax(0, 1fr); min-height: 0; }
+  nav.side { border-right: 1px solid var(--rule); background: var(--surface); overflow: auto; padding: 8px 0 24px; }
+  nav.side .row { position: relative; }
+  nav.side .row.d1 { padding-left: 36px; }
+  nav.side .row.d2 { padding-left: 54px; }
+  nav.side .row.d1::before, nav.side .row.d2::before { content: ""; position: absolute; left: 24px; top: 0; bottom: 0; border-left: 1px solid var(--rule); }
+  nav.side .row.d2::before { left: 42px; }
+  nav.side .row.view .t { font-family: var(--font-ui); font-weight: 600; font-size: 13.5px; }
+  .stage { position: relative; min-height: 0; overflow: hidden; display: flex; }
+  /* the bottom clearance follows the key strip, which is fixed to the corner and can wrap to two rows: --keys-h is its
+     measured height, set by the script below on load, on resize and whenever the strip changes size */
+  main { flex: 1; overflow: auto; padding: 26px 34px calc(30px + var(--keys-h, 40px)); }
+  .hh { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .hh h2 { margin: 0; font-size: 30px; line-height: 1.1; }
+  .hh code.id { color: var(--muted); background: transparent; padding: 0; font-size: 13px; }
+  .desc { font-size: 16px; color: var(--ink-soft); max-width: 72ch; margin: 6px 0 20px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; align-items: start; }
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-lg); padding: 14px 18px 16px; min-width: 0; }
+  .card h3 { margin: 0 0 10px; font-size: 18px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .card.wide { grid-column: 1 / -1; }
+  table.facts { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  table.facts th { text-align: left; color: var(--muted); font-weight: 500; padding: 5px 12px 5px 0; width: 30%; vertical-align: top; }
+  table.facts td { padding: 5px 0; vertical-align: top; word-break: break-word; }
+  table.facts tr + tr th, table.facts tr + tr td { border-top: 1px solid var(--rule); }
+  table.stamp { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.stamp th { text-align: left; color: var(--muted); font-weight: 500; padding: 4px 10px 4px 0; vertical-align: top; white-space: nowrap; }
+  table.stamp td { padding: 4px 10px 4px 0; vertical-align: top; word-break: break-word; }
+  table.stamp tr + tr th, table.stamp tr + tr td { border-top: 1px solid var(--rule); }
+  table.stamp td.diff { color: var(--blocked); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid var(--rule); border-radius: 6px; padding: 3px 9px; font-size: 13px; background: var(--surface); cursor: pointer; display: inline-flex; gap: 6px; align-items: baseline; }
+  .chip:hover { background: var(--hover); }
+  .chip .display { font-size: 14.5px; }
+  .filelink { cursor: pointer; color: var(--accent); border-bottom: 1px dotted var(--accent); word-break: break-all; }
+  .filelink:hover { color: var(--accent-deep); }
+  /* a checks table is never wider than its card: fixed columns, and any unbroken token (a path, a JSON blob) breaks
+     wherever it has to. The name and badge columns get set widths because a fixed table sizes from them. */
+  table.checks { border-collapse: collapse; width: 100%; font-size: 13.5px; table-layout: fixed; overflow-wrap: anywhere; }
+  table.checks td, table.checks th { overflow-wrap: anywhere; min-width: 0; }
+  table.checks td { padding: 7px 8px 7px 0; border-top: 1px solid var(--rule); vertical-align: top; }
+  table.checks tr:first-child td { border-top: 0; }
+  table.checks td.n { font-weight: 500; width: 10.5em; padding-right: 14px; }
+  table.checks td.b { width: 6.5em; padding-right: 12px; }
+  /* the tables drawn from a list of rows keep their own column widths (their columns are not known in advance) and
+     still wrap, inside a box that scrolls sideways rather than widening the card */
+  table.checks.rows { table-layout: auto; }
+  table.checks.rows td.b { width: 1%; }
+  table.checks details.long summary { cursor: pointer; color: var(--ink-soft); }
+  table.checks details.long summary .more { color: var(--muted); font-size: 12px; }
+  table.checks details.long[open] summary .cut { display: none; }
+  table.checks details.long > div { margin-top: 4px; }
+  table.checks th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 0 10px 6px 0; }
+  .counts { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+  .statusgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; align-items: start; }
+  .age { font-size: 12.5px; color: var(--muted); font-family: var(--font-ui); font-weight: 400; letter-spacing: 0; }
+  .age.stale { color: var(--open); }
+  details.raw summary { color: var(--muted); font-size: 12.5px; cursor: pointer; margin-top: 8px; }
+  details.raw pre { font-size: 12px; }
+  kbd { font-size: 11px; border: 1px solid var(--rule); border-radius: 4px; padding: 0 5px; background: var(--surface); }
+  .rules { font-size: 13px; color: var(--ink-soft); margin: 0; padding-left: 18px; }
+  .rules li { margin: 4px 0; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } nav.side { max-height: 40vh; border-right: 0; border-bottom: 1px solid var(--rule); } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Holons</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <input id="search" type="search" placeholder="filter holons   /" aria-label="filter holons">
+  <nav class="panels" data-page="status"></nav>
+</header>
+<div class="layout">
+  <nav class="side" id="tree"></nav>
+  <div class="stage">
+    <main id="main"><div class="empty"></div></main>
+    <aside class="drawer" id="drawer" hidden></aside>
+  </div>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+const { esc, md, isImage, lightbox } = BV;
+const $ = s => document.querySelector(s);
+let REG = null, STATUS = null, BY = {}, CURRENT = null, VIEW = "holon";
+
+// ---- the bottom clearance: as tall as the key strip in the corner, whatever it wraps to ----
+// The strip is fixed to the bottom right and is added by viewer-common.js once the glossary loads, so it is found when
+// it arrives (a watch on the body's own children), measured then, on every resize of the window, and whenever the strip
+// itself changes size (wrapping, or folding into its small tab).
+(function keysClearance() {
+  const root = document.documentElement;
+  const measure = () => {
+    let h = 0;
+    for (const k of document.querySelectorAll("body > .keyshint, body > .keystab")) {
+      if (k.hidden || getComputedStyle(k).display === "none") continue;
+      const r = k.getBoundingClientRect();
+      h = Math.max(h, window.innerHeight - r.top);    // from the strip's top edge to the bottom of the window
+    }
+    root.style.setProperty("--keys-h", Math.ceil(h) + "px");
+  };
+  const sized = typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
+  const watched = new Set();
+  const find = () => {
+    for (const k of document.querySelectorAll("body > .keyshint, body > .keystab"))
+      if (!watched.has(k)) { watched.add(k); if (sized) sized.observe(k); }
+    measure();
+  };
+  new MutationObserver(find).observe(document.body, { childList: true });
+  window.addEventListener("resize", measure);
+  find();
+})();
+
+const fmtAge = h => h == null ? "age unknown" : h < 1 ? `${Math.round(h * 60)} min ago` : h < 48 ? `${h < 10 ? h.toFixed(1) : Math.round(h)} h ago` : `${(h / 24).toFixed(1)} days ago`;
+function checkClass(s) { s = String(s || "").toUpperCase(); return ["OK", "DONE", "PASS", "BUILT"].includes(s) ? "done" : ["BLOCKED", "FAIL", "ERROR"].includes(s) ? "blocked" : ["OPEN", "WARN", "STALE"].includes(s) ? "open" : ""; }
+const fileLink = (rel, label) => rel ? `<span class="filelink" data-open="${esc(rel)}">${esc(label || rel)}</span>` : `<span class="meta">none</span>`;
+const holonChip = h => `<span class="chip" data-holon="${esc(h.id)}"><span class="display">${esc(h.name)}</span><span class="meta">${esc(h.type)}</span></span>`;
+
+// ---- the tree (left) ----
+function renderTree() {
+  const q = ($("#search").value || "").toLowerCase();
+  const nav = $("#tree"); nav.innerHTML = "";
+  const sv = document.createElement("button"); sv.className = "row view" + (VIEW === "status" ? " on" : "");
+  sv.innerHTML = `<div class="t">Status</div><div class="m">${STATUS.holons.length} machine-written status files</div>`;
+  sv.onclick = openStatus; nav.appendChild(sv);
+  const h2 = document.createElement("h2"); h2.textContent = `registry · ${REG.holons.length} holons · updated ${REG._updated}`; nav.appendChild(h2);
+  const seen = new Set();
+  const matches = h => `${h.name} ${h.id} ${h.type} ${h.description || ""} ${h.domain || ""} ${h.path || ""}`.toLowerCase().includes(q);
+  const add = (h, depth) => {
+    if (seen.has(h.id)) return; seen.add(h.id);
+    const kids = (h.children || []).map(id => BY[id]).filter(Boolean);
+    if (!q || matches(h) || kids.some(matches)) {
+      const b = document.createElement("button");
+      b.className = `row d${Math.min(depth, 2)}` + (VIEW === "holon" && CURRENT && CURRENT.id === h.id ? " on" : "");
+      const marks = [`<span class="badge type">${esc(h.type)}</span>`];
+      if (h.sharing && h.sharing !== "private") marks.push(`<span class="badge">${esc(h.sharing)}</span>`);
+      if (h.stamp) marks.push(`<span class="badge ${h.stamp === "match" ? "done" : "blocked"}">${h.stamp === "match" ? "stamped" : "stamp " + esc(h.stamp)}</span>`);
+      if (h.status) marks.push(`<span class="badge ${h.statusError ? "blocked" : "done"}">status · ${h.statusError ? "unreadable" : fmtAge(h.statusAgeHours)}</span>`);
+      if (h.exists === false) marks.push(`<span class="badge missing">path missing</span>`);
+      if (kids.length) marks.push(`<span>${kids.length} inside</span>`);
+      b.innerHTML = `<div class="t">${esc(h.name)}</div><div class="m">${marks.join("")}</div>`;
+      b.onclick = () => openHolon(h); nav.appendChild(b);
+    }
+    kids.forEach(k => add(k, depth + 1));
+  };
+  REG.holons.filter(h => !h.parent).forEach(r => add(r, 0));
+  REG.holons.filter(h => h.parent && !BY[h.parent]).forEach(h => add(h, 0));   // a parent the registry does not know
+}
+
+// ---- one holon (right) ----
+function stampCard(h) {
+  const fm = h.frontmatter;
+  if (!h.stamped && !fm) return "";
+  const f = fm || {};
+  const verdict = !h.stamped
+    ? `<span class="badge">registry: unstamped</span>${f.holon ? ` <span class="meta">yet the file carries <code>holon: ${esc(f.holon)}</code>${h.note ? "" : " (see the registry rule on stamps)"}</span>` : " <span class=meta>the file has frontmatter the registry does not claim</span>"}`
+    : h.stamp === "match" ? `<span class="badge done">stamp matches</span>`
+    : h.stamp === "missing" ? `<span class="badge blocked">stamped in the registry, no holon key in the file</span>`
+    : `<span class="badge blocked">drift: the frontmatter disagrees with the registry</span>`;
+  const rows = [["holon", h.id, f.holon, true], ["type", h.type, f.type, true], ["description", h.description, f.description, false], ["updated", h.mtime ? `file touched ${h.mtime}` : "", f.updated, false]];
+  return `<div class="card"><h3>Stamp</h3><p class="meta" style="margin:0 0 10px">${verdict}</p>
+    <table class="stamp"><tr><th></th><th class="kicker">registry</th><th class="kicker">file frontmatter</th></tr>
+    ${rows.map(([k, a, b, strict]) => `<tr><th>${k}</th><td>${esc(a ?? "")}</td><td${strict && h.stamped && a !== b ? ' class="diff"' : ""}>${esc(b ?? "—")}</td></tr>`).join("")}</table></div>`;
+}
+
+// JSON with a space after every comma and colon, so it can wrap like prose. JSON escapes newlines inside strings, so
+// every real newline in the indented form is structure and collapsing them is safe.
+const spaced = v => JSON.stringify(v, null, 1).replace(/\s*\n\s*/g, " ");
+// a cell's text; past 300 characters it folds into the opening line and the rest behind a click
+const LONG = 300;
+function cellText(s) {
+  s = String(s ?? "");
+  if (s.length <= LONG) return esc(s);
+  return `<details class="long"><summary><span class="cut">${esc(s.slice(0, 160).trimEnd())}… </span><span class="more">${(s.length - 160).toLocaleString()} more characters</span></summary><div>${esc(s)}</div></details>`;
+}
+function statusBody(d) {
+  if (!d || typeof d !== "object") return "";
+  let html = "";
+  if (d.summary && typeof d.summary === "object") html += `<div class="counts">${Object.entries(d.summary).map(([k, v]) => `<span class="badge ${checkClass(k)}">${esc(k)} ${esc(v)}</span>`).join("")}</div>`;
+  if (d.checks && typeof d.checks === "object") html += `<table class="checks">${Object.entries(d.checks).map(([n, c]) => `<tr><td class="n">${esc(n)}</td><td class="b"><span class="badge ${checkClass(c && c.status)}">${esc(c && c.status || "?")}</span></td><td>${cellText(c && c.detail || "")}</td></tr>`).join("")}</table>`;
+  if (d.panels && typeof d.panels === "object") html += `<table class="checks">${Object.entries(d.panels).map(([n, p]) => `<tr><td class="n">${esc(n)}</td><td class="b"><span class="badge ${p.built ? "done" : ""}">${p.built ? "built" : "not built"}</span></td><td>${p.route ? `<code>${esc(p.route)}</code> ` : ""}${cellText(Object.entries(p).filter(([k]) => !["built", "route"].includes(k)).map(([k, v]) => `${k} ${Array.isArray(v) ? v.length : v && typeof v === "object" ? spaced(v) : v}`).join(" · "))}</td></tr>`).join("")}</table>`;
+  for (const [k, v] of Object.entries(d)) {
+    if (k.startsWith("_") || ["summary", "checks", "panels"].includes(k)) continue;
+    if (Array.isArray(v) && v.length && typeof v[0] === "object") {
+      const cols = [...new Set(v.flatMap(o => Object.keys(o)))];
+      html += `<h4 class="kicker" style="margin:14px 0 6px">${esc(k)}</h4><div style="overflow-x:auto"><table class="checks rows"><tr>${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr>${v.map(o => `<tr>${cols.map(c => `<td${c === "status" ? ' class="b"' : ""}>${c === "status" ? `<span class="badge ${checkClass(o[c])}">${esc(o[c] ?? "")}</span>` : cellText(typeof o[c] === "object" && o[c] !== null ? spaced(o[c]) : (o[c] ?? ""))}</td>`).join("")}</tr>`).join("")}</table></div>`;
+    } else if (v && typeof v === "object") {
+      html += `<details class="raw"><summary>${esc(k)}</summary><pre>${esc(JSON.stringify(v, null, 1))}</pre></details>`;
+    } else {
+      html += `<p class="meta" style="margin:8px 0 0">${esc(k)}: ${esc(v)}</p>`;
+    }
+  }
+  return html;
+}
+
+function statusCard(h) {
+  if (!h.status) return "";
+  if (h.statusError) return `<div class="card wide"><h3>Status</h3><p class="note">${esc(h.statusError)}</p><p class="meta" style="margin:10px 0 0">declared at <code>${esc(h.status)}</code></p></div>`;
+  const d = h.statusFile;
+  return `<div class="card wide"><h3>Status <span class="age ${h.statusAgeHours > 72 ? "stale" : ""}">${fmtAge(h.statusAgeHours)} · ${esc(d._generatedAt || "")} · ${esc(d._generatedBy || "")}</span></h3>
+    ${statusBody(d)}<p class="meta" style="margin:12px 0 0">${fileLink(h.status, "open the status file")} · the viewer renders this file as written; it never recomputes status</p></div>`;
+}
+
+function openHolon(h) {
+  VIEW = "holon"; CURRENT = h; renderTree(); setNav();
+  history.replaceState(null, "", `/holons?id=${encodeURIComponent(h.id)}`);
+  $("#drawer").hidden = true;
+  const kids = (h.children || []).map(id => BY[id]).filter(Boolean);
+  const missingKids = (h.children || []).filter(id => !BY[id]);
+  const parent = h.parent ? BY[h.parent] : null;
+  const facts = [
+    ["type", `<span class="badge type">${esc(h.type)}</span>${h.member_type ? ` <span class="meta">members are ${esc(h.member_type)}s</span>` : ""}`],
+    ["sharing", `${esc(h.sharing || "private")}${h.sharing && h.sharing !== "private" ? ` <span class="meta">a filter, never permission to skip the sanitize pass</span>` : ""}`],
+    ["path", h.exists === false ? `<span class="badge missing">missing</span> <code>${esc(h.path || "(none)")}</code>`
+      : h.isDir ? `<code>${esc(h.path)}</code><div class="meta">folder · ${h.files} readable files${h.readme ? ` · ${fileLink(h.readme, "readme")}` : " · no readme"}</div>`
+      : `${fileLink(h.path)}<div class="meta">touched ${esc(h.mtime)}</div>`],
+    h.domain ? ["domain", `${esc(h.domain)} <span class="meta">(named in sources-of-truth)</span>`] : null,
+    h.freshness ? ["freshness", `${esc(h.freshness.mode)} · signal: ${esc(h.freshness.signal)}${h.freshness.maxAgeDays ? ` · max ${esc(h.freshness.maxAgeDays)} days` : ""}`] : null,
+    ["parent", parent ? holonChip(parent) : h.parent ? `<span class="badge missing">parent ${esc(h.parent)} not in the registry</span>` : `<span class="meta">root</span>`],
+    h.note ? ["note", esc(h.note)] : null,
+  ].filter(Boolean);
+  $("#main").innerHTML = `
+    <div class="hh"><h2>${esc(h.name)}</h2><code class="id">${esc(h.id)}</code></div>
+    <p class="desc">${esc(h.description || "")}</p>
+    <div class="grid">
+      <div class="card"><h3>Registry row</h3><table class="facts">${facts.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join("")}</table></div>
+      ${stampCard(h)}
+      ${h.rules || h.agent ? `<div class="card"><h3>Law and agent</h3><table class="facts">
+          <tr><th>rules</th><td>${h.rules ? (h.rulesExists ? fileLink(h.rules) : `<span class="badge missing">missing</span> <code>${esc(h.rules)}</code>`) : `<span class="meta">none declared</span>`}</td></tr>
+          <tr><th>agent runbook</th><td>${h.agent ? (h.agentExists ? fileLink(h.agent) : `<span class="badge missing">missing</span> <code>${esc(h.agent)}</code>`) : `<span class="meta">none declared</span>`}</td></tr></table></div>` : ""}
+      ${kids.length || missingKids.length ? `<div class="card wide"><h3>Nests beneath <span class="age">${kids.length}</span></h3><div class="chips">${kids.map(holonChip).join("")}${missingKids.map(id => `<span class="chip"><span class="badge missing">not in registry</span>${esc(id)}</span>`).join("")}</div></div>` : ""}
+      ${statusCard(h)}
+    </div>`;
+  $("#main").scrollTop = 0;
+}
+
+// ---- the status view ----
+function openStatus() {
+  VIEW = "status"; renderTree(); setNav();
+  history.replaceState(null, "", "/status");
+  $("#drawer").hidden = true;
+  $("#main").innerHTML = `
+    <div class="hh"><h2>Status</h2><span class="meta">every machine-written status file the registry names, read as written · trust is the age of <code>_generatedAt</code>, never authorship</span></div>
+    <p class="meta" style="margin:8px 0 0">The holon tree lives at <a href="/holons">/holons</a> — off the nav since 9/09, reachable from here and from the list on the left.</p>
+    <div class="statusgrid" style="margin-top:18px">${STATUS.holons.map(s => `<div class="card"><h3>${holonChip(BY[s.id] || { id: s.id, name: s.name, type: "" })}</h3>
+      <p class="age ${s.ageHours > 72 ? "stale" : ""}" style="margin:0 0 12px">${s.error ? `<span class="badge blocked">unreadable</span> ${esc(s.error)}` : `${fmtAge(s.ageHours)} · ${esc(s.generatedAt || "")}<br>${esc(s.generatedBy || "")}`}</p>
+      ${statusBody(s.data)}
+      <p class="meta" style="margin:12px 0 0">${fileLink(s.path, "open the status file")}${s.agent ? ` · runbook ${fileLink(s.agent)}` : ""}${s.rules ? ` · rules ${fileLink(s.rules)}` : ""}</p></div>`).join("") || `<div class="empty">no holon names a status file</div>`}</div>
+    <div class="card" style="margin-top:18px"><h3>Registry rules</h3><ol class="rules">${REG._rules.map(r => `<li>${esc(r)}</li>`).join("")}</ol></div>`;
+  $("#main").scrollTop = 0;
+}
+
+function setNav() {
+  // /holons came off the nav on 2026-09-09 (ideas E16): the route stays, the page is unchanged, and the only link to it
+  // now sits on the Status page below. The anchor may therefore be absent.
+  const h = $("#navHolons"); if (h) h.classList.toggle("on", VIEW === "holon");
+  const st = document.querySelector('nav.panels a[href="/status"]'); if (st) st.classList.toggle("on", VIEW === "status");
+}
+
+// ---- the read drawer ----
+async function openFile(path, frag) { return BV.drawer.open(path, frag); }   // the one shared drawer, viewer-common.js (0.54.1, T-0152)
+
+document.addEventListener("click", e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); const t = w.dataset.wikilink.split("#")[0].trim(); if (t.endsWith(".canvas")) location.href = `/canvases?open=${encodeURIComponent(t)}`; else openFile(t, w.dataset.wikilink.split("#")[1]); return; }
+  const o = e.target.closest(".filelink[data-open]"); if (o) { openFile(o.dataset.open, o.dataset.frag); return; }   // a real file link only (T-0065)
+  const h = e.target.closest("[data-holon]"); if (h && BY[h.dataset.holon]) { openHolon(BY[h.dataset.holon]); }
+});
+document.addEventListener("keydown", e => {
+  if (BV.typing(e)) return;                                  // no hotkey while he is typing (T-0112)
+  if (e.key === "Escape") { $("#drawer").hidden = true; }
+  if (e.key === "/") { e.preventDefault(); $("#search").focus(); }
+});
+$("#search").addEventListener("input", renderTree);
+
+async function load() {
+  const [r1, r2] = await Promise.all([fetch("/api/holons"), fetch("/api/status")]);
+  REG = await r1.json(); STATUS = await r2.json();
+  if (REG.error) throw new Error(REG.error);
+  BY = Object.fromEntries(REG.holons.map(h => [h.id, h]));
+  const drift = REG.holons.filter(h => h.stamp && h.stamp !== "match").length;
+  $("#crumb").textContent = `${REG.holons.length} holons · ${REG.holons.filter(h => !h.parent).length} roots · ${REG.holons.filter(h => h.stamped).length} stamped${drift ? ` (${drift} drifting)` : ""} · ${STATUS.holons.length} status files · registry updated ${REG._updated}`;
+  const want = new URLSearchParams(location.search).get("id");
+  if (location.pathname === "/status") openStatus();
+  else if (want && BY[want]) openHolon(BY[want]);
+  else openHolon(REG.holons[0]);
+}
+load().catch(e => { $("#main").innerHTML = `<div class="note">Could not load the registry: ${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

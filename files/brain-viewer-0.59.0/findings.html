@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Findings</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { flex: 1; position: relative; min-height: 0; overflow: hidden; display: flex; }
+  main { flex: 1; overflow: auto; padding: 26px 34px 90px; }
+  .sheet { max-width: 1120px; margin: 0 auto; }
+  .lead { color: var(--ink-soft); margin: 0 0 14px; max-width: 78ch; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 16px; align-items: center; }
+  .chips .lbl { font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+  section.card { padding: 6px 18px 14px; margin: 0 0 18px; }
+  /* one finding: the columns the design names -- source, project, age, repeats, owner, then the finding itself */
+  .thead, .find { display: grid; grid-template-columns: 124px 132px 62px 74px 96px minmax(0, 1fr); gap: 12px; align-items: start; padding: 9px 0; }
+  .thead { font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding-bottom: 6px; }
+  .find { border-top: 1px solid var(--rule-soft); }
+  .find .num { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
+  .find .num.loud { color: var(--open); font-weight: 700; }
+  .find .t { font-size: 14.5px; }
+  .find .m { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 3px; }
+  /* raised three times or open a fortnight: the gold the rest of the app uses for "open, and it wants you" (no new color) */
+  .find.marked { border-left: 2px solid var(--open); padding-left: 12px; margin-left: -14px; }
+  details.notefold { margin-top: 4px; }
+  details.notefold > summary { cursor: pointer; color: var(--muted); font-size: 12px; list-style: none; }
+  details.notefold > summary::-webkit-details-marker { display: none; }
+  details.notefold > summary::before { content: "▸ "; font-size: 10px; }
+  details.notefold[open] > summary::before { content: "▾ "; }
+  .status-line { font-size: 12px; color: var(--muted); }
+  @media (max-width: 900px) {
+    main { padding: 18px 16px 80px; }
+    .thead { display: none; }
+    .find { grid-template-columns: 1fr; gap: 4px; padding: 12px 0; }
+    .find.marked { margin-left: 0; }
+    .find .col { display: inline-block; margin-right: 10px; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Findings</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="findings"></nav>
+</header>
+<div class="stage">
+  <main id="main">
+    <div class="sheet">
+      <p class="lead" id="lead">Reading the ledgers…</p>
+      <div class="chips" id="chips"></div>
+      <section class="card" id="card">
+        <div id="body"></div>
+      </section>
+      <p class="status-line" id="status"></p>
+    </div>
+  </main>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// ---- the Findings view (2026-09-17, the findings-routing design, piece 5) ----
+// The queue the head agent drains, not a page that asks the owner for anything: every OPEN ledger item carrying a
+// `#source:` tag, across every ledger the registry names, most-repeated and then oldest first. One read
+// (GET /api/findings), which does the parsing, the age and the counts on the server against its own clock. Nothing
+// here writes: a finding is triaged at rounds Step 0.5, on the ledger it already lives on. /today is untouched.
+const { esc, md, isImage, lightbox, fileLink: link } = BV;
+const $ = s => document.querySelector(s);
+let DATA = null;
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const F = { source: "", project: "", owner: "" };
+
+// the filter rides in the address bar, so a chip can be linked, reloaded and shared with a sub-agent
+function readQuery() {
+  const p = new URLSearchParams(location.search);
+  for (const k of Object.keys(F)) F[k] = (p.get(k) || "").trim();
+}
+function writeQuery() {
+  const p = new URLSearchParams();
+  for (const k of Object.keys(F)) if (F[k]) p.set(k, F[k]);
+  const q = p.toString();
+  history.replaceState(null, "", location.pathname + (q ? "?" + q : ""));
+}
+
+function chips() {
+  const c = DATA.counts, by = c.bySource || {};
+  const names = Object.keys(by).sort((a, b) => by[b] - by[a] || a.localeCompare(b));
+  const one = (key, label, n, on, title) =>
+    `<button type="button" class="btn${on ? " on" : ""}" data-source="${esc(key)}" title="${esc(title)}">${esc(label)}${n === null ? "" : ` <span class="meta">${n}</span>`}</button>`;
+  const parts = [`<span class="lbl">source</span>`,
+    one("", "all", c.total, !F.source, "every producer")];
+  for (const s of names) parts.push(one(s, s, by[s], F.source === s, `only what ${s} filed`));
+  if (F.project) parts.push(`<button type="button" class="btn on" data-clear="project" title="showing one project only; press to clear">project: ${esc(F.project)} ✕</button>`);
+  if (F.owner) parts.push(`<button type="button" class="btn on" data-clear="owner" title="showing one owner only; press to clear">owner: ${esc(F.owner)} ✕</button>`);
+  $("#chips").innerHTML = names.length || F.project || F.owner ? parts.join("") : "";
+}
+
+function findRow(r) {
+  const m = DATA.marks, loud = r.repeats >= m.loudRepeats, old = (r.age_days || 0) >= m.oldDays;
+  const meta = [`<span class="id"${r.key ? ` title="the producer files this under ${esc(r.key)}"` : ""}>${esc(r.id)}</span>`];   // the key on the hover, never a chip (0.58.0)
+  if (r.kind === "question") meta.push(`<span class="badge">question${r.to ? " → " + esc(String(r.to).replace(/^@/, "")) : ""}</span>`);
+  if (r.mark === "-") meta.push(`<span class="badge blocked">blocked${r.blocked ? " · " + esc(r.blocked) : ""}</span>`);
+  if (r.due) meta.push(`<span class="badge ${DATA.today && r.due < DATA.today ? "overdue" : ""}">due ${esc(r.due)}</span>`);
+  if (r.held) meta.push(`<span class="badge held">on hold</span>`);
+  if (old) meta.push(`<span class="badge open" title="open since ${esc(r.date)}">${plural(r.age_days, "day")} old</span>`);
+  if (loud) meta.push(`<span class="badge open" title="the producer found this again on ${plural(r.repeats, "later run")} and noted it on this same item instead of filing a second one">repeated ${plural(r.repeats, "time")}</span>`);
+  meta.push(BV.tagChips(r.tags));
+  for (const l of r.links || []) meta.push(link(l));
+  meta.push(`<span class="filelink" data-open="${esc(r.file)}" title="${esc(r.file)}">the ledger</span>`);
+  return `<div class="find${loud || old ? " marked" : ""}">
+    <div><span class="badge type" title="what filed it">${esc(BV.sourceWords(r.source) || r.source)}</span></div>
+    <div><button type="button" class="btn" data-project="${esc(r.project)}" title="only this project's findings">${esc(r.projectName || r.project)}</button></div>
+    <div class="num${old ? " loud" : ""}" title="open since ${esc(r.date)}">${r.age_days === null ? "—" : r.age_days + "d"}</div>
+    <div class="num${loud ? " loud" : ""}" title="${r.repeats ? "filed again " + plural(r.repeats, "time") : "filed once"}">${r.repeats || "—"}</div>
+    <div><button type="button" class="btn" data-owner="${esc(r.owner || "")}" title="only this owner's findings">${esc(String(r.owner || "").replace(/^@/, "") || "—")}</button></div>
+    <div>
+      <div class="t">${BV.ledgerText(r.text, r.project)}</div>
+      <div class="m">${meta.join("")}</div>
+      ${r.note ? `<details class="notefold"><summary>note</summary><div class="keep"><span class="kicker">note</span> ${BV.ledgerText(r.note, r.project)}</div></details>` : ""}
+    </div>
+  </div>`;
+}
+
+function paint() {
+  const c = DATA.counts;
+  $("#crumb").textContent = `${DATA.today} · ${DATA.ledgers.length} ledgers`;
+  $("#lead").textContent = `${plural(c.total, "open finding")}, ${c.repeated} repeated.`
+    + (c.total ? ` ${c.loud} raised ${DATA.marks.loudRepeats} times or more, ${c.old} open ${DATA.marks.oldDays} days or longer.` : "");
+  chips();
+  if (!c.total) {
+    $("#body").innerHTML = `<p class="empty">No findings on the ledgers yet. Producers start filing at the next night-agent run.</p>`;
+  } else if (!DATA.items.length) {
+    $("#body").innerHTML = `<p class="empty">Nothing under this filter. ${esc(plural(c.total, "finding"))} on the ledgers altogether — press <em>all</em> above.</p>`;
+  } else {
+    $("#body").innerHTML = `<div class="thead"><div>source</div><div>project</div><div>age</div><div>repeats</div><div>owner</div><div>the finding</div></div>`
+      + DATA.items.map(findRow).join("");
+  }
+  $("#status").textContent = `${DATA.shown} shown of ${c.total} · sorted by repeats, then age · read ${(DATA._servedAt || "").replace("T", " ")}`;
+  BV.glossary.scan($("#main"));
+}
+
+async function load() {
+  const p = new URLSearchParams();
+  for (const k of Object.keys(F)) if (F[k]) p.set(k, F[k]);
+  const r = await fetch("/api/findings" + (p.toString() ? "?" + p.toString() : ""));
+  const j = await r.json();
+  if (!r.ok || j.error) throw new Error(j.error || ("the server answered " + r.status));
+  DATA = j;
+  paint();
+}
+
+// ---- the read drawer (the same one /projects and /today open) ----
+async function openFile(path, frag) { return BV.drawer.open(path, frag); }   // the one shared drawer, viewer-common.js (0.54.1, T-0152)
+
+const refilter = async (k, v) => { F[k] = F[k] === v ? "" : v; writeQuery(); await load(); };
+
+document.addEventListener("click", async e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  const s = e.target.closest("[data-source]"); if (s) { await refilter("source", s.dataset.source); return; }
+  const cl = e.target.closest("[data-clear]"); if (cl) { F[cl.dataset.clear] = ""; writeQuery(); await load(); return; }
+  const pr = e.target.closest("button[data-project]"); if (pr) { await refilter("project", pr.dataset.project); return; }
+  const ow = e.target.closest("button[data-owner]"); if (ow) { await refilter("owner", ow.dataset.owner); return; }
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); const t = w.dataset.wikilink.split("#")[0].trim(); if (t.endsWith(".canvas")) location.href = BV.forgeHref(t); else openFile(t, w.dataset.wikilink.split("#")[1]); return; }
+  const o = e.target.closest(".filelink[data-open]"); if (o) { openFile(o.dataset.open, o.dataset.frag); }
+});
+document.addEventListener("keydown", e => { if (BV.typing(e)) return; if (e.key === "Escape") $("#drawer").hidden = true; });
+
+readQuery();
+load().catch(e => { $("#lead").textContent = ""; $("#body").innerHTML = `<div class="note">Could not read the ledgers: ${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maps</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  main { padding: 22px 34px 80px; max-width: 1240px; }
+  .intro { max-width: 78ch; margin: 0 0 16px; color: var(--ink-soft); }
+  details.tips { padding: 8px 14px 10px; margin: 0 0 18px; font-size: 13.5px; max-width: 90ch; }
+  details.tips > summary { cursor: pointer; color: var(--muted); list-style: none; }
+  details.tips > summary::-webkit-details-marker { display: none; }
+  details.tips > summary::before { content: "\25B8 "; font-size: 10px; }
+  details.tips[open] > summary::before { content: "\25BE "; }
+  details.tips p { margin: 6px 0 0; }
+  details.tips kbd { border: 1px solid var(--rule-soft); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: var(--code); font-size: 11px; }
+  details.grp { margin: 0 0 14px; padding: 10px 18px 12px; }
+  details.grp > summary { cursor: pointer; list-style: none; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  details.grp > summary::-webkit-details-marker { display: none; }
+  details.grp > summary::before { content: "\25B8"; font-size: 11px; color: var(--muted); }
+  details.grp[open] > summary::before { content: "\25BE"; }
+  details.grp > summary h2 { margin: 0; font-size: 20px; font-weight: 400; }
+  details.grp > summary .purpose { color: var(--ink-soft); font-size: 13.5px; }
+  details.grp > summary .meta { margin-left: auto; font-size: 12.5px; white-space: nowrap; }
+  details.grp.recent > summary h2::after { content: "active most recently"; font-family: var(--font-ui); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--open); margin-left: 10px; vertical-align: middle; }
+  ul.maps { list-style: none; margin: 10px 0 0; padding: 0; }
+  ul.maps li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px 18px; padding: 10px 0; border-top: 1px solid var(--rule-soft); align-items: center; }
+  ul.maps li:first-child { border-top: 0; }
+  ul.maps .t a.name { font-family: var(--font-display); font-size: 16px; text-decoration: none; }
+  ul.maps .t .p { color: var(--ink-soft); font-size: 13.5px; margin-top: 2px; }
+  ul.maps .t .m { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  ul.maps .counts { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+  ul.maps .counts .badge.bound { color: var(--done); background: var(--done-tint); border-color: transparent; }
+  ul.maps .counts .badge.concept { color: var(--muted); border-style: dashed; }
+  ul.maps .counts .badge.today { color: var(--surface); background: var(--open); border-color: transparent; }
+  ul.maps .counts .badge.today.none { color: var(--muted); background: var(--surface); border-color: var(--rule-soft); }
+  ul.maps .links { display: flex; gap: 6px; white-space: nowrap; }
+  ul.maps .links a.btn { text-decoration: none; font-size: 12px; padding: 4px 9px; }
+  ul.maps .links a.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  ul.maps .links a.btn.primary:hover { background: var(--accent-deep); }
+  ul.maps li.missing .t a.name { color: var(--muted); }
+  details.other { margin: 22px 0 0; padding: 10px 18px 12px; }
+  details.other > summary { cursor: pointer; list-style: none; display: flex; gap: 12px; align-items: baseline; }
+  details.other > summary::-webkit-details-marker { display: none; }
+  details.other > summary::before { content: "\25B8"; font-size: 11px; color: var(--muted); }
+  details.other[open] > summary::before { content: "\25BE"; }
+  details.other > summary h2 { margin: 0; font-size: 17px; font-weight: 400; color: var(--ink-soft); }
+  details.other h4 { margin: 12px 0 2px; font-family: var(--font-ui); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+  details.other ul { list-style: none; margin: 0; padding: 0; }
+  details.other li { display: flex; gap: 12px; align-items: baseline; padding: 5px 0; border-top: 1px solid var(--rule-soft); font-size: 13.5px; }
+  details.other li a { text-decoration: none; }
+  details.other li .m { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  details.other li .links { margin-left: auto; display: flex; gap: 6px; white-space: nowrap; }
+  details.other li .links a { font-size: 12px; }
+  .retired { margin: 18px 0 0; color: var(--muted); font-size: 12.5px; }
+  @media (max-width: 900px) { ul.maps li { grid-template-columns: 1fr; } ul.maps .counts { justify-content: flex-start; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Maps</h1>
+  <span class="sub" id="crumb">existing canvases, read against real state</span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="maps"></nav>
+</header>
+<main id="main"><div class="empty">reading the maps…</div></main>
+<script src="/static/viewer-common.js"></script>
+<script>
+// The maps picker (2026-09-09, the straight line step 4, ledger T-0042). The owner: not one map, several, each an existing canvas
+// read against real state -- where information moves, which apps and services things connect to, how the OS runs, and the owner's
+// daily workflow. The grouping is a declaration in skills/brain-viewer/maps-manifest.json (rules 1: never drawn here);
+// the counts come from GET /api/live per canvas; the filtering rule opens the group whose map was active most recently.
+const { esc, showAll, mountShowAll, forgeHref } = BV;
+const $ = s => document.querySelector(s);
+const liveHref = p => `/live?path=${encodeURIComponent(p)}`;
+const when = s => s ? String(s).replace("T", " ").slice(0, 16) : "";
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+let DATA = null;
+
+function countsHTML(c) {
+  if (!c) return `<span class="badge">not read</span>`;
+  return `<span class="badge bound" title="${c.bound} of ${c.nodes} nodes bound to a real thing: a file, a holon, a skill, an agent, a page, a service">${c.bound} bound</span>`
+    + `<span class="badge concept" title="${c.concept} nodes bound to nothing: drawn only">${c.concept} concept</span>`
+    + `<span class="badge today${c.activeToday ? "" : " none"}" title="${c.activeToday} nodes with evidence today; ${c.edgesToday} lines active today (they carry a bubble)">${c.activeToday} active today</span>`;
+}
+function mapRow(r) {
+  return `<li class="${r.exists ? "" : "missing"}">
+    <div class="t"><a class="name" href="${r.exists ? liveHref(r.path) : "#"}">${esc(r.name)}</a>
+      <div class="p">${esc(r.purpose || "")}</div>
+      <div class="m">${r.exists ? `${esc(r.family || "")} · ${r.cells ? plural(r.cells, "cell") + " · " : ""}${plural(r.nodes, "node")} · ${plural(r.edges, "line")} · drawn ${esc(r.mtime || "?")}${r.lastAt ? ` · last activity ${esc(r.lastAt)}` : " · no activity in 14 days"}` : `missing: ${esc(r.path)}`}</div></div>
+    <div class="counts">${r.exists ? countsHTML(r.counts) : ""}</div>
+    <div class="links">${r.exists ? `<a class="btn primary" href="${liveHref(r.path)}" title="the drawing read against real state: bindings, activity, the bubbles">open live</a><a class="btn" href="${forgeHref(r.path)}" title="edit the drawing in the Forge">design</a><a class="btn" href="/canvases?open=${encodeURIComponent(r.path)}" title="the read-only canvas viewer">view</a>` : ""}</div>
+  </li>`;
+}
+function render() {
+  const d = DATA, everything = showAll("maps");
+  const recent = d.mostRecent && d.mostRecent.group;
+  const groups = d.groups.map(g => {
+    const open = everything || g.id === recent || (!recent && g === d.groups[0]);
+    const n = g.maps.length, act = g.maps.reduce((a, r) => a + ((r.counts || {}).activeToday || 0), 0);
+    return `<details class="grp card${g.id === recent ? " recent" : ""}" ${open ? "open" : ""}>
+      <summary><h2>${esc(g.name)}</h2><span class="purpose">${esc(g.purpose || "")}</span><span class="meta">${plural(n, "map")}${act ? ` · ${act} active today` : ""}${g.lastAt ? ` · last ${esc(when(g.lastAt))}` : ""}</span></summary>
+      <ul class="maps">${g.maps.map(mapRow).join("")}</ul></details>`;
+  }).join("");
+  const other = d.other && d.other.length ? `<details class="other card" ${everything ? "open" : ""}><summary><h2>other canvases</h2><span class="meta">${d.other.reduce((a, f) => a + f.canvases.length, 0)} drawings that are not maps in this sense: the mentee map suite, the entrepreneur path, the future layer, the rest</span></summary>
+    ${d.other.map(f => `<h4>${esc(f.family)}</h4><ul>${f.canvases.map(c => `<li><a href="${liveHref(c.path)}">${esc(c.name)}</a><span class="m">${esc((c.header || "").slice(0, 90))}</span><span class="links"><a href="${liveHref(c.path)}">live</a><a href="${forgeHref(c.path)}">design</a><a href="/canvases?open=${encodeURIComponent(c.path)}">view</a></span></li>`).join("")}</ul>`).join("")}</details>` : "";
+  $("#main").innerHTML = `
+    <details class="tips card" id="tips"><summary>what this is, and how to use it</summary>
+      <p>Each map here is one of the architecture canvases <b>read against real state</b>, not a picture. Open one live and its nodes are bound to the real things they stand for (a file, a holon, a skill, an agent, a page of this app, an outside service), lit by what the log recorded in the last ${d.days} days, with a gold bubble travelling along every line that was active today. Nodes bound to nothing are drawn dashed and marked <i>concept</i>.</p>
+      <p>The groups are by purpose: where information moves, which apps and services things are wired to, how the OS runs itself, the machines drawn as cells, and the daily workflow. The group whose map was active most recently opens first; <i>showing everything</i> opens them all. <b>open live</b> reads a map; <b>design</b> edits the same drawing in the Forge; <b>view</b> is the plain canvas viewer. On a live map: <kbd>i</kbd> <kbd>b</kbd> <kbd>r</kbd> toggle the intent, build and runtime layers, <kbd>f</kbd> fits, hover a node for its binding and its last log lines, click a bound node to open the thing.</p>
+      <p>To add a map, add its row to <code>${esc(d.manifest)}</code>. To change a drawing, use the Forge. Nothing here writes anything.</p>
+    </details>
+    ${groups}${other}
+    <p class="retired">The moving graph at <a href="/map">/map</a> retired on 2026-09-09; it still answers, off the nav.</p>`;
+  $("#crumb").textContent = `${d.groups.reduce((a, g) => a + g.maps.length, 0)} maps in ${d.groups.length} groups · the last ${d.days} days of the log${d.mostRecent ? ` · most recent activity ${when(d.mostRecent.at)}` : ""}`;
+}
+async function load() {
+  const r = await fetch("/api/maps"); DATA = await r.json();
+  if (!r.ok || DATA.error) { $("#main").innerHTML = `<div class="empty">${esc(DATA.error || r.status)}</div>`; return; }
+  render();
+}
+mountShowAll("maps", () => render());
+load().catch(e => { $("#main").innerHTML = `<div class="empty">${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

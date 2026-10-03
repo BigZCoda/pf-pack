@@ -1,0 +1,1992 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { min-height: 100vh; display: flex; flex-direction: column; }
+  .stage { flex: 1; min-height: 0; display: flex; }
+  main { flex: 1; overflow: auto; padding: 16px 26px 110px; }
+  .sheet { max-width: 1400px; margin: 0 auto; }
+
+  /* ---- the board: twelve columns, and a size IS a column span ---- */
+  .grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; align-items: start; }
+  section.w { grid-column: span 4; min-width: 0; padding: 0; }
+  section.w[data-span="4"]  { grid-column: span 4; }
+  section.w[data-span="6"]  { grid-column: span 6; }
+  section.w[data-span="8"]  { grid-column: span 8; }
+  section.w[data-span="12"] { grid-column: span 12; }
+  section.w.wide            { grid-column: span 12; }      /* expanded in place, whatever its size */
+  /* ...and a HEIGHT is a row span (0.39.0), so one tall instrument can stand beside two short ones with no hole under
+     them: the deck runs two rows while Next and the chat fill the same two rows beside it. */
+  section.w[data-rows="2"]  { grid-row: span 2; }
+  @media (max-width: 1100px) {
+    section.w[data-span="4"] { grid-column: span 6; }
+    section.w[data-span="8"] { grid-column: span 12; }
+    section.w[data-rows="2"] { grid-row: auto; }           /* the columns have been re-dealt; a row span would hole it */
+  }
+  @media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); gap: 22px; } section.w { grid-column: span 1 !important; grid-row: auto !important; } }
+
+  /* an instrument with nothing to report draws nothing at all, and comes back in edit mode so it can still be moved */
+  body:not(.editing) section.w.whidden { display: none; }
+  body.editing section.w.whidden { opacity: .5; }
+
+  /* ---- the two shapes a widget can wear ---- */
+  /* plain: a hairline over it and nothing else, so the page is instruments on one ground, not a wall of boxes */
+  section.w.plain { border-top: 1px solid var(--rule-soft); padding-top: 9px; }
+  section.w.bare { border-top: 0; padding-top: 0; }        /* the masthead and the strips carry their own edge */
+  /* the notepad's look, which the owner likes: surface, the rule frame, the open-gold left edge. The deck and the command
+     line are the only two things on this page that read as a card. */
+  section.w.iscard { background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--open);
+                     border-radius: var(--radius); padding: 11px 13px 12px; }
+
+  /* ---- the head: a small-caps label, a mono count, the widget's own control, then the edit tools ---- */
+  .whead { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin: 0 0 7px; }
+  .whead h2 { font-family: var(--font-ui); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+              color: var(--muted); font-weight: 400; margin: 0; }
+  .whead .wcount { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+  .whead .wctl { margin-left: auto; display: flex; gap: 3px; align-items: center; flex-wrap: wrap; }
+  .whead .wtools { display: none; gap: 4px; align-items: center; }
+  .whead .wtools .btn { font-size: 11px; padding: 1px 6px; }
+  .whead button.wfold { border: 0; background: none; cursor: pointer; padding: 0 2px; color: var(--muted); font-size: 11px; line-height: 1; }
+  .whead button.wfold:hover { color: var(--accent); }
+  section.w.folded .wbody { display: none; }
+  /* a widget's own toggles: quiet until the one that is on */
+  .wtab { border: 0; background: none; cursor: pointer; font-family: var(--font-ui); font-size: 10.5px; letter-spacing: .1em;
+          text-transform: uppercase; color: var(--muted); padding: 2px 5px; border-bottom: 1px solid transparent; }
+  .wtab:hover { color: var(--ink); }
+  .wtab.on { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .wbody { font-size: 14px; min-width: 0; }
+
+  /* ---- the small shared shapes a widget may reach for ---- */
+  ul.wlines { list-style: none; margin: 2px 0 0; padding: 0; }
+  ul.wlines li { padding: 4px 0; border-top: 1px solid var(--rule-soft); display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+  ul.wlines li:first-child { border-top: 0; }
+  ul.wlines li > a, ul.wlines li > span.wl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  ul.wlines li .wt { color: var(--muted); font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
+  ul.wlines li.live { font-weight: 700; }
+  ul.wlines li.past { opacity: .6; }
+  p.wsay { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  a.wmore { display: inline-block; margin-top: 7px; font-size: 12.5px; }
+  .wgrid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 3px 14px; margin-top: 3px; }
+  .wgrid2 a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wgrid2 a .wt { color: var(--muted); font-size: 12px; }
+  .wrow { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+  .wrow input { flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--bg); font: inherit; font-size: 13px; }
+  .wrow input:focus { outline: none; border-color: var(--accent); }
+  .wframe { width: 100%; height: 460px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); }
+  .wbig { font-family: var(--font-title); font-weight: 500; color: var(--accent); line-height: .95; }
+  .wcaps { font-family: var(--font-ui); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .wnum { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+  /* ---- a broken instrument says so on its own tile (T-0217) ---- */
+  section.w.wbroken { border-left: 3px solid var(--danger); padding-left: 12px; }
+  section.w.wbroken .wbody { display: none; }
+  .wbroke { background: var(--danger-tint); border-radius: var(--radius); padding: 8px 11px; margin-top: 4px; }
+  .wbroke .wbroke-say { margin: 0; color: var(--danger); font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; }
+  .wbroke .wbroke-do { margin: 6px 0 0; font-size: 12.5px; display: flex; gap: 14px; flex-wrap: wrap; }
+
+  /* edit mode */
+  body.editing section.w { cursor: grab; outline: 1px dashed var(--rule-soft); outline-offset: 5px; }
+  body.editing .whead .wtools { display: flex; }
+  body.editing section.w.drag { opacity: .45; }
+  body.editing section.w.over { outline: 2px dashed var(--accent); outline-offset: 4px; }
+  .editbar { display: none; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 0 16px; padding: 8px 14px; }
+  body.editing .editbar { display: flex; }
+  .editbar .add { display: flex; gap: 5px; flex-wrap: wrap; }
+  .editbar .add button { font-size: 12px; padding: 2px 8px; }
+  .headbtn { border: 1px solid var(--rule); background: var(--surface); color: var(--ink); border-radius: var(--radius); cursor: pointer; font: inherit; font-size: 13px; padding: 3px 10px; }
+  .headbtn:hover { background: var(--hover); }
+  .headbtn.on { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+  /* the add strip, again, as a window of its own once it has scrolled off the top (0.39.0: once the strip scrolls
+     past the top, the available widgets become a window on the side to drag from; 0.40.0: that sidebar is movable
+     and appears in its own resizable window). The notepad's
+     look, a bar across its top to carry it by, and its own corner to pull it bigger. Where it was left is saved with
+     the board, so it opens in the same place on the next reload and on the other machine. */
+  .addrail { position: fixed; right: 12px; top: 96px; z-index: 40; width: 168px; height: 300px;
+             min-width: 132px; min-height: 120px; max-width: calc(100vw - 20px); max-height: calc(100vh - 20px);
+             background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--open);
+             border-radius: var(--radius); padding: 0; display: none; flex-direction: column; overflow: hidden;
+             resize: both; box-shadow: 0 2px 14px rgba(43, 41, 37, .12); }
+  body.editing .addrail.up { display: flex; }
+  .addrail .railgrab { flex: none; height: 17px; cursor: grab; touch-action: none; background: var(--bg);
+                       border-bottom: 1px solid var(--rule-soft); display: flex; align-items: center;
+                       justify-content: center; gap: 3px; }
+  .addrail .railgrab i { display: block; width: 16px; height: 1px; background: var(--rule); }
+  .addrail.moving { box-shadow: 0 6px 22px rgba(43, 41, 37, .2); }
+  .addrail.moving .railgrab { cursor: grabbing; }
+  .addrail .raillist { flex: 1; min-height: 0; overflow: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .addrail button { text-align: left; cursor: grab; }
+  .addrail button.drag { opacity: .45; }
+  @media (max-width: 760px) { .addrail { display: none !important; } }
+
+  /* ---- the look, and a tile's own style (2026-09-22, T-0208) ----
+     The look picker and its import sit in the edit bar. A tile's style is applied as custom properties inline on the
+     tile, so they override the look's tokens for that tile only and a widget that reads the tokens follows with no
+     change of its own. --w-edge is the tile's edge, --w-scale its text size; the rest are the look's own names. */
+  .editbar .lookpick { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+  .editbar .lookpick select, .wstyle select { font: inherit; font-size: 12.5px; padding: 2px 6px; border: 1px solid var(--rule-soft);
+                                              border-radius: var(--radius); background: var(--bg); color: var(--ink); }
+  .editbar .lookpick input[type=file] { display: none; }
+  section.w { font-family: var(--font-ui); }
+  section.w[style*="--w-scale"] .wbody { font-size: calc(14px * var(--w-scale)); }
+  section.w[style*="--w-scale"] .whead h2 { font-size: calc(10.5px * var(--w-scale)); }
+  section.w.iscard[style*="--w-edge"] { border-left-color: var(--w-edge); }
+  section.w.plain[style*="--w-edge"] { border-top-color: var(--w-edge); }
+  .wstyle { display: none; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 0 0 9px; padding: 7px 9px;
+            background: var(--bg); border: 1px dashed var(--rule); border-radius: var(--radius); font-family: var(--font-ui);
+            font-size: 12px; color: var(--muted); cursor: default; }
+  body.editing section.w.styling .wstyle { display: flex; }
+  .wstyle label, .wstyle .slab { display: flex; gap: 5px; align-items: center; }
+  .wstyle .btn { font-size: 11px; padding: 1px 6px; }
+  .wstyle input[type=color] { width: 26px; height: 20px; padding: 0; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: none; cursor: pointer; }
+  .wstyle .sgroup { display: flex; gap: 3px; align-items: center; }
+  /* ---- a widget's rules, as settings (T-0214) ----
+     The filter row is the style panel's twin: the same dashed box under the head, opened from the same edit strip, one
+     control per filter the widget declares, then save as view, and the prompt box for what no filter can say. */
+  .wfilt { display: none; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 0 0 9px; padding: 7px 9px;
+           background: var(--bg); border: 1px dashed var(--rule); border-radius: var(--radius); font-family: var(--font-ui);
+           font-size: 12px; color: var(--muted); cursor: default; }
+  body.editing section.w.filtering .wfilt { display: flex; }
+  .wfilt label { display: flex; gap: 5px; align-items: center; }
+  .wfilt select, .wfilt input[type=text] { font: inherit; font-size: 12.5px; padding: 2px 6px; border: 1px solid var(--rule-soft);
+                                           border-radius: var(--radius); background: var(--bg); color: var(--ink); max-width: 190px; }
+  .wfilt input[type=range] { width: 90px; accent-color: var(--accent); }
+  .wfilt .btn { font-size: 11px; padding: 1px 6px; }
+  .wfilt .fask { flex: 1 1 100%; }
+  .wfilt .fask input { flex: 1; max-width: none; min-width: 0; }
+  .wfilt .fask input:focus, .wfilt select:focus { outline: none; border-color: var(--accent); }
+  .editbar .add .wview, .addrail .wview { display: inline-flex; gap: 2px; align-items: center; }
+  .addrail .wview { display: flex; flex-wrap: wrap; }
+  .wview .wvsub { color: var(--muted); font-size: 10.5px; }
+  .wview .wvx { font-size: 10.5px; padding: 1px 4px; color: var(--muted); }
+
+  /* ---- free mode (T-0213): the same twelve columns, each tile at an explicit cell ----
+     A tile's place is x, y, w, h in its row of the layout, drawn as grid lines on a fine row unit (20px, 2026-09-22) with
+     no row gap: the tile's own bottom margin is the gap, so a tile's height can follow its content to within a unit.
+     A tile that fits its content (.fauto) lets its body stand at its natural height; a fixed or filling one scrolls. */
+  .grid.free { grid-auto-rows: var(--free-row, 20px); row-gap: 0; align-items: stretch; }
+  .grid.free section.w { display: flex; flex-direction: column; min-height: 0; margin-bottom: 18px; }
+  .grid.free section.w > .wbody { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  .grid.free section.w.fauto > .wbody { flex: none; overflow: visible; }
+  body.editing .grid.free section.w.wsel, body.editing section.w.wsel { outline: 1.5px solid var(--accent); outline-offset: 4px; }
+  .grid.free section.w.folded { align-self: start; }
+  body.editing .grid.free section.w { cursor: default; position: relative; }
+  body.editing .grid.free section.w .whead { cursor: move; touch-action: none; }
+  .grid.free .wtools [data-size], .grid.free .wtools [data-tall] { display: none; }   /* the handles do what these did */
+  .grid.free section.w.fmoving { z-index: 30; opacity: .82; box-shadow: 0 6px 22px rgba(43, 41, 37, .2); }
+  .fh { display: none; position: absolute; z-index: 6; width: 10px; height: 10px; box-sizing: border-box;
+        background: var(--surface); border: 1.5px solid var(--accent); border-radius: 2px; touch-action: none; }
+  body.editing .grid.free .fh { display: block; }
+  .fh[data-fh="nw"] { left: -6px; top: -6px; cursor: nwse-resize; }
+  .fh[data-fh="ne"] { right: -6px; top: -6px; cursor: nesw-resize; }
+  .fh[data-fh="sw"] { left: -6px; bottom: -6px; cursor: nesw-resize; }
+  .fh[data-fh="se"] { right: -6px; bottom: -6px; cursor: nwse-resize; }
+  .fh[data-fh="n"] { left: calc(50% - 5px); top: -6px; cursor: ns-resize; }
+  .fh[data-fh="s"] { left: calc(50% - 5px); bottom: -6px; cursor: ns-resize; }
+  .fh[data-fh="e"] { top: calc(50% - 5px); right: -6px; cursor: ew-resize; }
+  .fh[data-fh="w"] { top: calc(50% - 5px); left: -6px; cursor: ew-resize; }
+  .fghost { border: 2px dashed var(--accent); border-radius: var(--radius); background: color-mix(in srgb, var(--accent) 7%, transparent);
+            pointer-events: none; z-index: 1; }
+  .ffill { height: 1px; pointer-events: none; }                /* room under the last tile to drag into, edit mode only */
+  body:not(.editing) .ffill { display: none; }
+  /* a run of rows no tile covers, in edit mode: a hairline band with its caption; a click selects it and Delete takes it out */
+  .fband { display: flex; align-items: center; gap: 8px; padding: 0 10px; z-index: 0; min-height: 0; overflow: hidden;
+           margin-bottom: 4px; cursor: pointer; box-sizing: border-box;
+           border: 1px dashed color-mix(in srgb, var(--muted) 45%, transparent); border-radius: var(--radius);
+           background: color-mix(in srgb, var(--muted) 4%, transparent); }
+  .fband .fbcap { font-family: var(--font-ui); font-size: 11px; letter-spacing: .06em; color: var(--muted); line-height: 1; }
+  .fband.sel { border: 1.5px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .fband.sel .fbcap { color: var(--accent); }
+  body:not(.editing) .fband { display: none; }
+  .editbar .modepick { display: flex; gap: 6px; align-items: center; }
+  .editbar .modepick .btn.on { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+  .editbar .modepick label { display: flex; gap: 4px; align-items: center; font-size: 12.5px; color: var(--muted); }
+  @media (max-width: 760px) {
+    .grid.free { grid-auto-rows: auto; }
+    .grid.free { row-gap: 22px; }
+    .grid.free section.w { display: block; margin-bottom: 0; }
+    .grid.free section.w > .wbody { overflow: visible; }
+    .fh, .fghost, .ffill, .fband { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Home</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="home"></nav>
+  <button class="headbtn" type="button" id="edit" title="move the instruments around, resize them, switch them on and off">edit</button>
+</header>
+<div class="stage">
+  <main id="main">
+    <div class="sheet">
+      <section class="card editbar" id="editbar">
+        <span class="kicker">edit</span>
+        <span class="meta">drag to move · the widths set how much of the row it takes · the switch takes it off the board · click a head or an empty band, then Delete</span>
+        <span class="add" id="addlist"></span>
+        <button class="btn" type="button" id="undo" disabled title="nothing to undo">undo</button>
+        <button class="btn" type="button" id="redo" disabled title="nothing to redo">redo</button>
+        <button class="btn" type="button" id="reset" title="forget the layout saved for you and go back to the default board">reset to default</button>
+        <span class="lookpick" id="lookpick">
+          <span class="meta">look</span>
+          <select id="looksel" title="the fonts, colors and box shapes of every page: a file in skills/brain-viewer/looks/"></select>
+          <button class="btn" type="button" id="lookimp" title="add a look from a .css file: one :root block of the tokens named in looks/readme.md">import a look</button>
+          <input type="file" id="lookfile" accept=".css,text/css">
+        </span>
+        <span class="modepick" id="modepick">
+          <span class="meta">board</span>
+          <button class="btn" type="button" data-mode="grid" title="the tiles flow in order across the twelve columns">grid</button>
+          <button class="btn" type="button" data-mode="free" title="place each tile at its own cell: drag it by its head, pull its corners and edges">free</button>
+          <label class="fsnap" title="tiles land on the twelve-column cells as they are let go of"><input type="checkbox" id="freesnap" checked disabled> snap to cells</label>
+          <span class="meta fsnap">snapping off comes later</span>
+          <label class="fsnap" title="close the gaps after every drop and resize, so no empty row can form"><input type="checkbox" id="freegrav"> keep closed</label>
+        </span>
+      </section>
+      <div class="grid" id="grid"></div>
+      <p class="status-line" id="status"></p>
+    </div>
+  </main>
+</div>
+<div class="addrail" id="addrail" aria-label="instruments off the board">
+  <div class="railgrab" data-grab><i></i><i></i><i></i></div>
+  <div class="raillist" id="raillist"></div>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /  -- the home page (0.40.0, 2026-09-21: the add list is a window you can carry and pull bigger, and People is the
+// week drawn with the map's own physics). Before that (0.39.0): the chat took the room under Next, a widget may stand
+// two rows tall, one instrument can say something the others hear, and edit mode keeps the add list in reach.
+// Before that (0.38.0): the masthead carries the day, the brain is a flow map, the lamps replaced the red strip, and
+// every instrument with a pick keeps it in the layout.
+// The owner asked for this opening page to look striking: the old one was static and uniform, and it needed
+// visuals.
+// THE REGISTRY IS THE FOLDER. Every instrument is one file in skills/brain-viewer/widgets/ that calls
+// BV.widgets.register. This page asks the server which files are there (GET /api/widgets), loads each of them, and
+// draws whatever registered. Nothing on this page knows the name of a single widget. The layout -- which are on, in
+// what order, how wide, which are folded, which are opened out -- is a file per member on the server
+// (GET / PUT /api/home/layout); this browser keeps a copy only so the board paints before the network answers. A row
+// also carries that instrument's own SETTINGS (0.38.0), so a pick -- which drawing the masthead's slot shows, which
+// project its track follows, which form the numbers wear -- travels with the board instead of living in one browser.
+// THE BOARD IS TWELVE COLUMNS AND A SIZE IS A COLUMN SPAN, so a widget says how much of the width it takes in the
+// same word the grid uses.
+const { esc } = BV;
+const $ = s => document.querySelector(s);
+const CACHE = "bv.home.layout.u20";  // a PAINT CACHE ONLY, keyed by the fine row unit so an old-unit copy is never painted. The file on the server is the truth; this is never read back to it.
+const REG = new Map();               // id -> what its file registered
+let LAYOUT = [], SIZES = ["4", "6", "8", "12"], ROWS = [1, 2], EDIT = false;
+let PALETTE = null;                  // where the add panel was left: {x, y, w, h}, saved beside the widgets (0.40.0)
+let VIEWS = [];                      // named views (T-0214): [{id, name, settings}], saved beside the widgets
+let MODE = "grid";                   // T-0213: "grid" flows the tiles in order; "free" puts each at its own x, y, w, h
+const MODE_CACHE = "bv.home.mode";   // a paint cache, like CACHE
+let GRAVITY = false;                 // free mode's "keep closed": close gaps after every drop and resize, saved as `gravity`
+let PENDING_COMPACT = false;         // a board converted from the old 158px pitch this load: compacted once its tiles have measured
+let COMPACT_UNTIL = 0;               // ... for the first seconds after it is drawn, while the widgets fill in
+let SERVER_UNITS = true;             // false when the layout's server predates rowUnit (then save() sends nothing)
+// true when a saved layout exists and could not be read at all (2026-09-24, T-0223): the default is drawn, and NOTHING
+// is saved over the file until the person presses reset, so a board is never replaced behind their back
+let SAVED_UNREADABLE = false;
+let SEL = null;                      // edit mode's selection: {kind: "tile", id} or {kind: "band", y, h}; Delete acts on it
+const MOUNTED = new Map();           // id -> {api, w}: what is already drawn, so a re-render does not re-run a composer
+const SIZE_WORD = { "4": "third", "6": "half", "8": "two thirds", "12": "full width" };
+const ROW_WORD = { 1: "one row", 2: "two rows" };
+// ---- one instrument saying something the others can hear (0.39.0) ----
+// The board is a set of separate files and that is the point, so this is deliberately the smallest thing that works:
+// a name, a payload, and whoever asked for that name. The header's day replay uses it to tell the log which minute the
+// line is standing on. Cleared on every render, because mount registers again.
+const BUS = new Map();               // name -> Map(widget id -> handler)
+function emit(name, detail) {
+  const subs = BUS.get(name); if (!subs) return;
+  for (const fn of Array.from(subs.values())) { try { fn(detail); } catch (e) {} }
+}
+
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+function when(iso) {
+  if (!iso) return "";
+  const t = new Date(iso); if (isNaN(t)) return String(iso);
+  const mins = Math.round((Date.now() - t.getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60 * 24) return `${Math.round(mins / 60)}h ago`;
+  return t.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+const clip = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s; };
+// the LOCAL day, the way the ledgers write one: toISOString() after 5pm Pacific reads tomorrow
+const isoDay = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+// ---- the contract a widget file writes against ----
+// what a widget reads, shown to a person: the endpoint in parentheses is for whoever reads the file, not the board
+function plain(src) { return String(src || "").replace(/\s*\((GET|POST|PUT|DELETE)[^)]*\)/g, "").trim(); }
+// register({id, title, size, defaultOn, source, card?, head?, expand?, mount(el, api), refresh?(el, api)}). The id must
+// equal the filename stem; the server builds the registry from the filenames, so a mismatch simply never draws.
+//   size    "4" | "6" | "8" | "12" -- how many of the twelve columns it takes
+//   card    true wears the notepad's look; false (the default) is a hairline and the open ground
+//   head    false draws no head at all, for an instrument that is its own title
+//   expand  true puts an open-out control in the head; the state is saved in the layout beside size and collapsed
+//   fillRows for a widget that needs a working height rather than its content's (a message list, a drawing): the height
+//           in free-mode units (20px) its tile takes when nobody has fixed one. Every other tile fits its content.
+// THE CONTRACT NUMBER (0.48.0). A widget declares `contract: N`, the api version it was written against. This viewer
+// implements BV.contract; a widget with no number or a higher one is refused and its tile reddened, never half-drawn.
+// A widget a PERSON wrote (viewer/widgets/, origin "user" in /api/widgets) never takes an id the viewer ships.
+BV.contract = 1;
+const WROWS = new Map();             // id -> its row in /api/widgets: origin, path, url, conflict
+const BY_URL = new Map();            // the pathname a widget file is served at -> its row
+const CORE_IDS = new Set();
+function refusedWidget(w, msg) {
+  return { id: w.id, title: w.title || w.id, size: w.size || "4", rows: w.rows === 2 ? 2 : 1, defaultOn: false,
+           source: w.source || "", card: false, contract: BV.contract, refused: msg,
+           mount() { throw new Error(msg); }, refresh() { throw new Error(msg); } };
+}
+BV.widgets = {
+  register(w) {
+    if (!w || !w.id || typeof w.mount !== "function") return;
+    let row = null;
+    try { const s = document.currentScript; row = s && s.src ? BY_URL.get(new URL(s.src, location.href).pathname) : null; } catch (e) {}
+    if (row && row.origin === "user" && (CORE_IDS.has(w.id) || w.id !== row.id)) {
+      // a person's file answering to a core id is drawn under its own name, red, and the core widget is untouched
+      if (!REG.has(row.id)) REG.set(row.id, refusedWidget({ id: row.id, title: (w.title || row.id) + " (yours)", size: w.size },
+                                                            CORE_IDS.has(w.id) ? "id taken by a core widget" : "its id must be its file name, " + row.id));
+      return;
+    }
+    const c = w.contract;
+    if (!(Number.isInteger(c) && c >= 1 && c <= BV.contract)) {
+      REG.set(w.id, refusedWidget(w, c == null ? "written for a newer viewer (it declares no contract number; this viewer is contract " + BV.contract + ")"
+                                               : "written for a newer viewer (contract " + c + "; this viewer is contract " + BV.contract + ")"));
+      return;
+    }
+    REG.set(w.id, w);
+  },
+  list: () => Array.from(REG.values()),
+};
+
+// ---- one read per endpoint per tick ----
+// Four instruments want the ledgers and three want the calendar. The board refreshes them all in the same instant, so
+// a read is shared for a few seconds: without this the minute tick asks the server for /api/projects four times over.
+const GETS = new Map();              // path -> {at, p}
+const GET_TTL = 8000;
+const GET_TIMEOUT = 20000;           // a read is cut after this and the tile shows the break (see shared)
+function shared(path) {
+  const hit = GETS.get(path);
+  if (hit && Date.now() - hit.at < GET_TTL) return hit.p;
+  const p = (async () => {
+    // a read that never answers must fail, not hang: a stalled fetch would sit in this cache for the TTL and every tile
+    // waiting on it would stay blank with no red edge (2026-09-22, the blank board the owner saw), so it is cut at GET_TIMEOUT
+    const ac = new AbortController(), timer = setTimeout(() => ac.abort(), GET_TIMEOUT);
+    let r;
+    try { r = await fetch(path, { signal: ac.signal }); }
+    catch (e) { const err = new Error(e && e.name === "AbortError" ? ("no answer in " + (GET_TIMEOUT / 1000) + "s") : (e && e.message || "the read failed")); err.status = 0; throw err; }
+    finally { clearTimeout(timer); }
+    let j = null; try { j = await r.json(); } catch (e) {}
+    if (!r.ok) { const err = new Error((j && j.error) || ("the server answered " + r.status)); err.status = r.status; throw err; }
+    return j;
+  })();
+  p.catch(() => GETS.delete(path));   // a failure is not cached: the next tick tries again
+  GETS.set(path, { at: Date.now(), p });
+  return p;
+}
+
+// ---- a broken instrument shows it (T-0217) ----
+// The owner asked on 2026-09-21 that a breaking widget always be caught and visible. A widget whose mount or
+// refresh throws, or whose api.get fails for any reason but the 403 a team copy gives, turns its own tile red-edged:
+// the error's first line, the file, and a press that hands the fix to a builder. The break is told to the server ONCE
+// per widget and error per page load (POST /api/widgets/broken), which files one finding on the brain-viewer ledger
+// and lights the System panel's widgets lamp red. A later run of the same widget that goes through clean mends the tile.
+const REPORTED = new Set();          // "id|first line" already sent to the server from this page
+const WIDGET_FILE = id => (WROWS.get(id) && WROWS.get(id).path) || ("skills/brain-viewer/widgets/" + id + ".js");
+const WIDGET_URL = id => (WROWS.get(id) && WROWS.get(id).url) || ("/static/widgets/" + id + ".js");
+function firstLine(e) {
+  const s = String((e && (e.message || (typeof e === "string" ? e : ""))) || e || "it failed").split("\n")[0].trim();
+  return (s || "it failed").slice(0, 240);
+}
+function breakTile(w, card, err, where) {
+  const msg = firstLine(err);
+  card._broke = true;
+  card.classList.add("wbroken");
+  card.classList.remove("whidden");
+  let box = card.querySelector(".wbroke");
+  if (!box) { box = document.createElement("div"); box.className = "wbroke"; card.appendChild(box); }
+  box.innerHTML = `<p class="wbroke-say">${esc(msg)}</p>
+    <p class="wbroke-do"><a href="${esc(WIDGET_URL(w.id))}" target="_blank" rel="noopener" title="${esc(WIDGET_FILE(w.id))}">open the file</a>
+    <a href="#" data-fixw="${esc(w.id)}" data-fixmsg="${esc(msg)}" title="start a builder on the Brain Viewer ledger with this file and this error">ask the builder to fix</a></p>`;
+  const key = w.id + "|" + msg;
+  if (REPORTED.has(key)) return;
+  REPORTED.add(key);
+  fetch("/api/widgets/broken", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: w.id, file: WIDGET_FILE(w.id), error: msg, where: where || "",
+                           stack: String((err && err.stack) || "").slice(0, 2000) }) }).catch(() => {});
+}
+function mendTile(card) {
+  card._broke = false;
+  card.classList.remove("wbroken");
+  const b = card.querySelector(".wbroke"); if (b) b.remove();
+}
+// one run of mount or refresh, watched: a throw or a rejected promise breaks the tile, a clean run mends it
+function guarded(w, api, fn, where) {
+  const card = api.card;
+  card._broke = false;
+  let out;
+  try { out = fn.call(w, api.el, api); }
+  catch (e) { breakTile(w, card, e, where); return; }
+  Promise.resolve(out).then(() => { if (!card._broke) mendTile(card); }, e => breakTile(w, card, e, where));
+}
+// the builder, started the way a send-to from the agents page starts one: the chat page reads the handoff and sends it
+document.addEventListener("click", e => {
+  const a = e.target.closest && e.target.closest("[data-fixw]");
+  if (!a) return;
+  e.preventDefault();
+  const id = a.dataset.fixw, file = WIDGET_FILE(id);
+  const text = `The home widget ${file} is broken on the board. The error: ${a.dataset.fixmsg || "unknown"}. `
+    + `Read skills/brain-viewer/widgets/curriculum.md first, then fix that file. It is done when node --check passes on it `
+    + `and python skills/brain-viewer/widgets/harness.py ${file} passes. The finding is open on the Brain Viewer ledger `
+    + `under a key starting widget-broken:${id}; say its id when you finish.`;
+  try { sessionStorage.setItem("bv.handoff", JSON.stringify({ project: "brain-viewer-holon", text })); } catch (x) {}
+  location.href = "/chat?project=brain-viewer-holon";
+});
+// a throw LATER, from a widget's timer, handler or unawaited promise, is traced to its file by the stack and breaks that tile
+function laterBreak(err, where) {
+  const m = /\/static\/(?:user-)?widgets\/([a-z0-9_-]+)\.js/.exec(String((err && err.stack) || "") + " " + String(where || ""));
+  const hit = m && MOUNTED.get(m[1]);
+  if (hit && !(err && err.status === 403)) breakTile(hit.w, hit.el, err, "later");
+}
+window.addEventListener("error", e => laterBreak(e.error || e.message, e.filename));
+window.addEventListener("unhandledrejection", e => laterBreak(e.reason, ""));
+
+// What every widget is handed. Small on purpose: read one endpoint, say a count, draw your own shape in the body.
+function widgetApi(w, card, row) {
+  const body = card.querySelector(".wbody"), cnt = card.querySelector(".wcount"), ctl = card.querySelector(".wctl");
+  const api = {
+    esc, plural, when, clip, el: body, card, id: w.id, row,
+    // a failed read breaks the tile (T-0217), except the 403 a team copy answers with, which is not a fault
+    get: path => shared(path).catch(e => { if (!e || e.status !== 403) breakTile(w, card, e, "GET " + path); throw e; }),
+    count(t) { if (cnt) cnt.textContent = t == null || t === "" ? "" : String(t); },
+    say(t) { body.innerHTML = `<p class="wsay">${esc(t)}</p>`; },
+    // 403 on a team copy is not a failure: those endpoints simply are not part of a copy
+    fail(e) { if (!e || e.status !== 403) breakTile(w, card, e, "fail"); api.count(""); api.show(true); api.say(e && e.status === 403 ? "not on this copy" : "could not read it: " + (e && e.message || e)); },
+    html(h) { body.innerHTML = h; },
+    // an instrument with nothing to report draws NOTHING, rather than an empty card
+    show(on) { card.classList.toggle("whidden", !on); },
+    // the widget's own control, in its head, left of the edit tools
+    head(h) { if (ctl) ctl.innerHTML = h; },
+    // ---- the instrument's own choices (0.38.0) ----
+    // A small object saved in this widget's row of the layout. Read it in mount, write it when the person picks
+    // something, and the pick is there on the next reload and on the next machine. An id may be given to read
+    // another instrument's settings (the mantra line asks the masthead for nothing, but the door is open).
+    settings(id) {
+      const r = !id || id === w.id ? row : rowOf(id);
+      return (r && r.settings) || {};
+    },
+    setSettings(id, obj) {
+      if (id && typeof id === "object") { obj = id; id = w.id; }
+      const r = !id || id === w.id ? row : rowOf(id);
+      if (!r) return {};
+      r.settings = Object.assign({}, r.settings || {}, obj || {});
+      save();
+      return r.settings;
+    },
+    // ---- saying something the rest of the board can hear ----
+    // api.emit(name, detail) from the instrument that knows; api.on(name, fn) in the mount of whoever wants to follow
+    // it. One handler per instrument per name, so a re-mount replaces rather than stacks.
+    emit,
+    on(name, fn) {
+      if (typeof fn !== "function") return;
+      if (!BUS.has(name)) BUS.set(name, new Map());
+      BUS.get(name).set(w.id, fn);
+    },
+    // opened out to the full width, in place; saved with the layout
+    get expanded() { return !!(row && row.expanded); },
+    setExpanded(on) {
+      if (!row) return;
+      row.expanded = !!on;
+      card.classList.toggle("wide", !!on);
+      save();
+      const f = w.resize; if (typeof f === "function") { try { f.call(w, body, api); } catch (e) {} }
+    },
+    set(o) {
+      api.count(o.count);
+      const ls = (o.lines || []).slice(0, o.max || 3);
+      body.innerHTML = (ls.length ? `<ul class="wlines">${ls.map(l => {
+        const inner = `${esc(l.text)}`;
+        const tail = l.tail ? `<span class="wt">${esc(l.tail)}</span>` : "";
+        const ti = l.title ? ` title="${esc(l.title)}"` : "";
+        return `<li${l.cls ? ` class="${esc(l.cls)}"` : ""}>${l.href ? `<a href="${esc(l.href)}"${ti}>${inner}</a>` : `<span class="wl"${ti}>${inner}</span>`}${tail}</li>`;
+      }).join("")}</ul>` : "")
+        + (o.note ? `<p class="wsay">${esc(o.note)}</p>` : "")
+        + (o.link ? `<a class="wmore" href="${esc(o.link.href)}">${esc(o.link.text)}</a>` : "");
+    },
+    // ---- the one count of what has a day on it (0.37.1) ----
+    // Two instruments read the same ledgers and said different numbers: the masthead said "Three decisions due today"
+    // off BV.day, which counts every owner and every kind, while Decide said "1 on the clock" off its own filter. One
+    // rule, in one place, so they cannot disagree: an OPEN TASK OF THE OWNER carrying a due day, a held one left out
+    // until its day comes back. `rows` is everything dated, soonest first; `due` is the part of it on the clock today
+    // or already behind it. Both take the rows of one GET /api/projects.
+    onTheClock(projects) {
+      const today = (projects && projects.today) || isoDay(new Date());
+      const rows = [];
+      for (const p of (projects && projects.projects) || []) {
+        if (!p.exists) continue;
+        for (const g of p.groups || []) for (const i of g.items || []) {
+          if (i.kind !== "task" || i.mark !== " " || i.owner !== BV.owner || !i.due) continue;
+          if (i.until && i.until > today) continue;
+          rows.push(Object.assign({}, i, { projectName: p.name || p.id, project: p.id }));
+        }
+      }
+      rows.sort((a, b) => String(a.due).localeCompare(String(b.due)) || String(a.id).localeCompare(String(b.id)));
+      return { today, rows, due: rows.filter(r => r.due <= today) };
+    },
+    // the shape almost every small widget wants: read one endpoint, turn it into what set() takes
+    async auto(path, build) {
+      try { api.set(build(await api.get(path)) || {}); }
+      catch (e) { api.fail(e); }
+    },
+  };
+  return api;
+}
+
+// ---- the layout ----
+function defaultsFromRegistry() {
+  return BV.widgets.list().map(w => ({ id: w.id, on: !!w.defaultOn, size: w.size || "4", rows: w.rows === 2 ? 2 : 1,
+                                       collapsed: false, expanded: false, settings: {} }));
+}
+function rowOf(id) { return LAYOUT.find(r => r.id === id); }
+async function loadLayout() {
+  let savedUnit = null;
+  try {
+    const r = await fetch("/api/home/layout");
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || ("the server answered " + r.status));
+    savedUnit = Number.isInteger(j.rowUnit) ? j.rowUnit : null;
+    SERVER_UNITS = "rowUnit" in j;       // a server that answers no rowUnit key predates the fine unit: see save()
+    // THE SAVED-LAYOUT MIGRATION RULE (widgets/readme.md, T-0223): a row whose widget was removed or renamed is
+    // dropped, every other row keeps its place, size and settings, and a widget the file does not name arrives off
+    // (below). A partial layout is a layout: it is honoured, never swapped for the default.
+    LAYOUT = (j.widgets || []).filter(row => REG.has(row.id));
+    SAVED_UNREADABLE = !!(j.error && !j.saved && j.updatedAt);
+    SIZES = j.sizes || SIZES;
+    ROWS = j.rows || ROWS;
+    PALETTE = paletteOf(j.palette);
+    MODE = j.mode === "free" ? "free" : "grid";
+    GRAVITY = j.gravity === true;
+    VIEWS = Array.isArray(j.views) ? j.views.filter(v => v && REG.has(v.id) && v.name) : [];
+    if (!LAYOUT.length) LAYOUT = defaultsFromRegistry();
+    if (j.error) $("#status").textContent = "the saved layout could not be read, so this is the default: " + j.error;
+  } catch (e) {
+    LAYOUT = defaultsFromRegistry();
+    $("#status").textContent = "could not reach the saved layout: " + e.message;
+  }
+  // every widget the folder has that the layout does not name goes on the end, off, so a new file is never invisible
+  for (const w of BV.widgets.list()) if (!rowOf(w.id)) LAYOUT.push({ id: w.id, on: false, size: w.size || "4", rows: w.rows === 2 ? 2 : 1, collapsed: false, expanded: false, settings: {} });
+  for (const r of LAYOUT) {
+    if (!r.settings || typeof r.settings !== "object") r.settings = {};
+    if (ROWS.indexOf(r.rows) < 0) r.rows = (REG.get(r.id) || {}).rows === 2 ? 2 : 1;
+  }
+  // the fine row unit (2026-09-22): a board saved on the old 158px pitch (no rowUnit on the file) is converted once,
+  // here, and carries rowUnit from its next save. Every tile comes up fitting its content, and the board is compacted
+  // once they have measured, so it comes up tight.
+  if (LAYOUT.some(r => Number.isInteger(r.y))) {
+    const cv = convertLayout(LAYOUT, savedUnit);
+    LAYOUT = cv.rows;
+    if (cv.converted) PENDING_COMPACT = true;
+    // a cell saved with no h is an auto tile: it gets a first guess here and measures itself once it is drawn
+    for (const r of LAYOUT) if ([r.x, r.y, r.w].every(Number.isInteger) && !Number.isInteger(r.h)) { r.h = heightOf(r); delete r.hFixed; }
+    LAYOUT = readHeights(LAYOUT);         // a runaway or untrusted height saved earlier comes back fitting (the cap)
+  }
+  try { localStorage.setItem(CACHE, JSON.stringify(LAYOUT)); } catch (e) {}
+}
+// ---- undo (2026-09-22) ----
+// The owner asked for ctrl+z or an undo button in the editor. Every change a person makes reaches save(), so the
+// stack is kept there: the board as it stood at the last save (BASE) is pushed whenever the new one differs from it by
+// more than a tile fitting its content. UNDO_SAID, set by the call sites that know what moved, names the change;
+// otherwise describeChange reads it off the difference. The stack lives until the page reloads, and is not saved.
+let UNDO = { past: [], future: [] }, BASE = null, UNDO_SAID = "";   // undoEmpty's shape; it is defined further down
+const boardState = () => JSON.stringify({ rows: LAYOUT, mode: MODE, gravity: GRAVITY, views: VIEWS });
+const titleMap = () => { const o = {}; for (const [id, w] of REG) o[id] = w.title || id; return o; };
+function track(said) {
+  const cur = boardState(), hint = said || UNDO_SAID;
+  UNDO_SAID = "";
+  if (BASE === null || cur === BASE) { BASE = cur; return; }
+  const words = hint || describeChange(JSON.parse(BASE), JSON.parse(cur), titleMap());
+  if (words) UNDO = undoPush(UNDO, BASE, words, UNDO_CAP);
+  BASE = cur;
+  paintUndo();
+}
+function paintUndo() {
+  const u = $("#undo"), r = $("#redo");
+  if (u) { u.disabled = !UNDO.past.length; u.title = UNDO.past.length ? "undo: " + UNDO.past[UNDO.past.length - 1].said + " (Ctrl+Z)" : "nothing to undo"; }
+  if (r) { r.disabled = !UNDO.future.length; r.title = UNDO.future.length ? "redo: " + UNDO.future[UNDO.future.length - 1].said + " (Ctrl+Shift+Z)" : "nothing to redo"; }
+}
+function stepUndo(back) {
+  if (BASE !== null) track();              // anything not yet on the stack goes on first
+  const step = back ? undoBack(UNDO, boardState()) : undoForward(UNDO, boardState());
+  if (!step) { paintUndo(); return; }
+  UNDO = step.st;
+  const s = JSON.parse(step.state);
+  LAYOUT = s.rows; MODE = s.mode === "free" ? "free" : "grid"; GRAVITY = s.gravity === true; VIEWS = s.views || [];
+  SEL = null; MOUNTED.clear();
+  try { localStorage.setItem(MODE_CACHE, MODE); } catch (e) {}
+  render(); paintMode();
+  BASE = boardState();                     // the restored board is the new baseline, so this save pushes nothing
+  paintUndo();
+  const said = `${back ? "undid" : "redid"}: ${step.said}`;
+  $("#status").textContent = said;
+  save().then(() => { if ($("#status").textContent === "saved") $("#status").textContent = said + " (saved)"; });
+}
+document.addEventListener("keydown", e => {
+  if (!EDIT || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+  const t = e.target;
+  if (t && ((t.closest && t.closest("input, textarea, select, [contenteditable]")) || t.isContentEditable)) return;
+  const k = String(e.key || "").toLowerCase();
+  if (k === "z" && !e.shiftKey) { e.preventDefault(); stepUndo(true); }
+  else if ((k === "z" && e.shiftKey) || (k === "y" && !e.shiftKey)) { e.preventDefault(); stepUndo(false); }
+});
+async function save() {
+  track();
+  try { localStorage.setItem(CACHE, JSON.stringify(LAYOUT)); } catch (e) {}
+  // a server older than the fine row unit would drop rowUnit and refuse the taller h, and the next load would convert
+  // the cells a second time, so nothing is sent to it until it has been restarted onto the new serve.py
+  if (!SERVER_UNITS) { $("#status").textContent = "not saved: the viewer's server predates the finer rows; restart it and this board saves"; return; }
+  if (SAVED_UNREADABLE) { $("#status").textContent = "not saved: your saved board could not be read, so it is kept as it is on disk; press reset to start a new one"; return; }
+  try {
+    const r = await fetch("/api/home/layout", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ widgets: LAYOUT, palette: PALETTE, views: VIEWS, mode: MODE, gravity: GRAVITY, rowUnit: ROW_UNIT }) });
+    const j = await r.json();
+    $("#status").textContent = r.ok ? "saved" : "not saved: " + (j.error || r.status);
+  } catch (e) { $("#status").textContent = "not saved: " + e.message; }
+}
+async function reset() {
+  try {
+    const r = await fetch("/api/home/layout", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reset: true }) });
+    const j = await r.json();
+    LAYOUT = (j.widgets || defaultsFromRegistry()).filter(r2 => REG.has(r2.id));
+    SAVED_UNREADABLE = false;           // the person pressed reset: from here the board saves again
+    PALETTE = null;                     // the panel goes back to the right edge with everything else
+    MODE = "grid";                      // and the board back to the grid (T-0213)
+    GRAVITY = false;
+    PENDING_COMPACT = false; SEL = null;
+    try { localStorage.removeItem(MODE_CACHE); } catch (e) {}
+    paintMode();
+    if (Array.isArray(j.views)) VIEWS = j.views.filter(v => v && REG.has(v.id) && v.name);   // a reset keeps the views
+    try { localStorage.removeItem(CACHE); } catch (e) {}
+    $("#status").textContent = "back to the default board";
+    render(); placeRail();
+    track("reset to default");            // undo brings the board from before the reset back
+
+  } catch (e) { $("#status").textContent = "could not reset it: " + e.message; }
+}
+
+// ---- drawing the board ----
+function tile(r) {
+  const w = REG.get(r.id);
+  const el = document.createElement("section");
+  const shape = boxClass(r, w);          // the widget's own shape, unless the tile's style picked another (T-0208)
+  el.className = "w " + shape + (r.collapsed ? " folded" : "") + (r.expanded ? " wide" : "");
+  el.dataset.w = r.id;
+  el.dataset.span = SIZES.indexOf(r.size) >= 0 ? r.size : "4";
+  el.dataset.rows = ROWS.indexOf(r.rows) >= 0 ? String(r.rows) : "1";
+  const tools = `<span class="wtools">
+        ${SIZES.map(s => `<button class="btn${s === r.size ? " on" : ""}" type="button" data-size="${esc(s)}" title="${esc(SIZE_WORD[s] || s + " of twelve columns")}">${esc(SIZE_WORD[s] || s)}</button>`).join("")}
+        <button class="btn${r.rows === 2 ? " on" : ""}" type="button" data-tall title="${r.rows === 2 ? "back to one row of the board" : "let it stand two rows tall, so short instruments can sit beside it"}">${esc(ROW_WORD[r.rows === 2 ? 2 : 1])}</button>
+        <button class="btn${r.style ? " on" : ""}" type="button" data-style title="this tile's own accent, text size, box and face">style</button>
+        ${(w.filters || []).length ? `<button class="btn${filtered(w, r.settings) ? " on" : ""}" type="button" data-filters title="the rules on what it shows: project, owner, day and the rest it understands">filters</button>` : ""}
+        <button class="btn" type="button" data-off title="take it off the board">off</button>
+      </span>`;
+  const expand = w.expand ? `<button class="wtab${r.expanded ? " on" : ""}" type="button" data-expand title="${r.expanded ? "fold it back to its own column" : "open it out to the full width, in place"}">${r.expanded ? "fold" : "expand"}</button>` : "";
+  el.innerHTML = (w.head === false
+    ? `<div class="whead" style="margin:0"><span class="wctl">${expand}</span>${tools}</div>`
+    : `<div class="whead">
+      <button class="wfold" type="button" title="${r.collapsed ? "open it" : "fold it to its title"}">${r.collapsed ? "▸" : "▾"}</button>
+      <h2 title="${esc(r.view ? "a view of " + (w.title || r.id) : "")}">${esc(r.view || w.title || r.id)}</h2><span class="wcount"></span>
+      <span class="wctl">${expand}</span>${tools}</div>`)
+    + `<div class="wstyle" data-wstyle></div>${(w.filters || []).length ? `<div class="wfilt" data-wfilt></div>` : ""}<div class="wbody"></div>`
+    + FREE_HANDLES.map(d => `<i class="fh" data-fh="${d}" title="pull to resize; it lands on the cell edges"></i>`).join("");
+  applyStyle(el, r);
+  placeTile(el, r);
+  return el;
+}
+function render() {
+  const grid = $("#grid");
+  grid.innerHTML = ""; MOUNTED.clear(); BUS.clear();
+  grid.classList.toggle("free", MODE === "free");
+  grid.style.setProperty("--free-row", ROW_UNIT + "px");
+  if (FITS) FITS.disconnect();
+  let on = LAYOUT.filter(r => r.on && REG.has(r.id));
+  if (MODE === "free") { ensureFree(); on = freeOrder(on); }   // one column under 760px reads in y, then x
+  if (MODE === "free" && PENDING_COMPACT && !COMPACT_UNTIL) COMPACT_UNTIL = Date.now() + 6000;
+  if (SEL && SEL.kind === "tile" && !on.some(r => r.id === SEL.id)) SEL = null;
+  if (!on.length) { grid.innerHTML = `<p class="empty">Nothing on the board. Press edit and add an instrument.</p>`; }
+  for (const r of on) {
+    const el = tile(r);
+    grid.appendChild(el);
+    const w = REG.get(r.id), api = widgetApi(w, el, r);
+    MOUNTED.set(r.id, { api, w, el });
+    guarded(w, api, w.mount, "mount");
+    watchFit(el);
+  }
+  placeFill();
+  placeBands();
+  paintSel();
+  paintAdd();
+  wireDrag();
+  if (MODE === "free") queueFit();
+}
+// What the add list offers (T-0214): every widget that is off the board, then every named view, each as its own entry,
+// a view titled by its name with the widget it is made of under it. A pure function so home.test.py can run it.
+function addEntries(layout, views, reg) {
+  const out = [];
+  for (const r of layout || []) {
+    const w = reg.get(r.id);
+    if (!r.on && w) out.push({ kind: "widget", id: r.id, title: w.title || r.id, sub: "", source: w.source || "" });
+  }
+  (views || []).forEach((v, i) => {
+    const w = v && reg.get(v.id);
+    if (w && v.name) out.push({ kind: "view", id: v.id, index: i, title: v.name, sub: w.title || v.id, source: w.source || "" });
+  });
+  return out;
+}
+function paintAdd() {
+  const all = addEntries(LAYOUT, VIEWS, REG);
+  const one = e => e.kind === "view"
+    ? `<span class="wview"><button class="btn" type="button" data-addview="${e.index}" title="${esc("a view of " + e.sub + ": " + plain(e.source))}">${esc(e.title)} <span class="wvsub">${esc(e.sub)}</span></button>`
+      + `<button class="btn wvx" type="button" data-vren="${e.index}" title="rename this view">rename</button>`
+      + `<button class="btn wvx" type="button" data-vdel="${e.index}" title="take this view out of the add list">remove</button></span>`
+    : `<button class="btn" type="button" draggable="true" data-add="${esc(e.id)}" title="${esc(plain(e.source))}">${esc(e.title)}</button>`;
+  $("#addlist").innerHTML = all.length
+    ? `<span class="meta">add:</span>` + all.map(one).join("")
+    : `<span class="meta">every instrument is on the board</span>`;
+  $("#raillist").innerHTML = all.map(one).join("");
+}
+// ---- the add strip, kept in reach, as a window of its own ----
+// Scrolled past the top of the page it comes back as a panel: the same buttons, so pressing one puts it on the end of
+// the board and dragging one onto a tile lands it there. The bar across its top carries it anywhere in the window and
+// the corner pulls it bigger; both are saved with the board under `palette`. It is only ever in one place at a time,
+// and it is gone the moment edit mode ends.
+const RAIL = { w: 168, h: 300, minW: 132, minH: 120, edge: 6 };
+function paletteOf(p) {
+  if (!p || typeof p !== "object") return null;
+  const num = (v, d) => (typeof v === "number" && isFinite(v) ? v : d);
+  return { x: num(p.x, 0), y: num(p.y, 96), w: Math.max(RAIL.minW, num(p.w, RAIL.w)), h: Math.max(RAIL.minH, num(p.h, RAIL.h)) };
+}
+// a saved place is honoured, and clamped: a panel left on a wide screen must not open off the side of a narrow one
+function placeRail() {
+  const r = $("#addrail"); if (!r) return;
+  const w = Math.max(RAIL.minW, Math.min((PALETTE && PALETTE.w) || RAIL.w, window.innerWidth - RAIL.edge * 2));
+  const h = Math.max(RAIL.minH, Math.min((PALETTE && PALETTE.h) || RAIL.h, window.innerHeight - RAIL.edge * 2));
+  const x = PALETTE ? PALETTE.x : window.innerWidth - w - 12;
+  const y = PALETTE ? PALETTE.y : 96;
+  r.style.right = "auto";
+  r.style.left = clampX(x, w) + "px";
+  r.style.top = clampY(y) + "px";
+  r.style.width = w + "px";
+  r.style.height = h + "px";
+}
+const clampX = (x, w) => Math.min(Math.max(RAIL.edge, x), Math.max(RAIL.edge, window.innerWidth - w - RAIL.edge));
+const clampY = y => Math.min(Math.max(RAIL.edge, y), Math.max(RAIL.edge, window.innerHeight - 40));
+function saveRail() {
+  const r = $("#addrail"); if (!r || !r.classList.contains("up")) return;
+  const now = { x: Math.round(parseFloat(r.style.left) || 0), y: Math.round(parseFloat(r.style.top) || 0),
+                w: Math.round(r.offsetWidth), h: Math.round(r.offsetHeight) };
+  if (!now.w || !now.h) return;
+  if (PALETTE && PALETTE.x === now.x && PALETTE.y === now.y && PALETTE.w === now.w && PALETTE.h === now.h) return;
+  PALETTE = now;
+  save();
+}
+function wireRail() {
+  const rail = $("#addrail"), bar = $("#editbar"), grab = rail && rail.querySelector("[data-grab]");
+  if (!rail) return;
+  placeRail();
+  let at = null;
+  if (grab) {
+    grab.addEventListener("pointerdown", e => {
+      at = { dx: e.clientX - rail.offsetLeft, dy: e.clientY - rail.offsetTop };
+      rail.classList.add("moving");
+      try { grab.setPointerCapture(e.pointerId); } catch (x) {}
+      e.preventDefault();
+    });
+    grab.addEventListener("pointermove", e => {
+      if (!at) return;
+      rail.style.right = "auto";
+      rail.style.left = clampX(e.clientX - at.dx, rail.offsetWidth) + "px";
+      rail.style.top = clampY(e.clientY - at.dy) + "px";
+    });
+    const drop = () => { if (!at) return; at = null; rail.classList.remove("moving"); saveRail(); };
+    grab.addEventListener("pointerup", drop);
+    grab.addEventListener("pointercancel", drop);
+  }
+  // the corner is the browser's own resize; this only remembers where it was let go of
+  if (typeof ResizeObserver === "function") {
+    let t = null;
+    new ResizeObserver(() => { clearTimeout(t); t = setTimeout(saveRail, 500); }).observe(rail);
+  }
+  window.addEventListener("resize", () => { if (rail.classList.contains("up")) placeRail(); });
+  if (!bar || typeof IntersectionObserver !== "function") { rail.classList.add("up"); return; }
+  new IntersectionObserver(es => {
+    for (const e of es) {
+      rail.classList.toggle("up", !e.isIntersecting);
+      if (!e.isIntersecting) placeRail();
+    }
+  }, { threshold: 0.01 }).observe(bar);
+}
+function refreshAll() {
+  for (const [id, m] of MOUNTED) {
+    const r = rowOf(id); if (!r || !r.on) continue;
+    const fn = m.w.refresh || m.w.mount;
+    guarded(m.w, m.api, fn, m.w.refresh ? "refresh" : "mount");
+  }
+  if (MODE === "free") queueFit();       // a tile that fits its content follows what the refresh drew
+}
+
+// ---- edit mode: drag to reorder, size, on and off. Every change saves. ----
+function setEdit(on) {
+  EDIT = on;
+  document.body.classList.toggle("editing", on);
+  $("#edit").classList.toggle("on", on);
+  $("#edit").textContent = on ? "done" : "edit";
+  for (const el of document.querySelectorAll("section.w")) el.draggable = on && MODE !== "free";   // free mode moves by its own handles
+  if (!on) { SEL = null; paintSel(); }
+  if (MODE === "free") queueFit();       // the edit tools in a head change its height
+  $("#status").textContent = !on ? "" : MODE === "free"
+    ? "drag a tile by its head, pull a corner or an edge; click a head or an empty band and press Delete to take it out"
+    : "drag to move it; every change is saved as you make it";
+}
+let DRAG = null, ADDING = false;
+function wireDrag() { for (const el of document.querySelectorAll("section.w")) wireOne(el); }
+function wireOne(el) {
+  {
+    el.draggable = EDIT && MODE !== "free";
+    el.addEventListener("dragstart", e => {
+      if (!EDIT || MODE === "free") return e.preventDefault();
+      DRAG = el.dataset.w; ADDING = false; el.classList.add("drag");
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", DRAG); } catch (x) {}
+    });
+    el.addEventListener("dragend", () => { el.classList.remove("drag"); DRAG = null; ADDING = false; for (const o of document.querySelectorAll("section.w")) o.classList.remove("over"); });
+    el.addEventListener("dragover", e => { if (!EDIT || !DRAG || (!ADDING && DRAG === el.dataset.w)) return; e.preventDefault(); e.dataTransfer.dropEffect = ADDING ? "copy" : "move"; el.classList.add("over"); });
+    el.addEventListener("dragleave", () => el.classList.remove("over"));
+    el.addEventListener("drop", e => {
+      if (!EDIT || !DRAG || (!ADDING && DRAG === el.dataset.w)) return;
+      e.preventDefault(); el.classList.remove("over");
+      dropAt(DRAG, el.dataset.w);
+    });
+  }
+}
+// where a dragged instrument lands: in front of the one it was dropped on, switched on if it was off the board
+function dropAt(id, onto) {
+  const r = rowOf(id); if (!r) return;
+  UNDO_SAID = `${r.view || (REG.get(r.id) || {}).title || r.id} ${r.on ? "moved" : "added"}`;
+  if (MODE === "free") {                 // free mode: it takes the cell of the tile it was dropped on, which moves down
+    const o = rowOf(onto);
+    if (o && hasCell(o)) { putAt(r, o.x, o.y); return; }
+  }
+  const from = LAYOUT.indexOf(r); if (from < 0) return;
+  LAYOUT.splice(from, 1);
+  const to = LAYOUT.findIndex(x => x.id === onto);
+  LAYOUT.splice(to < 0 ? LAYOUT.length : to, 0, r);
+  r.on = true;
+  render(); save();
+}
+// the add buttons, in the strip or in the rail, are dragged the same way: delegated, because both lists are rebuilt
+document.addEventListener("dragstart", e => {
+  const b = e.target.closest && e.target.closest("[data-add]");
+  if (!b) return;
+  if (!EDIT) return e.preventDefault();
+  DRAG = b.dataset.add; ADDING = true;
+  b.classList.add("drag");
+  e.dataTransfer.effectAllowed = "copy";
+  try { e.dataTransfer.setData("text/plain", DRAG); } catch (x) {}
+});
+document.addEventListener("dragend", e => {
+  const b = e.target.closest && e.target.closest("[data-add]");
+  if (b) b.classList.remove("drag");
+  DRAG = null; ADDING = false; stopEdge();
+  for (const o of document.querySelectorAll("section.w.over")) o.classList.remove("over");
+});
+// ---- the page scrolls while a tile is in the air (0.39.0) ----
+// A native drag owns the pointer, so the wheel reaches nothing while a tile is held and the only way out of a long
+// board was to drop it. Within sixty pixels of the top or the bottom of the window the page now walks itself in that
+// direction for as long as the pointer stays there.
+const EDGE = 60, EDGE_MAX = 26;
+let SCROLLER = null;
+function scrollPage(d) {
+  const m = $("#main");
+  if (m && m.scrollHeight > m.clientHeight + 2) m.scrollTop += d;
+  else window.scrollBy(0, d);
+}
+function edgeScroll(y) {
+  const h = window.innerHeight || document.documentElement.clientHeight;
+  let d = 0;
+  if (y < EDGE) d = -EDGE_MAX * Math.min(1, (EDGE - y) / EDGE);
+  else if (y > h - EDGE) d = EDGE_MAX * Math.min(1, (y - (h - EDGE)) / EDGE);
+  if (!d) return stopEdge();
+  if (SCROLLER) { SCROLLER.d = d; return; }
+  SCROLLER = { d, raf: 0 };
+  const step = () => { if (!SCROLLER) return; scrollPage(SCROLLER.d); SCROLLER.raf = requestAnimationFrame(step); };
+  SCROLLER.raf = requestAnimationFrame(step);
+}
+function stopEdge() { if (SCROLLER) cancelAnimationFrame(SCROLLER.raf); SCROLLER = null; }
+document.addEventListener("dragover", e => { if (EDIT && DRAG) edgeScroll(e.clientY); });
+document.addEventListener("drop", stopEdge);
+document.addEventListener("click", e => {
+  const t = e.target;
+  if (t.closest("#edit")) { setEdit(!EDIT); return; }
+  if (t.closest("#reset")) { reset(); return; }
+  if (t.closest("#undo")) { stepUndo(true); return; }
+  if (t.closest("#redo")) { stepUndo(false); return; }
+  const add = t.closest("[data-add]");
+  if (add) {
+    const r = rowOf(add.dataset.add);
+    if (r) {   // it goes on the end of the board, not back where it was switched off
+      r.on = true; LAYOUT.splice(LAYOUT.indexOf(r), 1);
+      let last = -1; LAYOUT.forEach((x, i) => { if (x.on) last = i; });
+      LAYOUT.splice(last + 1, 0, r);
+      if (MODE === "free") clearCell(r);   // ... and in free mode under the last tile, not at a cell it held before
+    }
+    render(); save(); return;
+  }
+  const md = t.closest("[data-mode]");
+  if (md) { setMode(md.dataset.mode); return; }
+  if (EDIT && pickAt(e)) return;          // a tile's head or the empty space: selected, for Delete
+  const card = t.closest("section.w"); if (!card) return;
+  const r = rowOf(card.dataset.w); if (!r) return;
+  if (t.closest("[data-expand]")) {
+    const m = MOUNTED.get(r.id);
+    if (m) m.api.setExpanded(!r.expanded);
+    const b = card.querySelector("[data-expand]");
+    if (b) { b.textContent = r.expanded ? "fold" : "expand"; b.classList.toggle("on", !!r.expanded); }
+    return;
+  }
+  if (t.closest(".wfold")) { r.collapsed = !r.collapsed; card.classList.toggle("folded", r.collapsed); const b = card.querySelector(".wfold"); b.textContent = r.collapsed ? "▸" : "▾"; save(); return; }
+  const sz = t.closest("[data-size]");
+  if (sz) {
+    r.size = sz.dataset.size; card.dataset.span = r.size;
+    for (const b of card.querySelectorAll("[data-size]")) b.classList.toggle("on", b.dataset.size === r.size);
+    const m = MOUNTED.get(r.id);
+    if (m && typeof m.w.resize === "function") { try { m.w.resize(m.api.el, m.api); } catch (x) {} }
+    save(); return;
+  }
+  if (t.closest("[data-tall]")) {
+    r.rows = r.rows === 2 ? 1 : 2;
+    card.dataset.rows = String(r.rows);
+    const b = card.querySelector("[data-tall]");
+    if (b) { b.textContent = ROW_WORD[r.rows]; b.classList.toggle("on", r.rows === 2); }
+    const m2 = MOUNTED.get(r.id);
+    if (m2 && typeof m2.w.resize === "function") { try { m2.w.resize(m2.api.el, m2.api); } catch (x) {} }
+    save(); return;
+  }
+  if (t.closest("[data-off]")) { r.on = false; MOUNTED.delete(r.id); render(); save(); return; }
+});
+// an instrument that draws itself to the room it has gets told when the room changes
+let RESIZE_T = null;
+window.addEventListener("resize", () => {
+  clearTimeout(RESIZE_T);
+  RESIZE_T = setTimeout(() => {
+    for (const [, m] of MOUNTED) if (typeof m.w.resize === "function") { try { m.w.resize(m.api.el, m.api); } catch (e) {} }
+  }, 220);
+});
+
+// ---- the look, and a tile's own style (2026-09-22, T-0208) ----
+// The look is every page's fonts, colors and box shapes, a file in skills/brain-viewer/looks/ (the folder is the
+// registry, like widgets/). The picker lists the folder and saves the choice into this member's layout file; the
+// import puts a .css from disk into the folder. A tile's STYLE is saved in its row of the layout as
+// {accent, scale, box, font}, each optional, and applied as custom properties inline on the tile, so it overrides the
+// look for that tile only and a widget reading the tokens follows with no code of its own. The keys: looks/readme.md.
+const STYLE_SCALE = { s: 0.88, m: 1, l: 1.16 };
+const STYLE_SCALE_WORD = { s: "small", m: "medium", l: "large" };
+const STYLE_BOX = { hairline: "plain", card: "iscard", none: "bare" };
+const STYLE_FONT_WORD = { title: "title face", display: "heading face", ui: "text face", mono: "mono" };
+function boxClass(r, w) {
+  const b = r && r.style && r.style.box;
+  if (b && STYLE_BOX[b]) return STYLE_BOX[b];
+  return w.card ? "iscard" : (w.head === false ? "bare" : "plain");
+}
+const STYLE_PROPS = ["--w-edge", "--accent", "--accent-deep", "--w-scale", "--font-ui", "--font-display"];
+function applyStyle(el, r) {
+  const s = (r && r.style) || {}, w = REG.get(r.id) || {};
+  for (const p of STYLE_PROPS) el.style.removeProperty(p);
+  if (s.accent) {
+    el.style.setProperty("--w-edge", s.accent);
+    el.style.setProperty("--accent", s.accent);
+    el.style.setProperty("--accent-deep", `color-mix(in srgb, ${s.accent} 78%, black)`);
+  }
+  if (s.scale && STYLE_SCALE[s.scale] && s.scale !== "m") el.style.setProperty("--w-scale", String(STYLE_SCALE[s.scale]));
+  // a face points at the look's own token, so a tile set in the heading face follows the look when the look changes.
+  // Never a token pointing at itself: that would be a cycle, which CSS resolves to nothing.
+  if (s.font === "title" || s.font === "mono") { el.style.setProperty("--font-ui", `var(--font-${s.font})`); el.style.setProperty("--font-display", `var(--font-${s.font})`); }
+  else if (s.font === "display") el.style.setProperty("--font-ui", "var(--font-display)");
+  else if (s.font === "ui") el.style.setProperty("--font-display", "var(--font-ui)");
+  for (const c of Object.values(STYLE_BOX)) el.classList.remove(c);
+  el.classList.add(boxClass(r, w));
+  const b = el.querySelector("[data-style]"); if (b) b.classList.toggle("on", !!r.style);
+}
+const faceName = stack => (String(stack || "").split(",")[0] || "").replace(/["']/g, "").trim();
+function paintStyle(el, r) {
+  const box = el.querySelector("[data-wstyle]"); if (!box) return;
+  const s = r.style || {}, faces = BV.look.faces();
+  const grp = (key, opts, word) => `<span class="sgroup">${opts.map(o => `<button class="btn${s[key] === o ? " on" : ""}" type="button" data-st="${key}" data-v="${esc(o)}">${esc(word[o] || o)}</button>`).join("")}</span>`;
+  const accent = s.accent || (getComputedStyle(el).getPropertyValue("--open").trim() || "#b3862e");
+  box.innerHTML = `<label>accent <input type="color" data-st-accent value="${esc(/^#[0-9a-f]{6}$/i.test(accent) ? accent : "#b3862e")}"></label>
+    <span class="slab">text ${grp("scale", ["s", "m", "l"], STYLE_SCALE_WORD)}</span>
+    <span class="slab">box ${grp("box", ["hairline", "card", "none"], {})}</span>
+    <label>face <select data-st-font><option value="">as the look sets it</option>${["title", "display", "ui", "mono"].map(k =>
+      `<option value="${k}"${s.font === k ? " selected" : ""}>${esc(STYLE_FONT_WORD[k])}: ${esc(faceName(faces[k]))}</option>`).join("")}</select></label>
+    <button class="btn" type="button" data-st-reset title="drop this tile's own style and wear the look again">reset</button>`;
+}
+function setStyle(el, r, key, val) {
+  const s = Object.assign({}, r.style || {});
+  if (val == null || val === "") delete s[key]; else s[key] = val;
+  if (Object.keys(s).length) r.style = s; else delete r.style;
+  applyStyle(el, r); paintStyle(el, r);
+  const m = MOUNTED.get(r.id);
+  if (m && typeof m.w.resize === "function") { try { m.w.resize(m.api.el, m.api); } catch (x) {} }
+  save();
+}
+document.addEventListener("click", e => {
+  const t = e.target;
+  if (t.closest("#edit")) { setTimeout(paintLooks, 0); return; }
+  if (t.closest("#lookimp")) { $("#lookfile").click(); return; }
+  const el = t.closest("section.w"); if (!el) return;
+  const r = rowOf(el.dataset.w); if (!r) return;
+  if (t.closest("[data-style]")) { const open = !el.classList.contains("styling"); el.classList.toggle("styling", open); if (open) paintStyle(el, r); return; }
+  const b = t.closest("[data-st]");
+  if (b) { const k = b.dataset.st, v = b.dataset.v; setStyle(el, r, k, (r.style || {})[k] === v ? null : v); return; }
+  if (t.closest("[data-st-reset]")) { delete r.style; applyStyle(el, r); paintStyle(el, r); save(); return; }
+});
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.id === "looksel") { pickLook(t.value); return; }
+  if (t.id === "lookfile") { importLook(t.files && t.files[0]); t.value = ""; return; }
+  const el = t.closest && t.closest("section.w"); if (!el) return;
+  const r = rowOf(el.dataset.w); if (!r) return;
+  if (t.matches("[data-st-accent]")) setStyle(el, r, "accent", t.value);
+  else if (t.matches("[data-st-font]")) setStyle(el, r, "font", t.value || null);
+});
+// the colour well fires input as it is dragged: show it live, save once on change (above)
+document.addEventListener("input", e => {
+  const t = e.target; if (!t.matches || !t.matches("[data-st-accent]")) return;
+  const el = t.closest("section.w"), r = el && rowOf(el.dataset.w); if (!r) return;
+  applyStyle(el, Object.assign({}, r, { style: Object.assign({}, r.style || {}, { accent: t.value }) }));
+});
+async function paintLooks() {
+  const sel = $("#looksel"); if (!sel) return;
+  try {
+    const j = await BV.look.list();
+    sel.innerHTML = (j.looks || []).map(l => `<option value="${esc(l.name)}"${l.name === j.active ? " selected" : ""}${l.ok ? "" : " disabled"} title="${esc(l.ok ? l.description : l.error)}">${esc(l.name)}${l.ok ? "" : " (does not parse)"}</option>`).join("");
+  } catch (e) { sel.innerHTML = `<option>could not read the looks</option>`; }
+}
+async function pickLook(name) {
+  try { await BV.look.save(name); $("#status").textContent = `the look is ${name} now, on every page`; }
+  catch (e) { $("#status").textContent = "the look was not saved: " + e.message; paintLooks(); }
+}
+async function importLook(file) {
+  if (!file) return;
+  try {
+    let j;
+    try { j = await BV.look.import(file); }
+    catch (e) {
+      if (!/already there/.test(e.message) || !confirm(e.message.replace(/; send replace: true.*$/, "") + ". Replace it?")) throw e;
+      j = await BV.look.import(file, { replace: true });
+    }
+    $("#status").textContent = `imported ${j.name} (${j.tokens} tokens) and put it on`;
+  } catch (e) { $("#status").textContent = "the look was not imported: " + e.message; }
+  paintLooks();
+}
+// a look swapped in place changes the faces a style panel names, and the tiles' own overrides stay where they are
+document.addEventListener("bv:look", () => {
+  for (const el of document.querySelectorAll("section.w.styling")) { const r = rowOf(el.dataset.w); if (r) paintStyle(el, r); }
+  for (const [, m] of MOUNTED) if (typeof m.w.resize === "function") { try { m.w.resize(m.api.el, m.api); } catch (e) {} }
+});
+
+// ---- a widget's rules are settings, not code (T-0214) ----
+// The owner asked on 2026-09-21 that a user be able to add rules to a widget as needed. A widget declares the
+// filters it understands in its register call, `filters: [{key, label, kind, options?, default?, any?, min?, max?,
+// step?, zero?}]`, and this draws ONE row for all of them in edit mode, the style panel's twin, writing into that
+// widget's `settings` in the layout and re-mounting the tile. A tile whose settings differ from the default can be saved
+// as a named view, which the add list offers as its own entry. Anything the filters cannot say goes into the box at the
+// end of the row and becomes a task on the Brain Viewer ledger, for a builder to turn into a widget file (T-0212).
+// `options` is a static list of [value, label] pairs (or plain strings), a source name below, or an endpoint read as
+// {from, list, value, label}. Every source is one read through the shared cache, and a read that fails lists nothing.
+const FILTER_SOURCES = {
+  projects: { from: "/api/projects", list: j => (j.projects || []).filter(p => p.exists).map(p => [p.id, p.name || p.id]) },
+  owners: { from: "/api/projects", list: j => [["*", "anyone"]].concat(uniq(items(j).map(i => i.owner)).map(o => [o, o])) },
+  tags: { from: "/api/projects", list: j => uniq([].concat(...items(j).map(i => i.tags || [])).filter(t => !/^(source|key):/.test(t))).map(t => [t, t]) },
+  sources: { from: "/api/projects", list: j => uniq(items(j).map(i => i.source)).map(s => [s, s]) },
+  people: { from: "/api/people", list: j => (j.people || []).map(p => [p.slug, String(p.name || p.slug).split("·")[0].trim()])
+                                              .sort((a, b) => a[1].localeCompare(b[1])) },
+  agents: { from: "/api/moved?limit=200", list: j => uniq((j.items || []).map(r => r.agent)).map(a => [a, a]) },
+};
+function items(j) {
+  const out = [];
+  for (const p of (j && j.projects) || []) for (const g of p.groups || []) for (const i of g.items || []) out.push(i);
+  return out;
+}
+const uniq = xs => Array.from(new Set(xs.filter(x => x != null && x !== ""))).sort();
+const FILED = new Map();              // widget id -> what its prompt box last filed, shown in its row
+async function filterOptions(f) {
+  const o = f.options;
+  if (Array.isArray(o)) return o.map(x => Array.isArray(x) ? [String(x[0]), String(x[1] == null ? x[0] : x[1])] : [String(x), String(x)]);
+  const src = typeof o === "string" ? FILTER_SOURCES[o] : (o && o.from ? {
+    from: o.from, list: j => ((o.list ? j[o.list] : j) || []).map(x => [String(x[o.value || "id"]), String(x[o.label || o.value || "id"])]) } : null);
+  if (!src) return [];
+  try { return src.list(await shared(src.from)) || []; } catch (e) { return []; }
+}
+// the value a filter shows: what the settings hold, else its default, else empty (which is "any")
+const filterValue = (f, s) => (s && s[f.key] != null && s[f.key] !== "" ? s[f.key] : (f.default != null ? f.default : ""));
+// true when any declared filter holds something other than its default
+function filtered(w, s) {
+  return (w.filters || []).some(f => s && s[f.key] != null && s[f.key] !== "" && String(s[f.key]) !== String(f.default == null ? "" : f.default));
+}
+async function paintFilter(el, r) {
+  const box = el.querySelector("[data-wfilt]"), w = REG.get(r.id); if (!box || !w) return;
+  const s = r.settings || {};
+  const parts = await Promise.all((w.filters || []).map(async f => {
+    const v = filterValue(f, s), lab = esc(f.label || f.key);
+    if (f.kind === "range") {
+      const n = Number(v) || 0;
+      return `<label>${lab} <input type="range" data-fk="${esc(f.key)}" min="${+f.min || 0}" max="${+f.max || 10}" step="${+f.step || 1}" value="${n}">`
+        + `<span class="wnum" data-fv="${esc(f.key)}">${esc(n === 0 && f.zero ? f.zero : String(n))}</span></label>`;
+    }
+    if (f.kind === "text") return `<label>${lab} <input type="text" data-fk="${esc(f.key)}" value="${esc(v)}" placeholder="any"></label>`;
+    const opts = await filterOptions(f);
+    if (v !== "" && !opts.some(o => o[0] === String(v))) opts.push([String(v), String(v)]);   // a saved pick the list no longer carries is still shown
+    return `<label>${lab} <select data-fk="${esc(f.key)}">`
+      + (f.default == null ? `<option value="">${esc(f.any || "any")}</option>` : "")
+      + opts.map(o => `<option value="${esc(o[0])}"${o[0] === String(v) ? " selected" : ""}>${esc(o[1])}</option>`).join("")
+      + `</select></label>`;
+  }));
+  const on = filtered(w, s), filed = FILED.get(r.id);
+  box.innerHTML = parts.join("")
+    + `<button class="btn" type="button" data-fsave${on ? "" : " disabled"} title="${on ? "keep these filters under a name, as its own entry in the add list" : "set a filter first; a view is a widget with settings of its own"}">save as view</button>`
+    + `<button class="btn" type="button" data-freset${on ? "" : " disabled"} title="back to what this widget shows with no filters">reset</button>`
+    + `<label class="fask"><input type="text" data-fask maxlength="400" placeholder="something the filters cannot say" title="press enter: it goes on the Brain Viewer ledger for a builder to make into a widget of its own"></label>`
+    + `<span class="wnum" data-ffiled>${filed ? esc(filed) : ""}</span>`;
+}
+// one tile drawn again in place, with its new settings, without touching the rest of the board
+function remount(id, keep) {
+  const old = Array.from(document.querySelectorAll("#grid section.w")).find(x => x.dataset.w === id), r = rowOf(id), w = REG.get(id);
+  if (!old || !r || !w) return;
+  const el = tile(r);
+  old.replaceWith(el);
+  for (const subs of BUS.values()) subs.delete(id);
+  const api = widgetApi(w, el, r);
+  MOUNTED.set(id, { api, w, el });
+  wireOne(el);
+  if (keep && keep.filtering) { el.classList.add("filtering"); paintFilter(el, r); }
+  if (keep && keep.styling) { el.classList.add("styling"); paintStyle(el, r); }
+  guarded(w, api, w.mount, "mount");
+}
+function setFilter(el, r, key, val) {
+  const w = REG.get(r.id), f = (w.filters || []).find(x => x.key === key); if (!f) return;
+  const s = Object.assign({}, r.settings || {});
+  if (f.kind === "range") val = Number(val) || 0;
+  if (val == null || val === "" || String(val) === String(f.default == null ? "" : f.default)) delete s[key]; else s[key] = val;
+  r.settings = s;
+  delete r.view;                      // moved off the view it was placed from, so it wears its own title again
+  save();
+  remount(r.id, { filtering: true, styling: el.classList.contains("styling") });
+}
+// ---- named views ----
+const viewAt = i => VIEWS[Number(i)];
+const viewNamed = (name, but) => VIEWS.find(v => v !== but && v.name.toLowerCase() === name.toLowerCase());
+function askName(q, was) {
+  const name = String(prompt(q, was || "") || "").replace(/\s+/g, " ").trim();
+  if (!name) return "";
+  if (name.length > 60) { $("#status").textContent = "a view's name is at most 60 characters"; return ""; }
+  return name;
+}
+function saveView(el, r) {
+  const w = REG.get(r.id);
+  const name = askName(`Name this view of ${w.title || r.id}`, r.view || ""); if (!name) return;
+  const same = viewNamed(name);
+  if (same && !confirm(`There is already a view named ${same.name}. Replace it?`)) return;
+  if (same) VIEWS.splice(VIEWS.indexOf(same), 1);
+  VIEWS.push({ id: r.id, name, settings: JSON.parse(JSON.stringify(r.settings || {})) });
+  r.view = name;
+  save(); paintAdd();
+  const h = el.querySelector(".whead h2"); if (h) h.textContent = name;
+  $("#status").textContent = `saved the view ${name}; it is in the add list`;
+}
+function addView(i) {
+  const v = viewAt(i), r = v && rowOf(v.id); if (!r) return;
+  r.settings = JSON.parse(JSON.stringify(v.settings || {}));
+  r.view = v.name;
+  if (!r.on) {                        // on the end of the board, the way an added widget goes
+    r.on = true; LAYOUT.splice(LAYOUT.indexOf(r), 1);
+    let last = -1; LAYOUT.forEach((x, k) => { if (x.on) last = k; });
+    LAYOUT.splice(last + 1, 0, r);
+  }
+  render(); save();
+  $("#status").textContent = `${(REG.get(v.id) || {}).title || v.id} shows ${v.name} now`;
+}
+function renameView(i) {
+  const v = viewAt(i); if (!v) return;
+  const name = askName("Rename this view", v.name); if (!name || name === v.name) return;
+  if (viewNamed(name, v)) { $("#status").textContent = `there is already a view named ${name}`; return; }
+  for (const r of LAYOUT) if (r.id === v.id && r.view === v.name) r.view = name;
+  v.name = name;
+  render(); save();
+}
+function removeView(i) {
+  const v = viewAt(i); if (!v) return;
+  VIEWS.splice(Number(i), 1);
+  for (const r of LAYOUT) if (r.id === v.id && r.view === v.name) delete r.view;   // the tile keeps its settings
+  render(); save();
+  $("#status").textContent = `the view ${v.name} is out of the add list`;
+}
+// ---- the prompt box: what no filter can say becomes a request for a widget of its own ----
+// Filed the way the board files everything on a ledger from the page, PUT /api/tasks, with source home-prompt passed
+// through to tasks.py (0.42.0), so the line reads the same as `tasks.py add --source home-prompt`.
+async function askForWidget(el, r, text) {
+  const w = REG.get(r.id), file = WIDGET_FILE(r.id);
+  const said = String(text).replace(/[|#→]/g, " ").replace(/\s+/g, " ").trim(); if (!said) return;
+  const conf = JSON.stringify(r.settings || {}).replace(/[|#→]/g, " ");
+  const body = { action: "add", owner: "@claude", source: "home-prompt",
+                 text: `Home widget request on ${w.title || r.id} (${file}): "${said}". Its filters now: ${conf}. `
+                     + `What the filters cannot say becomes a new widget file (T-0212); read skills/brain-viewer/widgets/curriculum.md first.` };
+  const out = el.querySelector("[data-ffiled]");
+  try {
+    const res = await fetch("/api/tasks?project=brain-viewer-holon", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || ("the server answered " + res.status));
+    const note = j.proposed ? "sent as a request" : "filed as " + j.id;
+    FILED.set(r.id, note);
+    if (out) { out.innerHTML = BV.ledgerText(note, "brain-viewer-holon"); if (BV.ledger && BV.ledger.repaint) BV.ledger.repaint(out); }  // the id carries the item's first words (T-0227)
+    $("#status").textContent = `the request is on the Brain Viewer ledger: ${note}`;
+  } catch (e) {
+    if (out) out.textContent = "not filed: " + e.message;
+  }
+}
+document.addEventListener("click", e => {
+  const t = e.target;
+  const av = t.closest("[data-addview]"); if (av) { addView(av.dataset.addview); return; }
+  const vr = t.closest("[data-vren]"); if (vr) { renameView(vr.dataset.vren); return; }
+  const vd = t.closest("[data-vdel]"); if (vd) { removeView(vd.dataset.vdel); return; }
+  const el = t.closest("section.w"); if (!el) return;
+  const r = rowOf(el.dataset.w); if (!r) return;
+  if (t.closest("[data-filters]")) { const open = !el.classList.contains("filtering"); el.classList.toggle("filtering", open); if (open) paintFilter(el, r); return; }
+  if (t.closest("[data-fsave]")) { saveView(el, r); return; }
+  if (t.closest("[data-freset]")) {
+    const s = Object.assign({}, r.settings || {});
+    for (const f of REG.get(r.id).filters || []) delete s[f.key];
+    r.settings = s; delete r.view; save();
+    remount(r.id, { filtering: true, styling: el.classList.contains("styling") });
+  }
+});
+document.addEventListener("change", e => {
+  const t = e.target; if (!t.matches || !t.matches("[data-fk]")) return;
+  const el = t.closest("section.w"), r = el && rowOf(el.dataset.w); if (!r) return;
+  setFilter(el, r, t.dataset.fk, t.value);
+});
+document.addEventListener("input", e => {
+  const t = e.target; if (!t.matches || !t.matches("input[type=range][data-fk]")) return;
+  const el = t.closest("section.w"), w = el && REG.get(el.dataset.w); if (!w) return;
+  const f = (w.filters || []).find(x => x.key === t.dataset.fk);
+  const n = Array.from(el.querySelectorAll("[data-fv]")).find(x => x.dataset.fv === t.dataset.fk);
+  if (n) n.textContent = +t.value === 0 && f && f.zero ? f.zero : t.value;
+});
+document.addEventListener("keydown", e => {
+  const t = e.target; if (e.key !== "Enter" || !t.matches || !t.matches("[data-fask]")) return;
+  e.preventDefault();
+  const el = t.closest("section.w"), r = el && rowOf(el.dataset.w); if (!r || !t.value.trim()) return;
+  const v = t.value; t.value = "";
+  askForWidget(el, r, v);
+});
+// a box being typed in must not start a drag of the tile it sits in
+document.addEventListener("focusin", e => { const f = e.target.closest && e.target.closest(".wfilt"); if (f) f.closest("section.w").draggable = false; });
+document.addEventListener("focusout", e => { const f = e.target.closest && e.target.closest(".wfilt"); if (f) f.closest("section.w").draggable = EDIT && MODE !== "free"; });
+
+// ---- free mode: every tile at its own cell (T-0213) ----
+// The owner asked on 2026-09-21 for a freehand mode, a mode with transform controls, and a toggleable snap.
+// This round ships the snapped half. Each on-board row
+// carries x and y (column 0 to 11, row index) and w and h (columns 1 to 12, rows), drawn as explicit lines on the same
+// twelve columns with a fine row unit (ROW_UNIT, 20px), so the board grows to the last tile and an empty row stays
+// empty. A tile's h follows its content unless the person fixed it (hFixed), or its widget declares fillRows.
+// The head carries a tile, the eight handles pull its corners and edges, and both land on the cell edges when let go,
+// with the snapped place drawn as a dashed ghost while it is in the air. A tile put down on another pushes that one
+// down by rows, the way a grid does, so no two share a cell. The first switch to free derives every cell from the grid
+// order. Snapping off, with positions as fractions of the width, is behind the disabled toggle and not built yet.
+// The drag is the Forge's shape (press, three pixels before it counts, one frame per move, the real change on the
+// drop), written small here because the Forge's handler is tied to its own drawing and zoom.
+// FREE-PURE-BEGIN: freehand.test.py lifts everything down to FREE-PURE-END out of this file and runs it in node, so it
+// reads no page, no global and nothing but what it is handed.
+// THE ROW UNIT (2026-09-22). Rows were 140px with an 18px gap, so every height was a whole 158px step and the masthead,
+// whose content needs about 190px, stood 298px with a third of it empty. Rows are now ROW_UNIT (20px) with no gap (the
+// tile's bottom margin is the gap), so a tile's h can follow its content. A board saved on the old pitch carries no
+// rowUnit and is converted once on load (convertLayout).
+const FREE_COLS = 12, FREE_MAX_H = 400, FREE_MAX_Y = 4000;
+// the tallest a height that nobody pulled can stand: 40 units (800px). Measured content and fillRows stop here.
+const AUTO_MAX_H = 40;
+const ROW_UNIT = 20, OLD_PITCH = 158, OLD_GAP = 18;
+const FREE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+// a row carries a cell when all four are whole numbers inside the twelve columns (the server's rule, home_validate)
+function hasCell(r) {
+  return !!r && [r.x, r.y, r.w, r.h].every(Number.isInteger) && r.x >= 0 && r.w >= 1 && r.x + r.w <= FREE_COLS
+    && r.y >= 0 && r.y <= FREE_MAX_Y && r.h >= 1 && r.h <= FREE_MAX_H;
+}
+const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const spanOf = r => r.expanded ? FREE_COLS : Math.max(1, Math.min(FREE_COLS, parseInt(r.size, 10) || 4));
+const clampH = h => Math.max(1, Math.min(FREE_MAX_H, Math.round(h)));
+// an old-pitch height (whole 158px rows, less the last gap) in fine units: 1 row is 7, 2 rows are 15
+const unitsFromOld = h => clampH((h * OLD_PITCH - OLD_GAP) / ROW_UNIT);
+// the height a tile is given before anything has measured it: its grid row span, in fine units
+const heightOf = r => unitsFromOld(r.rows === 2 ? 2 : 1);
+// The one-time conversion. `savedUnit` is the file's rowUnit: the same unit is no change; none is the old 158px pitch,
+// y' = round(y * 158 / 20) and h' = round((h * 158 - 18) / 20), and every tile made auto (hFixed dropped), because the
+// old heights are the quantized ones; h' is only the first paint's guess until the tile measures. Another fine unit is
+// rescaled and keeps what was fixed. Returns {rows, converted}: converted says the board should be compacted once.
+function convertLayout(rows, savedUnit) {
+  const copy = (rows || []).map(r => Object.assign({}, r));
+  if (savedUnit === ROW_UNIT) return { rows: copy, converted: false };
+  const other = Number.isInteger(savedUnit) && savedUnit > 0;
+  for (const o of copy) {
+    if (other) {
+      if (Number.isInteger(o.y)) o.y = Math.round(o.y * savedUnit / ROW_UNIT);
+      if (Number.isInteger(o.h)) o.h = clampH(o.h * savedUnit / ROW_UNIT);
+      continue;
+    }
+    delete o.hFixed;
+    if (Number.isInteger(o.y)) o.y = Math.round(o.y * OLD_PITCH / ROW_UNIT);
+    if (Number.isInteger(o.h)) o.h = unitsFromOld(o.h);
+  }
+  return { rows: copy, converted: !other };
+}
+// A tile that fits its content stands ceil(content / unit) units; half a pixel of measuring noise does not add a unit,
+// and no content makes it taller than AUTO_MAX_H.
+const autoUnits = px => Math.min(AUTO_MAX_H, clampH(Math.ceil((Math.max(0, Number(px) || 0) - 0.5) / ROW_UNIT)));
+// THE HEIGHT RULE (2026-09-22, the runaway fix). Which height a tile stands, first rule that applies wins:
+// 1. a height a person fixed (hFixed) at or under the cap, or above it when a handle set it in this page session
+//    (`byHandle`); 2. its widget's fillRows, capped, and never a measurement; 3. its content as measured (`px`),
+//    capped; 4. 0, which keeps the tile's own h. `o` is {h, hFixed, fill, px, byHandle}.
+function tileHeight(o) {
+  o = o || {};
+  if (o.hFixed === true && Number.isInteger(o.h) && o.h >= 1 && (o.h <= AUTO_MAX_H || o.byHandle === true)) return clampH(o.h);
+  const fill = parseInt(o.fill, 10);
+  if (fill > 0) return Math.min(AUTO_MAX_H, fill);
+  if (Number(o.px) > 0) return autoUnits(o.px);
+  return 0;
+}
+// Heights as a saved board is read. The file cannot say whether a handle set a fixed height in an earlier session (the
+// server keeps no such mark), so a fixed height above the cap is not trusted on read: hFixed goes and the tile fits
+// again. Any height above the cap that is not fixed (a runaway an earlier page saved) becomes the first guess,
+// heightOf, until the tile measures or takes its fillRows. Nothing it is handed is changed.
+function readHeights(rows) {
+  return (rows || []).map(r => {
+    const o = Object.assign({}, r);
+    if (!Number.isInteger(o.h)) return o;
+    if (o.hFixed && o.h > AUTO_MAX_H) delete o.hFixed;
+    if (!o.hFixed && o.h > AUTO_MAX_H) o.h = heightOf(o);
+    return o;
+  });
+}
+const bottomOf = cells => cells.reduce((m, c) => Math.max(m, c.y + c.h), 0);
+const cellsOf = rows => rows.filter(hasCell).map(r => ({ id: r.id, x: r.x, y: r.y, w: r.w, h: r.h }));
+// The grid's own placement, CSS's sparse row flow: each tile at the first place after the one before it where it fits.
+// unitsOf(row) says how many free rows it stands (the grid's row span when not given); 0 is a tile that draws nothing
+// right now, which goes after the rest so it holds no hole in the middle of the board.
+function deriveCells(rows, unitsOf) {
+  const units = r => (unitsOf ? unitsOf(r) : heightOf(r));
+  const shown = rows.filter(r => units(r) > 0), quiet = rows.filter(r => !(units(r) > 0));
+  const out = [];
+  let cx = 0, cy = 0;
+  for (const r of shown) {
+    const w = spanOf(r), h = clampH(units(r));
+    let x = cx, y = cy;
+    for (;;) {
+      if (x + w > FREE_COLS) { x = 0; y++; continue; }
+      if (!out.some(c => overlaps(c, { x, y, w, h }))) break;
+      x++;
+    }
+    out.push({ id: r.id, x, y, w, h });
+    cx = x + w; cy = y;
+  }
+  let b = bottomOf(out);
+  for (const r of quiet) { const h = heightOf(r); out.push({ id: r.id, x: 0, y: b, w: spanOf(r), h }); b += h; }
+  return out;
+}
+// The push: the tile `id` stays where it was put, and every tile it lands on goes down by rows, in reading order, until
+// nothing shares a cell. A tile that overlaps nothing does not move. With no id it only settles what already overlaps.
+function settle(cells, id) {
+  const out = cells.map(c => Object.assign({}, c));
+  const first = out.find(c => c.id === id);
+  const placed = first ? [first] : [];
+  const rest = out.filter(c => c !== first).sort((a, b) => a.y - b.y || a.x - b.x);
+  for (const c of rest) {
+    let hit;
+    while ((hit = placed.find(p => overlaps(p, c)))) c.y = hit.y + hit.h;
+    placed.push(c);
+  }
+  return out;
+}
+// the cells for the tiles on the board: derived from the grid order when none has one yet (the first switch to free),
+// otherwise kept, with any tile that has none put under the last one, and then settled. `heightFor(row)`, when given,
+// is the height the page wants for a row right now (a filling widget's fillRows, say); none keeps the row's own h.
+function freeCells(rows, unitsOf, heightFor) {
+  if (!rows.some(hasCell)) return deriveCells(rows, unitsOf);
+  const want = r => { const h = heightFor ? heightFor(r) : 0; return h > 0 ? clampH(h) : 0; };
+  const kept = rows.filter(hasCell).map(r => ({ id: r.id, x: r.x, y: r.y, w: r.w, h: want(r) || r.h }));
+  let b = bottomOf(kept);
+  for (const r of rows) if (!hasCell(r)) {
+    const h = want(r) || heightOf(r);
+    kept.push({ id: r.id, x: 0, y: b, w: spanOf(r), h }); b += h;
+  }
+  return settle(kept, null);
+}
+// A tile's height changed to `h` (it fits its content and the content changed). Grown, whatever it now covers is pushed
+// down (settle). Shrunk, what was stacked on its old bottom comes up with it, and what was stacked on those in turn,
+// each only as far as the room above it allows, so a shrink leaves no gap under the tile and moves nothing that did
+// not sit on it.
+function refit(cells, id, h) {
+  const out = cells.map(c => Object.assign({}, c));
+  const t = out.find(c => c.id === id);
+  if (!t) return out;
+  h = clampH(h);
+  if (h === t.h) return out;
+  if (h > t.h) { t.h = h; return settle(out, id); }
+  const was = new Map(out.map(c => [c.id, c.y + c.h]));   // every old bottom
+  t.h = h;
+  const rise = new Map([[id, was.get(id) - (t.y + t.h)]]);
+  const cols = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w;
+  for (const c of out.filter(c => c !== t).sort((a, b) => a.y - b.y || a.x - b.x)) {
+    let up = 0;
+    for (const p of out) if (p !== c && (rise.get(p.id) || 0) > 0 && was.get(p.id) === c.y && cols(p, c)) up = Math.max(up, rise.get(p.id));
+    if (!up) continue;
+    let ny = Math.max(0, c.y - up);
+    while (ny < c.y && out.some(o => o !== c && overlaps(o, { x: c.x, y: ny, w: c.w, h: c.h }))) ny++;
+    if (ny < c.y) { rise.set(c.id, c.y - ny); c.y = ny; }
+  }
+  return out;
+}
+// Where a press lands when it is let go: `dir` is "move" or a handle (n, ne, e, se, s, sw, w, nw), dc and dr how far
+// the pointer went in columns and rows (fractions). Rounded to the nearest cell edge and kept inside the twelve columns.
+// `minH` is the fewest units a pull may leave it (1 when not given).
+function snapRect(s, dir, dc, dr, minH) {
+  const R = Math.round, clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const lo = Math.max(1, Math.min(FREE_MAX_H, minH || 1));
+  if (dir === "move") return { x: clamp(R(s.x + dc), 0, FREE_COLS - s.w), y: Math.max(0, R(s.y + dr)), w: s.w, h: s.h };
+  let { x, y, w, h } = s;
+  if (dir.includes("e")) w = clamp(R(s.w + dc), 1, FREE_COLS - s.x);
+  if (dir.includes("w")) { x = clamp(R(s.x + dc), 0, s.x + s.w - 1); w = s.x + s.w - x; }
+  if (dir.includes("s")) h = clamp(R(s.h + dr), lo, FREE_MAX_H);
+  if (dir.includes("n")) {
+    const top = Math.max(0, s.y + s.h - FREE_MAX_H);
+    y = clamp(R(s.y + dr), top, Math.max(top, s.y + s.h - lo)); h = s.y + s.h - y;
+  }
+  return { x, y, w, h };
+}
+// The rows no tile covers, between the top of the board and the bottom of its last tile, top first.
+function emptyRows(cells) {
+  const out = [];
+  for (let y = 0, b = bottomOf(cells); y < b; y++) if (!cells.some(c => c.y <= y && y < c.y + c.h)) out.push(y);
+  return out;
+}
+// One empty row taken out: everything starting below it comes up by one. A row a tile covers is not empty and is left.
+function removeRow(cells, row) {
+  if (cells.some(c => c.y <= row && row < c.y + c.h)) return cells.map(c => Object.assign({}, c));
+  return cells.map(c => Object.assign({}, c, c.y > row ? { y: c.y - 1 } : {}));
+}
+// The empty space as edit mode draws and selects it: each run of consecutive empty rows as one band {y, h}, top first.
+function bandsOf(cells) {
+  const out = [];
+  for (const y of emptyRows(cells)) {
+    const last = out[out.length - 1];
+    if (last && last.y + last.h === y) last.h++; else out.push({ y, h: 1 });
+  }
+  return out;
+}
+// The band a click on row `y` lands in, or null when that row is not fully empty.
+const bandAt = (cells, y) => bandsOf(cells).find(b => b.y <= y && y < b.y + b.h) || null;
+// A band taken out (the Delete key on a selected band): everything starting below it comes up by its height. A band
+// that is no longer fully empty is left alone.
+function removeBand(cells, band) {
+  const copy = cells.map(c => Object.assign({}, c));
+  if (!band || !(band.h >= 1) || cells.some(c => c.y < band.y + band.h && band.y < c.y + c.h)) return copy;
+  for (const c of copy) if (c.y >= band.y + band.h) c.y -= band.h;
+  return copy;
+}
+// A tile taken off the board (the Delete key on a selected tile): its row switched off, everything else as it was. Its
+// cell is kept, the way the off switch keeps it; the add list puts it back under the last tile.
+const turnOff = (rows, id) => (rows || []).map(r => (r.id === id ? Object.assign({}, r, { on: false }) : Object.assign({}, r)));
+// Close gaps: top to bottom, left to right, every tile goes up to the lowest row it can take without overlapping a tile
+// already placed above it, so the order is kept; then any fully empty row still standing is taken out.
+function closeGaps(cells) {
+  const out = cells.map(c => Object.assign({}, c));
+  const order = out.slice().sort((a, b) => a.y - b.y || a.x - b.x);
+  const placed = [];
+  for (const c of order) {
+    let y = 0;
+    while (placed.some(p => overlaps(p, { x: c.x, y, w: c.w, h: c.h }))) y++;
+    c.y = y;
+    placed.push(c);
+  }
+  let res = out;
+  for (const b of bandsOf(res).reverse()) res = removeBand(res, b);   // bottom first, so the bands above keep their rows
+  return res;
+}
+// the order one column reads in, under 760px: top to bottom, then left to right
+const freeOrder = rows => rows.slice().sort((a, b) => ((a.y || 0) - (b.y || 0)) || ((a.x || 0) - (b.x || 0)));
+// THE UNDO STACK (2026-09-22). {past, future}, each a list of {state, said}: `state` is whatever the page hands in (a
+// JSON string of the board), `said` what the change was. A change pushes the state from before it and clears the redo
+// side; undo trades the newest past state for the present one, redo the reverse. At most UNDO_CAP are kept, the oldest
+// dropped first. Nothing is changed in place; undoBack and undoForward answer null when their side is empty.
+const UNDO_CAP = 50;
+const undoEmpty = () => ({ past: [], future: [] });
+function undoPush(st, state, said, cap) {
+  const n = cap > 0 ? cap : UNDO_CAP;
+  return { past: st.past.concat([{ state, said }]).slice(-n), future: [] };
+}
+function undoBack(st, present) {
+  if (!st.past.length) return null;
+  const top = st.past[st.past.length - 1];
+  return { st: { past: st.past.slice(0, -1), future: st.future.concat([{ state: present, said: top.said }]) }, state: top.state, said: top.said };
+}
+function undoForward(st, present) {
+  if (!st.future.length) return null;
+  const top = st.future[st.future.length - 1];
+  return { st: { past: st.past.concat([{ state: present, said: top.said }]).slice(-UNDO_CAP), future: st.future.slice(0, -1) }, state: top.state, said: top.said };
+}
+// What a person changed between two boards ({rows, mode, gravity, views}), in words, for the undo line; "" when the
+// only difference is a height nobody fixed (a tile fitting its content), which is drawing, not a change to undo.
+function describeChange(a, b, titles) {
+  if (!a || !b) return "";
+  const name = r => r.view || (titles && titles[r.id]) || r.id;
+  if (a.mode !== b.mode) return `the board switched to ${b.mode}`;
+  if (!!a.gravity !== !!b.gravity) return `keep closed switched ${b.gravity ? "on" : "off"}`;
+  if (JSON.stringify(a.views || []) !== JSON.stringify(b.views || [])) return "the views changed";
+  const was = new Map((a.rows || []).map(r => [r.id, r]));
+  const same = (p, q, k) => JSON.stringify(p[k] === undefined ? null : p[k]) === JSON.stringify(q[k] === undefined ? null : q[k]);
+  const found = { on: "", size: "", look: "", place: "" };
+  for (const r of b.rows || []) {
+    const o = was.get(r.id); if (!o) continue;
+    if (!!o.on !== !!r.on) { found.on = found.on || `${name(r)} ${r.on ? "added" : "taken off"}`; continue; }
+    if (!same(o, r, "w") || !same(o, r, "size") || !same(o, r, "rows") || !same(o, r, "hFixed") || !same(o, r, "expanded")
+        || (r.hFixed && !same(o, r, "h"))) found.size = found.size || `${name(r)} resized`;
+    if (!same(o, r, "settings") || !same(o, r, "view")) found.look = found.look || `${name(o)} filters changed`;
+    if (!same(o, r, "style")) found.look = found.look || `${name(r)} style changed`;
+    if (!same(o, r, "collapsed")) found.look = found.look || `${name(r)} ${r.collapsed ? "folded" : "opened"}`;
+    if (!same(o, r, "x") || !same(o, r, "y")) found.place = found.place || `${name(r)} moved`;
+  }
+  const order = rows => (rows || []).map(r => r.id).join(" ");
+  return found.on || found.size || found.look || found.place || (order(a.rows) !== order(b.rows) ? "the order changed" : "");
+}
+// FREE-PURE-END
+
+const onRows = () => LAYOUT.filter(r => r.on && REG.has(r.id));
+const cardOf = id => Array.from(document.querySelectorAll("#grid section.w")).find(x => x.dataset.w === id);
+function clearCell(r) { delete r.x; delete r.y; delete r.w; delete r.h; delete r.hFixed; }
+function writeCells(cells) { for (const c of cells) { const r = rowOf(c.id); if (r) Object.assign(r, { x: c.x, y: c.y, w: c.w, h: c.h }); } }
+// a widget that needs a working height rather than its content's declares fillRows (units); 0 when it declares none
+const fillOf = r => { const w = (r && REG.get(r.id)) || {}; const n = parseInt(w.fillRows, 10); return n > 0 ? Math.min(AUTO_MAX_H, n) : 0; };
+// a tile fits its content unless the person fixed its height (hFixed) or its widget fills a working height
+const isAuto = r => !!r && !r.hFixed && !fillOf(r);
+// the height the page wants for a row right now: a filling widget's fillRows when nobody fixed one, else 0 (its own h)
+const wantedH = r => (r && !r.hFixed && fillOf(r)) || 0;
+const snapshot = () => new Map(cellsOf(onRows()).map(c => [c.id, c]));
+// every tile's cell; with "keep closed" on, the gaps closed as well
+function ensureFree(unitsOf) {
+  const cells = freeCells(onRows(), unitsOf, wantedH);
+  writeCells(GRAVITY ? closeGaps(cells) : cells);
+}
+// the empty space of the board, drawn in edit mode as one hairline band per run of empty rows: a click selects a band
+// and Delete takes it out (the Delete key replaced the old per-row x and the close gaps button, 2026-09-22)
+function placeBands() {
+  const grid = $("#grid");
+  for (const b of grid.querySelectorAll(".fband")) b.remove();
+  if (MODE !== "free") { if (SEL && SEL.kind === "band") SEL = null; return; }
+  const cells = cellsOf(onRows());
+  if (SEL && SEL.kind === "band") { const b = bandAt(cells, SEL.y); SEL = b ? Object.assign({ kind: "band" }, b) : null; }
+  for (const b of bandsOf(cells)) {
+    const el = document.createElement("div");
+    el.className = "fband"; el.dataset.band = String(b.y);
+    el.style.gridColumn = "1 / -1"; el.style.gridRow = `${b.y + 1} / span ${b.h}`;
+    el.title = `${b.h * ROW_UNIT}px of empty space: click it, then press Delete to take it out`;
+    el.innerHTML = `<span class="fbcap">empty space</span>`;
+    grid.appendChild(el);
+  }
+  paintSel();
+}
+// the selection drawn: a thin outline on a selected tile, the band lit with what the key does
+function paintSel() {
+  for (const el of document.querySelectorAll("#grid section.w")) el.classList.toggle("wsel", !!(SEL && SEL.kind === "tile" && SEL.id === el.dataset.w));
+  for (const el of document.querySelectorAll("#grid .fband")) {
+    const on = !!(SEL && SEL.kind === "band" && String(SEL.y) === el.dataset.band);
+    el.classList.toggle("sel", on);
+    const cap = el.querySelector(".fbcap"); if (cap) cap.textContent = on ? "empty space, press Delete" : "empty space";
+  }
+}
+// after the cells changed in place: every tile put at its cell again, the fill and the bands redrawn, a tile whose box
+// changed size told so, and the board saved with `said` as the status line. `quiet` is a tile fitting its content: it
+// is drawn, not saved, so a board changes on disk only when the person changes it (the next save carries the heights).
+function relayFree(before, said, quiet) {
+  for (const el of document.querySelectorAll("#grid section.w")) { const r = rowOf(el.dataset.w); if (r) placeTile(el, r); }
+  placeFill(); placeBands();
+  for (const [id, m] of MOUNTED) {
+    const b = before.get(id), r = rowOf(id);
+    if (b && r && (b.w !== r.w || (!quiet && b.h !== r.h)) && typeof m.w.resize === "function") { try { m.w.resize(m.api.el, m.api); } catch (x) {} }
+  }
+  if (quiet) return;
+  save().then(() => { if (said && $("#status").textContent === "saved") $("#status").textContent = said + " (saved)"; });
+}
+// "keep closed" switched on: what is open now is closed, every tile as high as it goes
+function compactNow() {
+  if (MODE !== "free") { save(); return; }
+  const before = snapshot();
+  const was = bandsOf(cellsOf(onRows())).length;
+  writeCells(closeGaps(cellsOf(onRows())));
+  relayFree(before, was ? `kept closed: ${plural(was, "empty space")} taken out, every tile as high as it goes` : "kept closed: every tile as high as it goes");
+}
+function placeTile(el, r) {
+  el.classList.toggle("fauto", MODE === "free" && isAuto(r));
+  if (MODE === "free" && hasCell(r)) {
+    el.style.gridColumn = `${r.x + 1} / span ${r.w}`; el.style.gridRow = `${r.y + 1} / span ${r.h}`;
+    // the one column under 760px reads in y, then x, without moving a node (moving one would reload a widget's frame)
+    el.style.order = String(freeOrder(cellsOf(onRows())).findIndex(c => c.id === r.id));
+  }
+  else { for (const p of ["grid-column", "grid-row", "order"]) el.style.removeProperty(p); }
+}
+// three empty rows under the last tile in edit mode, so there is somewhere to drag a tile down to
+function placeFill() {
+  const grid = $("#grid"); let f = grid.querySelector(".ffill");
+  if (MODE !== "free") { if (f) f.remove(); return; }
+  if (!f) { f = document.createElement("div"); f.className = "ffill"; grid.appendChild(f); }
+  f.style.gridColumn = "1 / span 1";
+  f.style.gridRow = String(bottomOf(cellsOf(onRows())) + 20);   // 400px of room under the last tile
+}
+// how many free units each tile stands, measured off the grid as it is drawn now, so the first switch keeps the board's
+// look; the tiles that fit their content measure themselves again as soon as the free board is drawn
+function measuredUnits() {
+  return r => {
+    const el = cardOf(r.id);
+    if (!el) return heightOf(r);
+    if (el.classList.contains("whidden")) return 0;
+    const px = el.getBoundingClientRect().height;
+    return px ? autoUnits(px + FREE_GAP) : heightOf(r);
+  };
+}
+// ---- tiles that fit their content (2026-09-22) ----
+// A tile nobody has fixed a height on, whose widget declares no fillRows, stands ceil(content / unit) units. It is
+// measured after every render and refresh, and whenever anything in it changes size (a ResizeObserver on the tile's
+// parts), and the board is refit below it: grown, what it covers is pushed down; shrunk, what sat on it comes up.
+// This is drawing, not saving: the heights go to disk with the next change the person makes.
+const FREE_GAP = 18;                 // the tile's bottom margin in free mode, which is the gap between tiles
+let FITS = null, FIT_RAF = 0;
+function watchFit(el) {
+  if (typeof ResizeObserver !== "function") return;
+  if (!FITS) FITS = new ResizeObserver(() => queueFit());
+  for (const c of el.children) if (!c.classList.contains("fh")) FITS.observe(c);
+}
+// one pass per frame; a timer too, because a hidden tab runs no frames and its board must still fit when it is shown
+function queueFit() {
+  if (FIT_RAF) return;
+  const run = () => { if (FIT_RAF) { cancelAnimationFrame(FIT_RAF.f); clearTimeout(FIT_RAF.t); fitPass(); } };
+  FIT_RAF = { f: requestAnimationFrame(run), t: setTimeout(run, 120) };
+}
+// how tall a tile's content stands in px, its gap included: from its top edge to the bottom of the last thing in it.
+// It reads the content's own size, never the tile's: for the length of the read the tile stands at its natural height
+// (align-self start, height auto) and its body neither stretches nor scrolls, so nothing measured can depend on the
+// span the tile has now. Without that, a body stretched to its tile measures as tall as the tile, and a tile that fits
+// its content can only grow. The styles are put back before anything paints.
+function contentPx(el) {
+  if (!el.getClientRects().length) return 0;             // not drawn right now (an instrument with nothing to say)
+  const body = el.querySelector(":scope > .wbody");
+  const keep = [el.style.alignSelf, el.style.height, body ? body.style.flex : "", body ? body.style.height : "", body ? body.style.overflow : ""];
+  el.style.alignSelf = "start"; el.style.height = "auto";
+  if (body) { body.style.flex = "none"; body.style.height = "auto"; body.style.overflow = "visible"; }
+  try {
+    const top = el.getBoundingClientRect().top, cs = getComputedStyle(el), px = v => parseFloat(v) || 0;
+    let bottom = top + px(cs.paddingTop) + px(cs.borderTopWidth);
+    for (const c of el.children) {
+      if (c.classList.contains("fh") || !c.getClientRects().length) continue;
+      const s = getComputedStyle(c);
+      if (s.position === "absolute" || s.position === "fixed") continue;
+      const b = c.getBoundingClientRect();
+      bottom = Math.max(bottom, b.bottom + px(s.marginBottom), c === body ? b.top + c.scrollHeight + px(s.marginBottom) : 0);
+    }
+    return bottom - top + px(cs.paddingBottom) + px(cs.borderBottomWidth) + px(cs.marginBottom);
+  } finally {
+    el.style.alignSelf = keep[0]; el.style.height = keep[1];
+    if (body) { body.style.flex = keep[2]; body.style.height = keep[3]; body.style.overflow = keep[4]; }
+  }
+}
+function fitPass() {
+  FIT_RAF = 0;
+  if (MODE !== "free" || narrow() || FDRAG) return;      // a drag in the air is fitted when it lands
+  const before = snapshot();
+  let cells = cellsOf(onRows()), changed = false;
+  for (const c of cells.slice().sort((a, b) => a.y - b.y || a.x - b.x)) {
+    const r = rowOf(c.id); if (!r || r.hFixed) continue;
+    // the height rule: a filling widget takes its fillRows and is never measured; only the rest read their content
+    const fill = fillOf(r), el = !fill && cardOf(c.id);
+    const px = el ? contentPx(el) : 0;
+    if (!fill && !px) continue;
+    const h = tileHeight({ h: r.h, hFixed: false, fill, px }), now = cells.find(x => x.id === c.id);
+    if (h && now && h !== now.h) { cells = refit(cells, c.id, h); changed = true; }
+  }
+  // a board converted from the old pitch is compacted while its widgets fill in, so it comes up tight
+  const compact = PENDING_COMPACT && COMPACT_UNTIL && Date.now() < COMPACT_UNTIL;
+  if (PENDING_COMPACT && COMPACT_UNTIL && !compact) PENDING_COMPACT = false;
+  if (compact || (changed && GRAVITY)) {
+    const k = closeGaps(cells);
+    if (JSON.stringify(k) !== JSON.stringify(cells)) { cells = k; changed = true; }
+  }
+  if (!changed) return;
+  const clean = BASE === boardState();
+  writeCells(cells);
+  relayFree(before, "", true);
+  if (clean) BASE = boardState();         // a tile fitting its content is not a change for undo to name
+}
+function paintMode() {
+  for (const b of document.querySelectorAll("[data-mode]")) b.classList.toggle("on", b.dataset.mode === MODE);
+  for (const s of document.querySelectorAll(".modepick .fsnap")) s.style.display = MODE === "free" ? "" : "none";
+  const g = $("#freegrav"); if (g) g.checked = GRAVITY;
+}
+function setMode(m) {
+  m = m === "free" ? "free" : "grid";
+  if (m === MODE) return;
+  if (m === "free") ensureFree(measuredUnits());   // measured before the grid is taken down
+  MODE = m;
+  try { localStorage.setItem(MODE_CACHE, MODE); } catch (e) {}
+  render(); paintMode();
+  const said = MODE === "free"
+    ? "free: drag a tile by its head, pull a corner or an edge; it lands on the cells, and a tile it lands on moves down"
+    : "grid: the tiles flow in order again; their free places are kept for the next switch";
+  save().then(() => { if ($("#status").textContent === "saved") $("#status").textContent = said + " (saved)"; });
+}
+// one tile put at a cell (an add dropped on the board, or on a tile), and whatever it lands on pushed down
+function putAt(r, x, y) {
+  UNDO_SAID = UNDO_SAID || `${r.view || (REG.get(r.id) || {}).title || r.id} ${r.on ? "moved" : "added"}`;
+  const w = hasCell(r) ? r.w : spanOf(r), h = wantedH(r) || (hasCell(r) ? r.h : heightOf(r));
+  r.on = true;
+  Object.assign(r, { x: Math.max(0, Math.min(FREE_COLS - w, x)), y: Math.max(0, y), w, h });
+  writeCells(settle(cellsOf(onRows()), r.id));   // render's ensureFree then closes the gaps when "keep closed" is on
+  render(); save();
+}
+function pitch() {
+  const g = $("#grid"), b = g.getBoundingClientRect(), cs = getComputedStyle(g);
+  const cg = parseFloat(cs.columnGap), rg = parseFloat(cs.rowGap);   // free mode's row gap is 0, which || would lose
+  return { x: (b.width + (isNaN(cg) ? 18 : cg)) / FREE_COLS, y: ROW_UNIT + (isNaN(rg) ? 0 : rg), left: b.left, top: b.top };
+}
+function cellAt(cx, cy) {
+  const p = pitch();
+  return { x: Math.max(0, Math.min(FREE_COLS - 1, Math.floor((cx - p.left) / p.x))), y: Math.max(0, Math.floor((cy - p.top) / p.y)) };
+}
+function showGhost(c) {
+  const g = $("#grid"); let gh = g.querySelector(".fghost");
+  if (!gh) { gh = document.createElement("div"); gh.className = "fghost"; g.appendChild(gh); }
+  gh.style.gridColumn = `${c.x + 1} / span ${c.w}`; gh.style.gridRow = `${c.y + 1} / span ${c.h}`;
+}
+function hideGhost() { const gh = document.querySelector("#grid .fghost"); if (gh) gh.remove(); }
+// an add button dragged onto an empty part of the free board lands at that cell (onto a tile, dropAt takes it)
+function wireFreeGrid() {
+  const g = $("#grid");
+  const adding = e => EDIT && MODE === "free" && ADDING && DRAG && !(e.target.closest && e.target.closest("section.w"));
+  g.addEventListener("dragover", e => { if (!adding(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = "copy"; });
+  g.addEventListener("drop", e => {
+    if (!adding(e)) return;
+    e.preventDefault();
+    const r = rowOf(DRAG); if (!r) return;
+    const c = cellAt(e.clientX, e.clientY);
+    putAt(r, c.x, c.y);
+  });
+}
+// ---- the transform controls ----
+let FDRAG = null;
+const narrow = () => !!(window.matchMedia && window.matchMedia("(max-width: 760px)").matches);
+const scrolled = () => ($("#main") ? $("#main").scrollTop : 0) + (window.scrollY || 0);
+document.addEventListener("pointerdown", e => {
+  if (!EDIT || MODE !== "free" || narrow() || e.button !== 0) return;
+  const t = e.target, hd = t.closest && t.closest("#grid .fh");
+  const head = !hd && t.closest && t.closest("#grid section.w .whead");
+  if (!hd && !head) return;
+  if (head && t.closest("button, a, input, select, textarea, label")) return;
+  const el = t.closest("section.w"), r = el && rowOf(el.dataset.w);
+  if (!r || !hasCell(r)) return;
+  e.preventDefault();
+  const b = el.getBoundingClientRect();
+  FDRAG = { el, r, dir: hd ? hd.dataset.fh : "move", sx: e.clientX, sy: e.clientY, s0: scrolled(), bw: b.width, bh: b.height,
+            start: { x: r.x, y: r.y, w: r.w, h: r.h }, p: pitch(), began: false, at: null, raf: 0, id: e.pointerId, cap: t };
+  try { t.setPointerCapture(e.pointerId); } catch (x) {}
+});
+document.addEventListener("pointermove", e => {
+  if (!FDRAG || e.pointerId !== FDRAG.id) return;
+  FDRAG.at = { x: e.clientX, y: e.clientY };
+  edgeScroll(e.clientY);
+  if (!FDRAG.raf) FDRAG.raf = requestAnimationFrame(freeFrame);
+});
+const freeDelta = d => ({ dx: d.at.x - d.sx, dy: d.at.y - d.sy + (scrolled() - d.s0) });
+function freeFrame() {
+  const d = FDRAG; if (!d) return;
+  d.raf = 0;
+  if (!d.at) return;
+  const { dx, dy } = freeDelta(d);
+  if (!d.began) { if (Math.hypot(dx, dy) < 3) return; d.began = true; d.el.classList.add("fmoving"); }
+  const st = d.el.style, dir = d.dir;
+  if (dir === "move") st.transform = `translate(${dx}px, ${dy}px)`;
+  else {
+    let w = d.bw, h = d.bh;
+    if (dir.includes("e")) w = d.bw + dx;
+    if (dir.includes("w")) w = d.bw - dx;
+    if (dir.includes("s")) h = d.bh + dy;
+    if (dir.includes("n")) h = d.bh - dy;
+    w = Math.max(40, w); h = Math.max(40, h);
+    st.width = w + "px"; st.height = h + "px";
+    st.transform = `translate(${dir.includes("w") ? d.bw - w : 0}px, ${dir.includes("n") ? d.bh - h : 0}px)`;
+  }
+  showGhost(snapRect(d.start, dir, dx / d.p.x, dy / d.p.y, FREE_MIN_H));
+}
+const FREE_MIN_H = 2;                // the fewest units (40px) a pull on a height handle leaves a tile
+// a pull on the top or bottom edge, or on a corner, fixes the tile's height; the side edges and a move do not
+const fixesHeight = dir => dir !== "move" && (dir.includes("n") || dir.includes("s"));
+function freeUp(e, cancel) {
+  const d = FDRAG; if (!d || (e && e.pointerId !== d.id)) return;
+  FDRAG = null; stopEdge();
+  if (d.raf) cancelAnimationFrame(d.raf);
+  try { d.cap.releasePointerCapture(d.id); } catch (x) {}
+  hideGhost();
+  d.el.classList.remove("fmoving");
+  for (const p of ["transform", "width", "height"]) d.el.style.removeProperty(p);
+  if (cancel || !d.at) return;
+  const { dx, dy } = freeDelta(d);
+  if (!d.began && Math.hypot(dx, dy) < 3) return;   // a press that went nowhere; a fast one no frame saw still counts
+  const before = snapshot();
+  const to = snapRect(d.start, d.dir, dx / d.p.x, dy / d.p.y, FREE_MIN_H);
+  Object.assign(d.r, to);
+  // a corner pulled only sideways leaves the height as it was, and so leaves it fitting its content
+  if (fixesHeight(d.dir) && to.h !== d.start.h) d.r.hFixed = true;
+  const pushed = settle(cellsOf(onRows()), d.r.id);
+  writeCells(GRAVITY ? closeGaps(pushed) : pushed);   // "keep closed": no empty row survives a drop or a resize
+  const w = REG.get(d.r.id) || {};
+  UNDO_SAID = `${d.r.view || w.title || d.r.id} ${d.dir === "move" ? "moved" : "resized"}`;
+  const tall = d.r.hFixed ? `${d.r.h * ROW_UNIT}px tall, fixed (double-click the bottom handle to fit it again)`
+    : fillOf(d.r) ? "its working height" : "fitting its content";
+  const said = `${d.r.view || w.title || d.r.id}: column ${d.r.x + 1}, ${plural(d.r.w, "column")} wide, ${tall}`;
+  relayFree(before, said);
+  queueFit();
+}
+// a double-click on the bottom edge handle frees a fixed height: the tile fits its content again (or takes its
+// widget's working height, for one that declares fillRows)
+document.addEventListener("dblclick", e => {
+  const hd = e.target.closest && e.target.closest("#grid .fh[data-fh='s']");
+  if (!hd || !EDIT || MODE !== "free") return;
+  const el = hd.closest("section.w"), r = el && rowOf(el.dataset.w); if (!r) return;
+  e.preventDefault();
+  const before = snapshot(), w = REG.get(r.id) || {};
+  delete r.hFixed;
+  UNDO_SAID = `${r.view || w.title || r.id} height freed`;
+  const f = fillOf(r);
+  if (f) writeCells(refit(cellsOf(onRows()), r.id, f));
+  relayFree(before, `${r.view || w.title || r.id}: the height is ${f ? "back to its working height" : "fitting its content again"}`);
+  queueFit();
+});
+// "keep closed": saved with the board as `gravity`; switched on, it closes what is open now
+document.addEventListener("change", e => {
+  if (!e.target || e.target.id !== "freegrav") return;
+  GRAVITY = !!e.target.checked;
+  if (GRAVITY) { compactNow(); return; }
+  save();
+});
+// ---- the selection, and the Delete key (2026-09-22) ----
+// The owner asked that a click on empty space plus the Delete key remove it. In edit mode a click on a tile's head
+// (anywhere that is not a control, for a tile with no head) selects the tile; a click on empty board space selects the
+// band of fully empty rows it lands in. Delete or Backspace takes out what is selected: a band goes and everything
+// below it comes up; a tile goes off the board. Escape lets go. Keys typed into a box are never taken.
+function pickAt(e) {
+  const t = e.target, grid = $("#grid");
+  if (!t || !t.closest || !grid.contains(t)) return false;
+  if (t.closest("button, a, input, select, textarea, label, [contenteditable]")) return false;
+  const card = t.closest("section.w");
+  if (card) {
+    const r = rowOf(card.dataset.w), w = REG.get(card.dataset.w) || {};
+    if (r && (t.closest(".whead") || w.head === false)) {
+      SEL = { kind: "tile", id: r.id }; paintSel();
+      $("#status").textContent = `${r.view || w.title || r.id} selected: Delete takes it off the board, Escape lets go`;
+      return true;
+    }
+    if (SEL) { SEL = null; paintSel(); }
+    return false;
+  }
+  const b = MODE === "free" ? bandAt(cellsOf(onRows()), cellAt(e.clientX, e.clientY).y) : null;
+  SEL = b ? Object.assign({ kind: "band" }, b) : null;
+  paintSel();
+  if (b) $("#status").textContent = `${b.h * ROW_UNIT}px of empty space selected: Delete takes it out, Escape lets go`;
+  return true;
+}
+const typing = t => !!(t && ((t.closest && t.closest("input, textarea, select")) || t.isContentEditable));
+document.addEventListener("keydown", e => {
+  if (!EDIT || !SEL || typing(e.target)) return;
+  if (e.key === "Escape") { SEL = null; paintSel(); $("#status").textContent = ""; return; }
+  if (e.key !== "Delete" && e.key !== "Backspace") return;
+  e.preventDefault();
+  const s = SEL; SEL = null;
+  if (s.kind === "band") {
+    const cells = cellsOf(onRows()), b = MODE === "free" && bandAt(cells, s.y);
+    if (!b) { paintSel(); return; }
+    const before = snapshot();
+    writeCells(removeBand(cells, b));
+    UNDO_SAID = "empty space taken out";
+    relayFree(before, `${b.h * ROW_UNIT}px of empty space taken out, everything below it came up`);
+    return;
+  }
+  const r = rowOf(s.id); if (!r || !r.on) { paintSel(); return; }
+  const said = `${r.view || (REG.get(r.id) || {}).title || r.id} is off the board; add it back from the add list`;
+  LAYOUT = turnOff(LAYOUT, r.id);
+  MOUNTED.delete(r.id);
+  render();
+  $("#status").textContent = said;
+  save().then(() => { if ($("#status").textContent === "saved") $("#status").textContent = said; });
+});
+document.addEventListener("pointerup", e => freeUp(e, false));
+document.addEventListener("pointercancel", e => freeUp(e, true));
+
+// ---- the "?" panel ----
+// Every page's "?" shows what that page is, from help.json. This page adds a line per instrument on the board, taken
+// from each widget's own `source`, so the panel answers "what am I looking at" without a word of explanation on the page.
+BV.help.extra = () => ({
+  title: "Instruments on your board",
+  rows: LAYOUT.filter(r => r.on && REG.has(r.id)).map(r => ({ name: REG.get(r.id).title || r.id, line: plain(REG.get(r.id).source) })),
+});
+
+// ---- boot ----
+async function loadWidgetFiles() {
+  let reg;
+  try { reg = await (await fetch("/api/widgets")).json(); }
+  catch (e) { $("#status").textContent = "could not read the widget folder: " + e.message; return; }
+  for (const w of reg.widgets || []) {
+    WROWS.set(w.id, w);
+    if (w.url) BY_URL.set(w.url, w);
+    if ((w.origin || "core") === "core") CORE_IDS.add(w.id);
+    // a row the server would not load (a person's file under a core id) is still a tile, red, saying why
+    if (!w.url && w.conflict) REG.set(w.id, refusedWidget({ id: w.id, title: (w.title || w.id) + " (yours)", size: w.size }, w.conflict));
+  }
+  // core files first, then the person's: a core id is taken before any user file can ask for it
+  const load = rows => Promise.all(rows.map(w => new Promise(res => {
+    const s = document.createElement("script");
+    s.src = w.url; s.onload = res; s.onerror = () => { $("#status").textContent = `the widget file ${w.file} did not load`; res(); };
+    document.head.appendChild(s);
+  })));
+  const rows = (reg.widgets || []).filter(w => w.url);
+  await load(rows.filter(w => (w.origin || "core") === "core"));
+  await load(rows.filter(w => (w.origin || "core") !== "core"));
+}
+async function start() {
+  $("#crumb").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  await loadWidgetFiles();
+  // paint from this browser's copy first so the board is there immediately, then take the file's word for it
+  try { MODE = localStorage.getItem(MODE_CACHE) === "free" ? "free" : "grid"; } catch (e) {}
+  try { const c = JSON.parse(localStorage.getItem(CACHE) || "null"); if (Array.isArray(c) && c.length) { LAYOUT = readHeights(c.filter(r => REG.has(r.id))); render(); } } catch (e) {}
+  await loadLayout();
+  try { localStorage.setItem(MODE_CACHE, MODE); } catch (e) {}
+  render();
+  paintMode();
+  BASE = boardState(); paintUndo();       // the board as loaded is where undo starts
+  wireFreeGrid();
+  wireRail();
+  setInterval(() => { if (!document.hidden) refreshAll(); }, 60000);
+  BV.glossary.mount("home");
+}
+start().catch(e => { $("#grid").innerHTML = `<p class="note">Could not build the board: ${esc(e.message)}</p>`; });
+</script>
+</body>
+</html>

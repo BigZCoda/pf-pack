@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projects</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="stylesheet" href="/static/projects.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* the page fills the window under the bar and scrolls in its main pane, so the read drawer can sit beside it */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Projects</h1>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="projects"></nav>
+</header>
+<div class="pstage">
+  <main id="main"><div class="pwrap">
+    <div class="filters" id="filters"></div>
+    <p class="pstatus" id="status" aria-live="polite"></p>
+    <div id="body"></div>
+  </div></main>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script src="/static/attach.js"></script>
+<script>BVAttach.watch(document.getElementById("main"));   // pictures on questions and answers: thumbnails, attach, paste (T-0219)</script>
+<script>
+// ---- the projects page, round 1a (2026-10-02; direction deliverables/viewer-direction-projects-page-2026-10-02.md) ----
+// The owner, 9/21: this page is where questions get answered and shows why they matter. 9/25: blocked things show
+// first. One list across every ledger, the ledgers a filter above it: Waiting on you
+// (what holds other work, then due today, then past its date), Questions answered with one press, then the rest
+// folded one line each. Milestones stay in the files and are not drawn. Every write goes through PUT /api/tasks
+// (tasks.py behind it), the same route this page always used.
+const { esc, ledgerAct, refreshBadges, showAll, mountShowAll, ledgerText, idTag, personChips, fileLink } = BV;
+const $ = s => document.querySelector(s);
+const ME = BV.owner;
+let DATA = null, FILTER = "all";
+const OPENROWS = new Set();
+
+// a ledger is named for what it is about, never its registry name (direction, label rules). The short names and the
+// order are this brain's own, so they are settings (viewer/settings.json `project_labels` {id: name} and
+// `project_order` [id, ...], read in load()); with none, the registry's name without its bracket, in registry order.
+let SHORT = {}, ORDER = [];
+const short = p => SHORT[p.id] || String(p.name || p.id).replace(/\s*\(.*\)\s*$/, "");
+const FILTER_KEY = "bv.projects.filter";
+const pref = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+const prefSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+
+const md = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || "")); return m ? `${+m[2]}/${+m[3]}` : ""; };
+const back = (iso, n) => { const [y, m, d] = String(iso || "").split("-").map(Number); return y ? new Date(Date.UTC(y, m - 1, d - n)).toISOString().slice(0, 10) : ""; };
+const newest = (a, b) => String(b.created || "").localeCompare(String(a.created || "")) || String(b.id || "").localeCompare(String(a.id || ""));
+const isTest = i => (i.tags || []).some(t => t === "test" || /^test-/.test(t));
+const isCold = i => /cold storage/i.test(String(i.note || ""));
+const forMe = i => i.kind === "task" ? i.owner === ME : (i.to || ME) === ME;
+const REF = /\b[TQ]-\d{4}\b/g;
+const trim = (s, n) => s.length > n ? s.slice(0, n - 2).replace(/\s+\S*$/, "") + "…" : s;
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+// ---- the one model the page draws, from the one read (GET /api/projects) ----
+function model() {
+  const today = DATA.today, week = back(today, 6);
+  const items = [];
+  for (const p of DATA.projects) {
+    if (!p.exists) continue;
+    if (FILTER !== "all" && p.id !== FILTER) continue;
+    for (const g of p.groups || []) for (const i of g.items || [])
+      items.push(Object.assign({}, i, { project: p.id, pname: short(p), ledger: p.path }));
+  }
+  const byKey = new Map(items.map(i => [i.project + "/" + i.id, i]));
+  const isOpen = i => i.kind === "task" ? i.mark !== "x" : i.mark === "?";
+  // what holds other work: an open item that an OPEN task on its own ledger names in `blocked:` (ids run from 0001 on
+  // every file, so only the same ledger is looked at). The relation BV.day.model reads for questions, widened to tasks,
+  // because a task can hold a task (the extended circle holds Claude's build of it). A block whose blocker is already
+  // closed is not drawn: it is cleaned at rounds.
+  const holds = new Map();
+  for (const t of items) {
+    if (t.kind !== "task" || t.mark === "x" || !t.blocked) continue;
+    for (const id of String(t.blocked).match(REF) || []) {
+      const b = byKey.get(t.project + "/" + id); if (!b || !isOpen(b)) continue;
+      const k = b.project + "/" + b.id; if (!holds.has(k)) holds.set(k, []); holds.get(k).push(t);
+    }
+  }
+  const holdsOf = i => holds.get(i.project + "/" + i.id) || [];
+  const liveBlock = t => !!t.blocked && (String(t.blocked).match(REF) || []).some(id => { const b = byKey.get(t.project + "/" + id); return b && isOpen(b); });
+  const held = i => BV.holds.is(i, today);
+  const myOpen = items.filter(i => i.kind === "task" && i.mark !== "x" && i.owner === ME);
+  const work = myOpen.filter(i => !isTest(i) && !held(i));
+  const blocking = work.filter(i => holdsOf(i).length).sort((a, b) => holdsOf(b).length - holdsOf(a).length || newest(a, b));
+  const qOpen = items.filter(i => i.kind === "question" && i.mark === "?" && forMe(i) && !isCold(i));
+  const qBlocking = qOpen.filter(q => holdsOf(q).length).sort((a, b) => holdsOf(b).length - holdsOf(a).length || newest(a, b));
+  const dueToday = work.filter(i => !holdsOf(i).length && (i.due === today || (i.until && i.until <= today && !(i.due && i.due < today)))).sort(newest);
+  const late = work.filter(i => !holdsOf(i).length && i.due && i.due < today)
+    .sort((a, b) => String(b.due).localeCompare(String(a.due)) || newest(a, b));
+  const waitingKeys = new Set([...blocking, ...dueToday, ...late].map(i => i.project + "/" + i.id));
+  const questions = qOpen.filter(q => !holdsOf(q).length).sort((a, b) => {
+    const da = a.due && a.due <= today ? "0" + a.due : "1", db = b.due && b.due <= today ? "0" + b.due : "1";
+    return da.localeCompare(db) || newest(a, b);
+  });
+  const others = myOpen.filter(i => !isTest(i) && !waitingKeys.has(i.project + "/" + i.id))
+    .sort((a, b) => (held(a) - held(b)) || String(a.due || "9999").localeCompare(String(b.due || "9999")) || newest(a, b));
+  const tests = myOpen.filter(isTest).sort(newest);
+  // the questions you asked someone else, still open: drawn in the Questions block under your own, not in the rest
+  const asked = items.filter(i => i.kind === "question" && i.mark === "?" && i.owner === ME && !forMe(i) && !isCold(i)).sort(newest);
+  const theirs = {};
+  for (const i of items) {
+    const open = i.kind === "task" ? i.mark !== "x" && i.owner !== ME : i.mark === "?" && !forMe(i) && i.owner !== ME;
+    if (!open) continue;
+    const o = i.kind === "task" ? i.owner : i.to; (theirs[o] = theirs[o] || []).push(i);
+  }
+  for (const o in theirs) theirs[o].sort(newest);
+  const done = items.filter(i => (i.kind === "task" && i.mark === "x" && i.done && i.done >= week) || (i.kind === "question" && i.mark === "a" && i.answered && i.answered >= week))
+    .sort((a, b) => String(b.done || b.answered).localeCompare(String(a.done || a.answered)) || newest(a, b));
+  return { today, items, holdsOf, liveBlock, blocking, qBlocking, dueToday, late, questions, asked, others, tests, theirs, done, held };
+}
+
+// ---- the filter row: a ledger's open total for you on its chip, the one count that stays ----
+function openForMe(p) {
+  if (!p.exists) return 0;
+  let n = 0;
+  for (const g of p.groups || []) for (const i of g.items || []) {
+    if (i.kind === "task" && i.mark !== "x" && i.owner === ME && !BV.holds.is(i, DATA.today)) n++;
+    else if (i.kind === "question" && i.mark === "?" && forMe(i) && !isCold(i)) n++;
+  }
+  return n;
+}
+function ledgers() {
+  return DATA.projects.slice().sort((a, b) => {
+    const ia = ORDER.indexOf(a.id), ib = ORDER.indexOf(b.id);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+}
+function paintFilters() {
+  $("#filters").innerHTML = `<button type="button" data-f="all" class="${FILTER === "all" ? "on" : ""}">Everything</button>` +
+    ledgers().map(p => `<button type="button" data-f="${esc(p.id)}" class="${FILTER === p.id ? "on" : ""}" title="${esc(p.name)}">${esc(short(p))}${p.exists ? ` <span class="n">${openForMe(p)}</span>` : ""}</button>`).join("");
+}
+
+// what a row holds, named by whose work it is: "Holds Claude's work: Build the extended circle..."
+const whose = o => o === ME ? "your" : o === "@claude" ? "Claude's" : cap(String(o || "").replace(/^@/, "")) + "'s";
+const holdsLine = (hs, p) => hs.length ? `<div class="holds">Holds ${hs.map(t => `${whose(t.owner)} work: ${ledgerText(trim(t.text, 90), p)}`).join("; ")}</div>` : "";
+
+// ---- a row: the box marks it done (or, closed, reopens it); a press on its words opens the note, hold and note box ----
+function rowHTML(i, M, kind) {
+  const p = i.project, done = i.kind === "task" && i.mark === "x";
+  const cls = [kind === "blocking" ? "blocking" : "", kind === "today" ? "today" : "", done ? "done" : "", OPENROWS.has(p + "/" + i.id) ? "open" : ""].filter(Boolean).join(" ");
+  const meta = [];
+  if (FILTER === "all") meta.push(`<span class="lg">${esc(i.pname)}</span>`);
+  meta.push(personChips(i));
+  if (M.held(i)) meta.push(`<span class="badge held">on hold until ${esc(md(i.until))}</span><button type="button" class="btn" data-resume="${esc(i.id)}" data-project="${esc(p)}" title="bring this back now">bring back</button>`);
+  if (!done && M.liveBlock(i)) meta.push(`<span class="badge blocked">waiting on another item</span>`);
+  for (const l of i.links || []) meta.push(fileLink(l));
+  let when = "", wc = "";
+  if (done) when = `done ${md(i.done)}`;
+  else if (kind === "blocking") when = `since ${md(i.created)}`;
+  else if (i.due && i.due === M.today) { when = "today"; wc = "now"; }
+  else if (i.due && i.due < M.today) { when = `due ${md(i.due)}`; wc = "late"; }
+  else if (i.due) when = `due ${md(i.due)}`;
+  else when = md(i.created);
+  return `<li class="${cls}" id="t-${esc(p)}-${esc(i.id)}" data-key="${esc(p + "/" + i.id)}">${idTag(i.id, i.ledger)}<input type="checkbox" ${done ? "checked" : ""} data-id="${esc(i.id)}" data-project="${esc(p)}" title="${done ? "reopen" : "mark done"}"><div><div class="t" title="press to open the note, hold and note box">${ledgerText(i.text, p)}</div>${done ? "" : holdsLine(M.holdsOf(i), p)}<div class="m">${meta.join("")}</div>
+    <div class="more">${i.note ? `<div class="keep"><span class="kicker">note</span> ${ledgerText(i.note, p)}</div>` : ""}${BV.holds.control(i, p, { today: M.today })}${BV.replies.box(i, p)}${BV.provLine(i)}</div></div><span class="when ${wc}">${esc(when)}</span></li>`;
+}
+const rowsHTML = (list, M, kind) => list.length ? `<ul class="rows">${list.map(i => rowHTML(i, M, kind)).join("")}</ul>` : "";
+
+// ---- a question's presses, read off its own words (the mockup's rule) ----
+// The question is the last sentence that ends in "?", read with its brackets set aside. "yes or no" -> Yes / No; named
+// alternatives ("A, B, or C", "light or dark", "X, or Y", or the list after a colon) -> one press each; a plain
+// yes-or-no question -> Yes / No; a wh-question, two questions joined by "and", or a choice longer than a short phrase
+// -> the box. A press answers with the words on the button; every card with presses also has "write an answer".
+// moved to viewer-common.js in 0.58.0 so Today's queue answers with the same presses (BV.choices)
+const choices = BV.choices;
+function qHTML(q, M, kind) {
+  const p = q.project, open = q.mark === "?";
+  const meta = [];
+  if (FILTER === "all") meta.push(`<span class="lg">${esc(q.pname)}</span>`);
+  meta.push(personChips(q));
+  for (const l of q.links || []) meta.push(fileLink(l));
+  if (open && q.due) meta.push(`<span class="${q.due < M.today ? "late" : ""}">due ${esc(md(q.due))}</span>`);
+  if (q.to && q.to !== ME) meta.push(`<span>for ${esc(String(q.to).replace(/^@/, ""))}</span>`);
+  const ch = open ? choices(q.text) : null;
+  const box = `<form class="qbox" data-q="${esc(q.id)}" data-project="${esc(p)}"${ch ? " hidden" : ""}><textarea class="grow" rows="1" placeholder="answer" title="Enter for a new line, Ctrl+Enter sends" required></textarea><button class="btn primary" type="submit">Answer</button></form>`;
+  const acts = !open
+    ? `<div class="ans"><strong>${esc(String(q.to || ME).replace(/^@/, ""))}, ${esc(md(q.answered))}:</strong> ${ledgerText(q.answer || "", p)} <button class="btn" type="button" data-reopen="${esc(q.id)}" data-project="${esc(p)}" style="margin-left:8px">reopen</button></div>
+       <div class="qa"><span class="m">${meta.join("")}</span></div>`
+    : `<div class="qa">${ch ? ch.map(c => `<button type="button" data-choice="${esc(c)}" data-q="${esc(q.id)}" data-project="${esc(p)}">${esc(c)}</button>`).join("") + `<button type="button" class="write" data-write="1" title="answer in your own words">write an answer</button>` : ""}<span class="m">${meta.join("")}</span>${box}</div>`;
+  return `<div class="qc${kind === "blocking" ? " blocking" : ""}${open ? "" : " answered"}" id="q-${esc(p)}-${esc(q.id)}">${idTag(q.id, q.ledger)}
+    <p class="qt">${ledgerText(q.text, p)}</p>${open ? holdsLine(M.holdsOf(q), p) : ""}${acts}${BV.provLine(q)}</div>`;
+}
+
+// ---- the page ----
+const LIMIT = 10, QSHOW = 6;
+// the add box at the bottom files a task for you or a question for Claude, on the ledger chosen above (2026-10-02)
+let ADDMODE = "task";
+const addPlaceholder = p => { const where = FILTER === "all" ? "the ledger you pick here" : short(p || {});
+  return ADDMODE === "ask" ? `ask Claude a question (it goes on ${where})` : `add a task (it goes on ${where})`; };
+const ownerWord = o => o === "@claude" ? "Claude's work" : `${cap(String(o || "").replace(/^@/, ""))}'s work`;
+function paint() {
+  paintFilters();
+  const M = model(), everything = showAll("projects"), body = $("#body");
+  const p = FILTER === "all" ? null : DATA.projects.find(x => x.id === FILTER);
+  const head = [];
+  for (const x of DATA.projects) if (x.exists && x.errors && x.errors.length && (!p || p === x))
+    head.push(`<p class="pnote">${esc(short(x))} has lines that do not parse (fix by hand, then reload): ${x.errors.map(esc).join(" · ")}</p>`);
+  if (p && !p.exists) head.push(`<p class="pnote">The registry names <code>${esc(p.path)}</code> but no such file exists. Create it from the brain root: <code>python skills/brain-tasks/tasks.py init --project ${esc(p.id)} --name "${esc(p.name)}"</code></p>`);
+  // with one ledger chosen, its build-order line (where it has one) sits above the list; with Everything, none shows
+  const hasStages = p && p.exists && (p.groups || []).some(g => g.name.trim().toLowerCase() === "straight-line");
+  if (p && p.exists) head.push(`<div class="ledgerline">${hasStages ? `<div class="stagerow"></div>` : ""}<a class="btn" href="/chat?project=${encodeURIComponent(p.id)}" style="text-decoration:none" title="talk to this ledger's agent">chat</a><div class="propose"></div></div>`);
+  // 1. Waiting on you: what holds other work first, then due today, then past its date; ten, the rest folded
+  const all = [...M.qBlocking.map(q => ({ q, kind: "blocking" })), ...M.blocking.map(i => ({ i, kind: "blocking" })),
+               ...M.dueToday.map(i => ({ i, kind: "today" })), ...M.late.map(i => ({ i, kind: "late" }))];
+  const shown = everything ? all : all.slice(0, LIMIT), folded = everything ? [] : all.slice(LIMIT);
+  const drawSet = set => {
+    const cards = set.filter(x => x.q).map(x => qHTML(x.q, M, "blocking")).join("");
+    const rows = set.filter(x => x.i);
+    return cards + (rows.length ? `<ul class="rows">${rows.map(x => rowHTML(x.i, M, x.kind)).join("")}</ul>` : "");
+  };
+  const waiting = `<section class="blk hero"><h2>Waiting on you</h2>${all.length ? drawSet(shown) : `<p class="none">Nothing holds other work, and nothing is due today or past its date.</p>`}
+    ${folded.length ? `<details class="fold" data-fold="late"><summary>${folded.length} more past their date</summary>${drawSet(folded)}</details>` : ""}</section>`;
+  // 2. Questions: the first six, the rest behind one fold
+  const qs = M.questions;
+  const questions = `<section class="blk"><h2>Questions</h2>${qs.length ? qs.slice(0, everything ? qs.length : QSHOW).map(q => qHTML(q, M)).join("") : `<p class="none">No question is waiting on you.</p>`}
+    ${!everything && qs.length > QSHOW ? `<details class="fold" data-fold="moreq"><summary>${qs.length - QSHOW} more questions</summary>${qs.slice(QSHOW).map(q => qHTML(q, M)).join("")}</details>` : ""}
+    ${M.asked.length ? `<h3 class="asked">You asked</h3>${M.asked.map(q => qHTML(q, M)).join("")}` : ""}</section>`;
+  // 3. The rest, one line each
+  const fold = (key, label, n, inner) => n ? `<details class="fold" data-fold="${esc(key)}"${everything ? " open" : ""}><summary>${esc(label)}<span class="n">${n}</span></summary>${inner}</details>` : "";
+  const mixed = list => list.filter(i => i.kind === "question").map(x => qHTML(x, M)).join("") + rowsHTML(list.filter(i => i.kind === "task"), M, "rest");
+  const owners = Object.keys(M.theirs).sort((a, b) => (a === "@claude" ? -1 : b === "@claude" ? 1 : a.localeCompare(b)));
+  const rest = [
+    fold("others", "Your other tasks", M.others.length, rowsHTML(M.others, M, "rest")),
+    fold("tests", "Things to try in the viewer", M.tests.length, rowsHTML(M.tests, M, "rest")),
+    ...owners.map(o => fold("own:" + o, ownerWord(o), M.theirs[o].length, mixed(M.theirs[o]))),
+    fold("done", "Done this week", M.done.length, mixed(M.done)),
+  ].filter(Boolean).join("");
+  const ledgerPick = FILTER === "all"
+    ? `<select name="project" title="the ledger it goes on">${ledgers().filter(x => x.exists).map(x => `<option value="${esc(x.id)}">${esc(short(x))}</option>`).join("")}</select>` : "";
+  const restBlk = `<section class="blk"><h2>The rest</h2>${rest ? `<div class="rest">${rest}</div>` : `<p class="none">Nothing else is open here.</p>`}
+    <form class="addline" data-form="add" data-mode="${ADDMODE}"><span class="mode" role="group" aria-label="what the box adds"><button type="button" class="btn${ADDMODE === "task" ? " on" : ""}" data-addmode="task">task</button><button type="button" class="btn${ADDMODE === "ask" ? " on" : ""}" data-addmode="ask">question</button></span><input name="text" placeholder="${esc(addPlaceholder(p))}" required>${ledgerPick}<button class="btn primary" type="submit">${ADDMODE === "ask" ? "Ask" : "Add"}</button></form></section>`;
+  const keepOpen = new Set([...body.querySelectorAll("details.fold[open]")].map(d => d.dataset.fold));
+  body.innerHTML = linkedHTML(M) + head.join("") + waiting + questions + restBlk;
+  for (const d of body.querySelectorAll("details.fold")) if (keepOpen.has(d.dataset.fold)) d.open = true;
+  if (p && p.exists) {
+    const sl = body.querySelector(".stagerow"); if (sl) BV.stages.mount(sl, { label: "the build order on this ledger" });
+    const pb = BV.proposeBox(p.path, { label: "propose a change to this ledger" }); if (pb) body.querySelector(".propose").appendChild(pb);
+  }
+}
+
+// ---- a link from elsewhere (a chip's "open in its ledger", an old bookmark) names a row: it is shown and marked ----
+// A row not drawn in any block (closed weeks ago, cold storage, another ledger) is drawn on its own at the top, so no
+// link that reached this page before the rebuild lands on nothing.
+let LINKED = "";
+function linkedHTML(M) {
+  if (!LINKED) return "";
+  const m = /^([tq])-(.+)-([TQ]-\d{4})$/.exec(LINKED); if (!m) return "";
+  const pr = DATA.projects.find(x => x.id === m[2]); if (!pr || !pr.exists) return "";
+  let it = null;
+  for (const g of pr.groups || []) for (const i of g.items || []) if (i.id === m[3]) it = i;
+  if (!it) return "";
+  const k = pr.id + "/" + it.id;
+  const drawn = (FILTER === "all" || FILTER === pr.id) && !(it.kind === "question" && isCold(it)) && (
+    it.kind === "question" ? (it.mark === "?" || (it.answered && it.answered >= back(DATA.today, 6)))
+                           : (it.mark !== "x" || (it.done && it.done >= back(DATA.today, 6))));
+  if (drawn) return "";
+  const i = Object.assign({}, it, { project: pr.id, pname: short(pr), ledger: pr.path });
+  return `<section class="blk" data-linked="${esc(k)}"><h2>The item you followed</h2>${i.kind === "question" ? qHTML(i, M) : rowsHTML([i], M, "rest")}</section>`;
+}
+function jumpTo(frag) {
+  if (!frag) return;
+  if (LINKED !== frag) { LINKED = frag; paint(); }
+  const el = document.getElementById(frag); if (!el) return;
+  for (let d = el.closest("details"); d; d = d.parentElement && d.parentElement.closest("details")) d.open = true;
+  el.scrollIntoView({ block: "center" });
+  el.classList.add("refhit"); setTimeout(() => el.classList.remove("refhit"), 2200);
+}
+
+// ---- writes: the same PUT /api/tasks route (tasks.py) the page always used ----
+const say = m => { $("#status").textContent = m || ""; };
+async function act(project, payload) {
+  const res = await ledgerAct(project, payload);
+  if (!res.ok) { say(res.message); return null; }
+  await load(false); refreshBadges(); paint();
+  return res;
+}
+function setFilter(f, moved) {
+  FILTER = f === "all" || DATA.projects.some(p => p.id === f) ? f : "all";
+  prefSet(FILTER_KEY, FILTER);
+  const u = FILTER === "all" ? "/projects" : `/projects?id=${encodeURIComponent(FILTER)}`;
+  if (moved) { BV.back.push(`Projects · ${FILTER === "all" ? "Everything" : short(DATA.projects.find(p => p.id === FILTER))}`); LINKED = ""; history.replaceState(null, "", u); }
+  else history.replaceState(null, "", u + location.hash);
+  paint();
+}
+
+document.addEventListener("click", async e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  const am = e.target.closest("button[data-addmode]");
+  if (am) {   // task / question: switched in place, so what is typed stays
+    ADDMODE = am.dataset.addmode; const f = am.closest("form.addline"), p = FILTER === "all" ? null : DATA.projects.find(x => x.id === FILTER);
+    f.dataset.mode = ADDMODE; for (const b of f.querySelectorAll("button[data-addmode]")) b.classList.toggle("on", b === am);
+    const inp = f.querySelector("input[name=text]"); inp.placeholder = addPlaceholder(p); inp.focus();
+    f.querySelector("button[type=submit]").textContent = ADDMODE === "ask" ? "Ask" : "Add";
+    return;
+  }
+  const fb = e.target.closest("#filters button[data-f]"); if (fb) { setFilter(fb.dataset.f, true); return; }
+  const cb = e.target.closest("ul.rows input[type=checkbox][data-id]");
+  if (cb) {
+    e.preventDefault();
+    const li = cb.closest("li"), key = li && li.dataset.key, closing = !li.classList.contains("done");
+    // a box ticked with words in its note box carries them along: the note is written first, then the item closes (T-0078)
+    const pend = BV.replies.pending(cb);
+    if (pend && closing) { const r = await BV.replies.act(pend.project, pend.id, pend.text, pend.ledger); if (r.ok) pend.form.querySelector("textarea").value = ""; }
+    // a row that held other work says, as it goes, what it freed
+    const M = model(), it = M.items.find(i => i.project + "/" + i.id === key), freed = it ? M.holdsOf(it) : [];
+    const res = await act(cb.dataset.project, { action: closing ? "done" : "reopen", id: cb.dataset.id });
+    if (res) say(closing ? (freed.length ? `Done. That frees ${freed.map(t => trim(t.text, 70)).join("; ")}.` : "Done, written to the ledger. It sits under Done this week if you want it back.") : "Reopened, written to the ledger.");
+    return;
+  }
+  const ch = e.target.closest("button[data-choice]");
+  if (ch) {
+    ch.disabled = true;
+    const M = model(), it = M.items.find(i => i.project === ch.dataset.project && i.id === ch.dataset.q), freed = it ? M.holdsOf(it) : [];
+    const res = await act(ch.dataset.project, { action: "answer", id: ch.dataset.q, text: ch.dataset.choice, by: ME });
+    if (res) say(`Answered "${ch.dataset.choice}".${freed.length ? ` That frees ${freed.map(t => trim(t.text, 70)).join("; ")}.` : ""}`); else ch.disabled = false;
+    return;
+  }
+  const wr = e.target.closest("button[data-write]");
+  if (wr) { const f = wr.closest(".qa").querySelector("form.qbox"); f.hidden = !f.hidden; if (!f.hidden) f.querySelector("textarea").focus(); return; }
+  const ro = e.target.closest("[data-reopen]"); if (ro) { const r = await act(ro.dataset.project, { action: "reopen", id: ro.dataset.reopen }); if (r) say("Reopened, written to the ledger."); return; }
+  const pc = e.target.closest(".badge.person"); if (pc) { location.href = `/people?open=${encodeURIComponent(pc.dataset.person)}`; return; }
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); const tt = w.dataset.wikilink.split("#")[0].trim(); if (tt.endsWith(".canvas")) location.href = BV.forgeHref(tt); else BV.drawer.open(tt, w.dataset.wikilink.split("#")[1]); return; }
+  // ONLY a real file link opens the drawer (T-0065)
+  const o = e.target.closest(".filelink[data-open]"); if (o) { BV.drawer.open(o.dataset.open, o.dataset.frag); return; }
+  const t = e.target.closest("ul.rows li .t");
+  if (t && !e.target.closest("a, .idref, [data-img]")) {   // a picture path opens the image viewer, not the row (0.56.2)
+    const li = t.closest("li"); li.classList.toggle("open"); if (li.classList.contains("open")) OPENROWS.add(li.dataset.key); else OPENROWS.delete(li.dataset.key); }
+});
+document.addEventListener("submit", async e => {
+  const f = e.target;
+  if (f.dataset.reply) return;                 // the note box is wired once, in viewer-common (BV.replies.wire)
+  e.preventDefault(); const fd = new FormData(f);
+  if (f.dataset.form === "add") {
+    const pid = FILTER === "all" ? fd.get("project") : FILTER;
+    const where = short(DATA.projects.find(p => p.id === pid) || { id: pid });
+    if (f.dataset.mode === "ask") {
+      const r = await act(pid, { action: "ask", text: fd.get("text"), from: ME, to: "@claude", milestone: null, links: [] });
+      if (r) say(`Asked Claude, on ${where}. It sits under You asked, in Questions.`);
+    } else {
+      const r = await act(pid, { action: "add", text: fd.get("text"), owner: ME, due: null, milestone: null, links: [] });
+      if (r) say(`Added to ${where}.`);
+    }
+  } else if (f.dataset.q) {
+    const text = f.querySelector("textarea").value.trim(); if (!text) return;
+    const r = await act(f.dataset.project, { action: "answer", id: f.dataset.q, text, by: ME });
+    if (r) say("Answered, written to the ledger.");
+  }
+});
+document.addEventListener("keydown", e => { if (BV.typing(e)) return; if (e.key === "Escape") $("#drawer").hidden = true; });
+window.addEventListener("hashchange", () => jumpTo(decodeURIComponent(location.hash.replace(/^#/, ""))));
+
+mountShowAll("projects", () => paint());
+BV.replies.wire(document, { status: say, onDone: async () => { await load(false); refreshBadges(); paint(); } });
+BV.holds.wire(document, { status: say, onDone: async () => { await load(false); paint(); } });
+
+async function load(render = true) {
+  const pr = await BV.prefs();
+  SHORT = (pr.project_labels && typeof pr.project_labels === "object") ? pr.project_labels : {};
+  ORDER = Array.isArray(pr.project_order) ? pr.project_order : [];
+  const r = await fetch("/api/projects"); DATA = await r.json();
+  if (DATA.error) throw new Error(DATA.error);
+  BV.ledger.learn(DATA);            // a T-#### / Q-#### in any body reads as the item it names (viewer Q-0028)
+  if (!render) return;
+  // /projects?id=<ledger> is a deep link that selects that filter; without one, the filter left on last time
+  const want = new URLSearchParams(location.search).get("id");
+  setFilter(want || pref(FILTER_KEY, "all"), false);
+  jumpTo(decodeURIComponent(location.hash.replace(/^#/, "")));
+}
+load().catch(e => { $("#body").innerHTML = `<div class="pnote">Could not load the ledgers: ${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

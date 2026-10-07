@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preview</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from the look's tokens */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .layout { flex: 1; display: grid; grid-template-columns: 270px minmax(0, 1fr); min-height: 0; }
+  nav.side { border-right: 1px solid var(--rule); background: var(--surface); overflow: auto; padding: 12px 0 24px; min-height: 0; }
+  form.urlbox { display: flex; gap: 6px; padding: 0 12px 12px; border-bottom: 1px solid var(--rule-soft); margin-bottom: 8px; }
+  form.urlbox input { flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--bg); font-size: 13px; }
+  form.urlbox input:focus { outline: none; border-color: var(--accent); }
+  form.urlbox .btn { font-size: 12.5px; padding: 3px 10px; }
+  .grp { padding: 4px 0 6px; }
+  .grp > .gl { padding: 6px 14px 3px; font-family: var(--font-ui); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); overflow-wrap: anywhere; }
+  .pick { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: baseline; width: 100%; padding: 4px 14px; border: 0; background: none; text-align: left; font: inherit; font-size: 13px; color: var(--ink); cursor: pointer; }
+  .pick:hover { background: var(--hover); }
+  .pick.on { background: var(--selected); box-shadow: inset 3px 0 0 var(--accent); }
+  .pick .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pick .t { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+  .side .none { padding: 8px 14px; color: var(--muted); font-size: 13px; margin: 0; }
+  main.pv { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 16px; border-bottom: 1px solid var(--rule-soft); background: var(--surface); font-size: 13px; }
+  .tools .widths { display: inline-flex; gap: 4px; }
+  .tools .widths button, .tools .btn { font: inherit; font-size: 12.5px; padding: 3px 9px; border-radius: var(--radius); border: 1px solid var(--rule); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .tools .widths button:hover, .tools .btn:hover { background: var(--hover); }
+  .tools .widths button.on { background: var(--selected); box-shadow: inset 0 -2px 0 var(--accent); }
+  .tools .where { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); min-width: 0; overflow-wrap: anywhere; }
+  .tools .links { display: inline-flex; gap: 12px; flex-wrap: wrap; }
+  .tools .said { color: var(--muted); font-size: 12px; }
+  .tools .said:empty { display: none; }
+  .stagebox { flex: 1; min-height: 0; overflow: auto; background: var(--bg); padding: 14px; display: flex; flex-direction: column; align-items: flex-start; }
+  .stagebox iframe { flex: 1; min-height: 420px; width: 100%; max-width: none; margin: 0 auto; border: 1px solid var(--rule); background: var(--surface); display: block; }
+  .stagebox iframe[hidden] { display: none; }
+  .stagebox .empty { color: var(--muted); font-size: 14px; margin: 60px auto; max-width: 52ch; text-align: center; }
+  .blank { margin: 8px auto 0; font-size: 12.5px; color: var(--muted); text-align: center; }
+  .blank[hidden] { display: none; }
+  /* a phone: the page scrolls as one column, the picker a short box above, the frame most of a screen tall */
+  @media (max-width: 760px) {
+    body { height: auto; min-height: 100vh; overflow: auto; }
+    .layout { display: block; }
+    nav.side { border-right: 0; border-bottom: 1px solid var(--rule); max-height: 34vh; }
+    .tools { padding: 8px 12px; }
+    .stagebox { padding: 8px; overflow-x: auto; min-height: 78vh; }
+    .stagebox iframe { min-height: 74vh; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Preview</h1>
+  <span class="sub" id="crumb">a web page, inside the viewer</span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="preview"></nav>
+</header>
+<div class="layout">
+  <nav class="side" aria-label="what to preview">
+    <form class="urlbox" id="urlForm"><input type="url" id="url" placeholder="http://localhost:3000" title="an address: a local dev server or a live site (http or https)" aria-label="an address to preview"><button class="btn" type="submit">open</button></form>
+    <div id="picker"><p class="none">Reading the brain…</p></div>
+  </nav>
+  <main class="pv" id="main">
+    <div class="tools" id="tools" hidden>
+      <span class="widths" role="group" aria-label="the frame's width">
+        <button type="button" data-w="full" title="as wide as this pane">full</button><button type="button" data-w="1280" title="a laptop">1280</button><button type="button" data-w="768" title="a tablet">768</button><button type="button" data-w="375" title="a phone">375</button>
+      </span>
+      <button type="button" class="btn" id="reload" title="load it again now">reload</button>
+      <span class="where" id="where"></span>
+      <span class="links"><a id="srcLink" href="#" hidden>open the source in the Reader</a><a id="tabLink" href="#" target="_blank" rel="noreferrer">open in a new tab</a></span>
+      <span class="said" id="said" aria-live="polite"></span>
+    </div>
+    <div class="stagebox" id="stagebox">
+      <p class="empty" id="empty">Pick a page on the left, or type an address and press open: a page in the brain reloads here when its file changes.</p>
+      <iframe id="frame" title="the page being previewed" hidden></iframe>
+      <p class="blank" id="blank" hidden>If it stays blank, the site does not allow this; <a id="blankTab" href="#" target="_blank" rel="noreferrer">open it in a tab</a>.</p>
+    </div>
+  </main>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// ---- the preview page (0.61.0, 2026-10-05) ----
+// A web page shown inside the viewer so a site mockup, a page design or a dev server can be looked at next to the brain.
+// A brain file goes into the frame through GET /raw/<path> (static files only, so its own stylesheets and pictures load
+// beside it) and is reloaded when its modified time moves (GET /api/mtime every 2 seconds). A brain page runs as it
+// would in its own tab (the browser will not load a sandboxed page's own stylesheets and pictures from this server, so
+// the frame is not sandboxed; the brain's pages are the owner's own). An address is loaded as given; there is no reliable signal when a site refuses to be framed, so the page says so plainly under it.
+// The last pick and width are remembered in this browser, nowhere in the brain.
+const { esc } = BV;
+const $ = s => document.querySelector(s);
+const KEY = "bv.preview";
+const WIDTHS = ["full", "1280", "768", "375"];
+let S = { pick: null, width: "full" };
+try { const v = JSON.parse(localStorage.getItem(KEY) || "null"); if (v && typeof v === "object") S = Object.assign(S, v); } catch (e) {}
+if (!WIDTHS.includes(String(S.width))) S.width = "full";
+const keep = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+let PAGES = null, MTIME = null, POLL = 0, BLANK = 0;
+const rawUrl = p => "/raw/" + String(p).split("/").map(encodeURIComponent).join("/");
+const hhmm = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+const ago = iso => { const t = new Date(iso); if (isNaN(t)) return ""; const m = Math.round((Date.now() - t) / 60000);
+  return m < 60 ? `${Math.max(m, 0)}m` : m < 1440 ? `${Math.round(m / 60)}h` : t.toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
+
+function paintPicker() {
+  const box = $("#picker");
+  if (!PAGES) return;
+  if (PAGES.error) { box.innerHTML = `<p class="none">Could not list the pages: ${esc(PAGES.error)}</p>`; return; }
+  if (!PAGES.count) { box.innerHTML = `<p class="none">No .html file in the brain yet. Type an address above to preview a dev server or a site.</p>`; return; }
+  const on = S.pick && S.pick.kind === "file" ? S.pick.value : "";
+  box.innerHTML = PAGES.groups.map(g => `<div class="grp"><div class="gl">${esc(g.folder || "the brain's root")}</div>${g.files.map(f =>
+    `<button type="button" class="pick${f.path === on ? " on" : ""}" data-path="${esc(f.path)}" title="${esc(f.path)}"><span class="nm">${esc(f.name)}</span><span class="t">${esc(ago(f.at))}</span></button>`).join("")}</div>`).join("");
+}
+
+function paintWidth() {
+  const f = $("#frame");
+  f.style.width = S.width === "full" ? "100%" : S.width + "px";
+  f.style.flex = "1";
+  for (const b of document.querySelectorAll(".widths button")) {
+    const on = b.dataset.w === String(S.width);
+    b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on));
+  }
+}
+
+function say(t) { $("#said").textContent = t || ""; }
+
+function show(pick, opts = {}) {
+  if (!pick || !pick.value) return;
+  S.pick = pick; keep();
+  const f = $("#frame"), isFile = pick.kind === "file";
+  clearTimeout(BLANK); $("#blank").hidden = true;
+  $("#empty").hidden = true; f.hidden = false; $("#tools").hidden = false;
+  const src = isFile ? rawUrl(pick.value) + (opts.bust ? "?t=" + Date.now() : "") : pick.value;
+  f.src = src;
+  $("#where").textContent = pick.value;
+  const tab = isFile ? rawUrl(pick.value) : pick.value;
+  $("#tabLink").href = tab; $("#blankTab").href = tab;
+  const sl = $("#srcLink");
+  sl.hidden = !isFile;
+  if (isFile) sl.href = "/reader?path=" + encodeURIComponent(pick.value);
+  $("#crumb").textContent = isFile ? "a page in the brain" : "an address";
+  if (!isFile) {
+    // no reliable signal for a refused frame: after it loads (or does not), say once what a blank frame means
+    const tell = () => { if (S.pick === pick) $("#blank").hidden = false; };
+    f.onload = () => { clearTimeout(BLANK); BLANK = setTimeout(tell, 1500); };
+    BLANK = setTimeout(tell, 5000);
+  } else {
+    f.onload = null;
+  }
+  paintPicker();
+  startPoll();
+  const u = new URL(location.href);
+  u.searchParams.delete("path"); u.searchParams.delete("url");
+  u.searchParams.set(isFile ? "path" : "url", pick.value);
+  history.replaceState(null, "", u.pathname + u.search);
+}
+
+// the file is asked when it last changed every two seconds; a change reloads the frame and says when
+async function startPoll() {
+  clearInterval(POLL); MTIME = null;
+  if (!S.pick || S.pick.kind !== "file") return;
+  const path = S.pick.value;
+  const ask = async () => {
+    if (document.hidden || !S.pick || S.pick.value !== path) return;
+    try {
+      const r = await fetch("/api/mtime?path=" + encodeURIComponent(path), { cache: "no-store" });
+      if (!r.ok) { say(r.status === 404 ? "the file is gone" : ""); return; }
+      const j = await r.json();
+      if (MTIME !== null && j.mtime !== MTIME) { show(S.pick, { bust: true }); say("reloaded " + hhmm()); MTIME = j.mtime; return; }
+      MTIME = j.mtime;
+    } catch (e) {}
+  };
+  await ask();
+  POLL = setInterval(ask, 2000);
+}
+
+document.addEventListener("click", e => {
+  const p = e.target.closest(".pick[data-path]");
+  if (p) { say(""); show({ kind: "file", value: p.dataset.path }); return; }
+  const w = e.target.closest(".widths button[data-w]");
+  if (w) { S.width = w.dataset.w; keep(); paintWidth(); return; }
+  if (e.target.closest("#reload")) { if (S.pick) { show(S.pick, { bust: true }); say("reloaded " + hhmm()); } return; }
+});
+$("#urlForm").addEventListener("submit", e => {
+  e.preventDefault();
+  let v = $("#url").value.trim();
+  if (!v) return;
+  if (!/^https?:\/\//i.test(v)) v = (/^(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(v) ? "http://" : "https://") + v;
+  try { new URL(v); } catch (err) { say("that is not an address"); return; }
+  say("");
+  show({ kind: "url", value: v });
+});
+
+async function load() {
+  paintWidth();
+  try { const r = await fetch("/api/preview/pages"); PAGES = await r.json(); if (!r.ok && !PAGES.error) PAGES = { error: "the server answered " + r.status }; }
+  catch (e) { PAGES = { error: e.message }; }
+  const q = new URLSearchParams(location.search);
+  const want = q.get("path") ? { kind: "file", value: q.get("path") } : q.get("url") ? { kind: "url", value: q.get("url") } : S.pick;
+  paintPicker();
+  if (want && want.value && /^(file|url)$/.test(want.kind) && (want.kind === "file" || /^https?:\/\//i.test(want.value))) {
+    if (want.kind === "url") $("#url").value = want.value;
+    show(want);
+  }
+}
+load();
+</script>
+</body>
+</html>

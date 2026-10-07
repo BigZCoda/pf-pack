@@ -1,0 +1,9 @@
+{
+  "component": "brain-viewer",
+  "version": "0.68.0",
+  "contract": 1,
+  "releasedAt": "2026-10-07",
+  "installRoot": "skills/brain-viewer",
+  "userLayer": "viewer/",
+  "note": "Written by release.py. The installed version is this file's `version`; skills/update/install-component.py reads it."
+}

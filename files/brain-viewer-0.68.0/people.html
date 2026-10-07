@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>People</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<link rel="stylesheet" href="/static/people.css">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css. The page's own blocks are in people.css (round 1b). */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { flex: 1; position: relative; min-height: 0; overflow: hidden; display: flex; }
+  main { flex: 1; overflow: auto; padding: 26px 34px 80px; }
+  .desc { color: var(--ink-soft); max-width: 84ch; margin: 6px 0 6px; }
+  .filelink { cursor: pointer; color: var(--accent); border-bottom: 1px dotted var(--accent); }
+  .drawer .prepbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 10px; }
+  .drawer .preplist { list-style: none; padding: 0; margin: 0 0 14px; }
+  .drawer .preplist li { padding: 5px 0; border-top: 1px solid var(--rule-soft); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  /* a prep a transcript holds (frontmatter status: held) is past -- dimmed, not hidden. call-prep-format.md */
+  .drawer .preplist li.past { opacity: .58; }
+  /* the live prep, first thing in a drawer (2026-09-21) */
+  .drawer details.liveprep { margin: 0 0 14px; }
+  .drawer details.liveprep > summary { cursor: pointer; font-size: 17px; font-weight: 700; padding: 8px 12px; background: var(--surface); border: 1px solid var(--rule-soft); border-left: 4px solid var(--accent); border-radius: var(--radius); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .drawer details.liveprep > summary .meta { font-weight: 400; }
+  .drawer details.liveprep > summary .preplink { margin-left: auto; font-size: 13px; font-weight: 600; }
+  .drawer details.liveprep > article.md { padding: 8px 0 0; }
+  .drawer .newprep { margin: 0 0 14px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--rule-soft); border-left: 3px solid var(--open); border-radius: var(--radius); }
+  .drawer .newprep summary { cursor: pointer; color: var(--muted); }
+  .drawer .newprep form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .drawer .newprep input { padding: 5px 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); }
+  .drawer .newprep input[name=purpose] { flex: 1; min-width: 200px; }
+  .drawer textarea.edit { width: 100%; min-height: 60vh; padding: 10px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); font-family: var(--font-mono); font-size: 12.5px; resize: vertical; }
+  .secthead { display: flex; align-items: baseline; gap: 12px; margin: 0 0 4px; }
+  .secthead h3 { margin: 0; font-size: 20px; font-family: var(--font-display); }
+  .drawer .members { list-style: none; padding: 0; margin: 0 0 14px; }
+  .drawer .members li { padding: 5px 0; border-top: 1px solid var(--rule-soft); }
+  .drawer .members .n { font-family: var(--font-display); font-size: 14.5px; }
+  .drawer .members .r { color: var(--muted); }
+  /* questions on top (2026-09-09), and everything under them folded */
+  .drawer h2.pname { font-family: var(--font-display); font-size: 22px; margin: 0 0 10px; }
+  .drawer .pthreads { margin: -6px 0 10px; font-size: 12.5px; }   /* 0.62.0: the threads this person is on */
+  .openblock { margin: 0 0 14px; }
+  .openblock .secthead { margin: 0 0 8px; }
+  .openblock .secthead h3 { font-size: 17px; }
+  .openblock ul.items { border-top: 1px solid var(--rule-soft); margin-top: 6px; }
+  details.fold { border-top: 1px solid var(--rule-soft); padding: 6px 0; }
+  details.fold > summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; font-family: var(--font-display); font-size: 15px; padding: 3px 0; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary::before { content: "▸"; color: var(--muted); font-size: 11px; font-family: var(--font-ui); }
+  details.fold[open] > summary::before { content: "▾"; }
+  details.fold > summary:hover { color: var(--accent); }
+  details.fold.sub { margin-left: 10px; border-top: 1px dotted var(--rule-soft); }
+  details.fold.sub > summary { font-size: 14px; }
+  details.fold article.md { padding: 2px 0 8px; }
+  details.askbox { margin: 0 0 14px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--rule-soft); border-left: 3px solid var(--accent); border-radius: var(--radius); }
+  details.askbox summary { cursor: pointer; color: var(--muted); }
+  details.askbox form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  details.askbox input[name=text] { flex: 1; min-width: 220px; }
+  details.askbox input, details.askbox select { padding: 5px 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); }
+  details.askbox input:focus, details.askbox select:focus { outline: none; border-color: var(--accent); }
+  /* a file in the drawer folds by its headings, like the Reader (2026-09-21). On a prep the question and per-person sections are open, the rest closed. */
+  .drawer details.sec { margin: 0 0 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); }
+  .drawer details.sec > summary { cursor: pointer; padding: 8px 12px; font-weight: 600; font-size: 16px; list-style: none; }
+  .drawer details.sec > summary::before { content: "▸ "; color: var(--muted); }
+  .drawer details.sec[open] > summary::before { content: "▾ "; }
+  .drawer details.sec > summary .meta { font-weight: 400; font-size: 12px; margin-left: 6px; }
+  .drawer details.sec > :not(summary) { margin-left: 12px; margin-right: 12px; }
+  .drawer details.sec.l3 { margin: 6px 0 6px 8px; border-color: transparent; background: transparent; }
+  .drawer details.sec.l3 > summary { font-size: 15px; padding: 6px 8px; }
+  .drawer details.sec.l3[open] > summary { border-bottom: 1px solid var(--rule-soft); }
+  /* card format v2: the one dated status line, and the computed facts under it */
+  .drawer .stands { margin: 0 0 12px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--rule-soft); border-left: 3px solid var(--accent); border-radius: var(--radius); }
+  .drawer .stands .sd { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-right: 8px; }
+  .drawer .facts { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; margin: 0 0 14px; }
+  .drawer .facts dt { margin: 0; font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }
+  .drawer .facts dd { margin: 0; color: var(--ink-soft); }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>People</h1>
+  <span class="spacer"></span>
+  <input type="search" id="q" placeholder="find a person ( / )" autocomplete="off">
+  <nav class="panels" data-page="people"></nav>
+</header>
+<div class="stage">
+  <main id="main"><div class="empty"></div></main>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /people -- getting ready for the next conversation, and seeing what the owner owes the people they talk to.
+// Round 1b (2026-10-02, approved on viewer Q-0031). Direction: deliverables/viewer-direction-people-page-2026-10-02.md.
+// The asks behind it: on 9/18 the people talked to weekly were not the ones shown first, and people belonged in blocks
+// with a small card rather than a dropdown list; on 9/24 neither the prep nor a person's name could be pressed to open
+// it; on 9/25 the page was confusing, with too much text scattered around, and detail was allowed but hard to find.
+// So the face is two blocks and nothing above them: THIS WEEK'S CALLS (the two calendar files, each prep with its state in
+// one word) and WHO YOU TALK TO WEEKLY (decided by the page from the last four weeks of calls, never by a hand list).
+// Everyone else is one click down, in folds by relationship, the relationship read off the card's own frontmatter by
+// GET /api/people/week. Every name opens the card, every prep opens in the Reader.
+//
+// The drawer is unchanged in what it holds: open a person and the first thing on screen is the live prep, then every open
+// question and open owner task across the ledgers that concerns them (BV.questionCard / BV.itemRow, writing through
+// tasks.py), then the front of the card (format v2, people/readme.md) with the history behind one fold. It widens (T-0167).
+// In a team copy the whole panel is off: people/ never travels with a copy.
+const { esc, inline, md, mode, itemRow: row, questionCard: qCard, ledgerAct, refreshBadges, showAll, mountShowAll } = BV;
+const $ = s => document.querySelector(s);
+let DATA = null, GROUPS = null, BADGES = null, WEEK = null, WEEKLY = {}, Q = "", OPEN = null, OPENG = null;
+const FOLDS = {};                       // which relationship folds were opened this visit; a re-render keeps them
+
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const link = (path, label) => `<span class="filelink" data-open="${esc(path)}" title="${esc(path)}">${esc(label || path.split("/").pop())}</span>`;
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
+
+// ---- the pieces every block uses ----
+const personBySlug = s => (DATA && DATA.people || []).find(p => p.slug === s);
+const cleanName = n => String(n || "").replace(/\s*\([^)]*\)\s*$/, "");          // "Jane Doe (Jan)" -> "Jane Doe"
+// a name with a card is a link to the card; a name with none says so, plain, never a dead link (9/24, T-0248)
+const nameLink = (slug, name) => slug
+  ? `<a class="n" href="/people?open=${encodeURIComponent(slug)}" data-slug="${esc(slug)}">${esc(cleanName(name || (personBySlug(slug) || {}).name || slug))}</a>`
+  : `<span class="nocard">${esc(name)} <span class="meta">no card</span></span>`;
+const readerHref = path => `/reader?path=${encodeURIComponent(path)}`;
+const PREP_WORD = { ready: ["ok", "ready"], skeleton: ["open", "skeleton"], held: ["held", "held"], missing: ["blocked", "missing"] };
+const prepBadge = st => { const w = PREP_WORD[st] || ["open", st || "?"]; return `<span class="badge ${w[0]}">${esc(w[1])}</span>`; };
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const dayLabel = d => { const x = new Date(String(d).slice(0, 10) + "T12:00:00"); return isNaN(x) ? esc(d) : `${DOW[x.getDay()]} ${x.getMonth() + 1}/${String(x.getDate()).padStart(2, "0")}`; };
+const shortDate = d => d ? `${+String(d).slice(5, 7)}/${String(d).slice(8, 10)}` : "";
+// the clock the event's own dateTime carries, not the browser's zone (9/21: read the offset, not a guess)
+const clock = s => { const m = String(s || "").match(/T(\d{2}):(\d{2})/); if (!m) return ""; const h = +m[1]; return `${h % 12 || 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`; };
+const ts = s => { const t = Date.parse(s); return isNaN(t) ? null : t; };
+
+function matches(p) {
+  if (!Q) return true;
+  const hay = [p.name, p.slug, p.role, (p.stands && p.stands.text) || "", p.status, p.category, p.org, p.placedAt].join(" ").toLowerCase();
+  return Q.toLowerCase().split(/\s+/).filter(Boolean).every(t => hay.includes(t));
+}
+function gmatches(g) {
+  if (!Q) return true;
+  const hay = [g.id, g.name, g.cadence, ...g.members.map(m => m.name + " " + m.slug)].join(" ").toLowerCase();
+  return Q.toLowerCase().split(/\s+/).filter(Boolean).every(t => hay.includes(t));
+}
+
+// ---- 1. this week's calls (T-0202's People part): day and time, the title, every attendee, the prep and its state ----
+function weekBlock() {
+  const evs = (WEEK && WEEK.events) || [];
+  if (!WEEK) return "";
+  const now = Date.now();
+  const nextAt = evs.map(e => ts(e.start)).filter(t => t != null && t > now).sort((a, b) => a - b)[0];
+  const rows = evs.filter(e => !Q || e.people.some(w => w.slug && matches(personBySlug(w.slug) || { name: w.name })) || e.title.toLowerCase().includes(Q.toLowerCase())).map(e => {
+    const st = ts(e.start), en = ts(e.end) || st;
+    const live = st != null && st <= now && now <= en, over = en != null && en < now, next = st != null && st === nextAt;
+    const cls = live ? "live" : over ? "held" : next ? "next" : "";
+    const tag = live ? "now" : over ? "held" : next ? "next" : "";
+    const callHref = `/call?start=${encodeURIComponent(e.start)}&date=${encodeURIComponent(e.date)}`;
+    const preps = e.preps || [];
+    const prep = preps.length
+      ? preps.map((p, i) => `<span class="${i ? "more" : ""}"><a href="${readerHref(p.path)}" title="${esc(p.purpose || p.path)}">the prep${preps.length > 1 ? ` (${esc(shortDate(p.call))})` : ""}</a>${prepBadge(p.state)}</span>`).join("")
+      : `<span class="badge open">no prep yet</span>`;
+    return `<li class="${cls}"><span class="when">${live || next ? `<b>${dayLabel(e.date)}</b>` : dayLabel(e.date)}<small>${clock(e.start)}${tag ? ` &middot; ${tag}` : ""}</small></span>
+      <span><a class="title" href="${callHref}" title="the call screen">${esc(e.title)}</a><span class="who">${e.people.map(w => nameLink(w.slug, w.name)).join("")}</span>${e.join && !over ? `<a class="join" href="${esc(e.join)}" target="_blank" rel="noopener">join</a>` : ""}</span>
+      <span class="prep">${prep}</span></li>`;
+  });
+  return `<section class="blk"><h3 class="blk">This week's calls</h3>
+    ${rows.length ? `<ul class="week">${rows.join("")}</ul>` : `<p class="meta">${Q ? "No call this week has anyone matching that." : "No call with anyone carded is in the calendar files. The session start writes them."}</p>`}</section>`;
+}
+
+// the next call a person is on, from the same calendar files: a link to its prep, or the day and "no prep"
+function nextCall(slug) {
+  const now = Date.now();
+  const e = ((WEEK && WEEK.events) || []).find(x => ts(x.start) > now && x.people.some(w => w.slug === slug));
+  if (!e) return `<span class="meta">none this week</span>`;
+  const p = (e.preps || [])[0];
+  return p ? `<a href="${readerHref(p.path)}" title="the prep, ${esc(p.state)}">${dayLabel(e.date)}</a>`
+           : `<span class="badge open">${dayLabel(e.date)}, no prep</span>`;
+}
+
+// ---- 2. who you talk to weekly (T-0265, T-0053): decided from the last four weeks of calls, one small card each ----
+const dots = h => {
+  const w = (h && h.weeks) || [0, 0, 0, 0], n = w.filter(Boolean).length;
+  return `<span class="dots" title="on a call in ${n} of the last four weeks, oldest week first">${w.map(x => x ? "&#9679;" : "<i>&#9679;</i>").join("")}</span>`;
+};
+const standsOne = p => p && p.stands
+  ? `<span class="stands1" title="${esc(p.stands.text)}"><span class="d">${esc(shortDate(p.stands.date))}</span>${BV.ledgerText(p.stands.text, "", { inline: true })}</span>`
+  : `<span class="stands1 none">no current line on the card</span>`;
+
+function weeklyBlock() {
+  const slugs = ((WEEK && WEEK.weekly) || []).filter(s => personBySlug(s) && matches(personBySlug(s)));
+  if (!slugs.length) return Q ? "" : `<section class="blk"><h3 class="blk">Who you talk to weekly</h3><p class="meta">Nobody was on a call in two of the last four weeks.</p></section>`;
+  const cards = slugs.map(s => {
+    const p = personBySlug(s), it = (WEEKLY[s] || [])[0], more = (p.open || 0) - (it ? 1 : 0);
+    const open = it
+      ? `<span class="open1"><span class="t" title="${esc(it.text)}">${BV.ledgerText(it.text, it.project)}</span>${more > 0 ? `<a class="more" href="/people?open=${encodeURIComponent(s)}" data-slug="${esc(s)}">+${more} more</a>` : ""}</span>`
+      : `<span class="open1 none">nothing open for you</span>`;
+    return `<div class="wk${OPEN === s ? " on" : ""}"><span class="nm">${nameLink(s, p.name)}</span>${dots(WEEK.history[s])}${standsOne(p)}${open}<span class="nx">${nextCall(s)}</span></div>`;
+  });
+  return `<section class="blk"><h3 class="blk">Who you talk to weekly<span class="meta">from the last four weeks of calls</span></h3>${cards.join("")}</section>`;
+}
+
+// ---- 3. everyone else, in folds by relationship; the standing call threads last ----
+function foldRow(p) {
+  const last = (p.contact && p.contact.last) || "";
+  return `<div class="row${OPEN === p.slug ? " on" : ""}">${nameLink(p.slug, p.name)}${standsOne(p)}<span class="last">${esc(shortDate(last))}${p.open ? `<span class="ow" title="open for you">${p.open}</span>` : ""}</span></div>`;
+}
+function relFold(id, name, why, rows) {
+  const wait = rows.reduce((n, p) => n + (p.open || 0), 0);
+  const open = Q || showAll("people") ? true : (id in FOLDS ? FOLDS[id] : id === "mentees");   // the mockup opens the mentees
+  return `<details class="rel" data-fold="${esc(id)}"${open ? " open" : ""}><summary>${esc(name)} <span class="why">${esc(why)}</span>${wait ? `<span class="wait">${wait} waiting on you</span>` : ""}</summary>
+    ${rows.map(foldRow).join("")}</details>`;
+}
+function foldsBlock() {
+  const weekly = new Set((WEEK && WEEK.weekly) || []), rel = (WEEK && WEEK.relation) || {};
+  const rels = (WEEK && WEEK.relations) || [{ id: "else", name: "Everyone else", why: "" }];
+  const by = {};
+  DATA.people.filter(p => !weekly.has(p.slug) && matches(p)).forEach(p => {
+    const k = rels.some(r => r.id === rel[p.slug]) ? rel[p.slug] : "else";
+    (by[k] = by[k] || []).push(p);
+  });
+  // inside a fold: the ones with something open first, then by last contact
+  const order = rows => rows.slice().sort((a, b) => (b.open ? 1 : 0) - (a.open ? 1 : 0)
+    || String((b.contact && b.contact.last) || "").localeCompare(String((a.contact && a.contact.last) || "")) || a.name.localeCompare(b.name));
+  const folds = rels.filter(r => (by[r.id] || []).length).map(r => relFold(r.id, r.name, r.why, order(by[r.id])));
+  const gs = (GROUPS && GROUPS.groups || []).filter(gmatches);
+  if (gs.length) {
+    const open = Q || showAll("people") || FOLDS.threads;
+    folds.push(`<details class="rel" data-fold="threads"${open ? " open" : ""}><summary>Standing call threads <span class="why">their next meetings and preps are in the week above</span></summary>
+      ${gs.map(g => `<div class="row${OPENG === g.id ? " on" : ""}"><a class="n" href="/people?group=${encodeURIComponent(g.id)}" data-group="${esc(g.id)}">${esc(g.name)}</a><span class="mem">${g.members.map(m => nameLink(m.path ? m.slug : null, m.name)).join("")}${g.cadence ? `<span class="meta">${esc(g.cadence)}</span>` : ""}</span><span class="last">${g.lastCall ? esc(shortDate(g.lastCall.date)) : ""}${g.open ? `<span class="ow" title="open for you">${g.open}</span>` : ""}</span></div>`).join("")}</details>`);
+  }
+  if (!folds.length) return Q ? `<p class="meta">Nothing matches “${esc(Q)}”.</p>` : "";
+  return `<section class="blk">${folds.join("")}</section>`;
+}
+
+function render() {
+  const keep = $("#main").scrollTop;
+  $("#main").innerHTML = weekBlock() + weeklyBlock() + foldsBlock();
+  $("#main").scrollTop = keep;
+}
+// a fold opened or closed stays that way through every re-render this visit
+document.addEventListener("toggle", e => { const d = e.target; if (d.matches && d.matches("details.rel[data-fold]")) FOLDS[d.dataset.fold] = d.open; }, true);
+// ---- the drawer: a person (card + preps + New prep), or any file ----
+// "open in Reader" rides in the header of any .md the drawer shows (2026-09-09, T-0046): the same file by its headings,
+// where its list items can be struck and moved. BV.readerLink returns "" for anything that is not a .md.
+// The widen control (T-0167, asked 9/16: the people sidebar should be expandable): one press opens the drawer to
+// most of the page so a card reads without truncation, a second puts it back. Remembered per browser.
+const WIDE_KEY = "bv.people.wide";
+const isWide = () => $("#drawer").classList.contains("wide");
+const widenBtn = () => `<span class="spacer"></span><button class="btn" id="widenDrawer" title="open the drawer to most of the page, or put it back">${isWide() ? "narrow" : "widen"}</button>`;
+const dh = (path, extra = "") => `<div class="dh"><button class="btn" id="closeDrawer">close</button><code>${esc(path)}</code>${BV.readerLink(path)}${extra}${widenBtn()}</div>`;
+
+// One row in a Call preps list. A prep whose frontmatter says `status: held` is PAST -- a transcript holds that call
+// (call-prep-format.md, 2026-09-16) -- so it renders dimmed with a muted badge; `used` is the older spelling of the same
+// state. A person's live prep is the one no transcript holds, and that one stays at full weight.
+const prepHeld = p => p && (p.status === "held" || p.status === "used");
+const prepRow = p => `<li${prepHeld(p) ? ' class="past"' : ""}>${link(p.path, p.call)}<span class="meta">${esc(p.purpose || "no purpose stated")}</span>${p.status ? `<span class="badge ${prepHeld(p) ? "held" : "draft"}">${esc(p.status)}</span>` : ""}</li>`;
+
+// a New prep form, wired to POST /api/prep with whatever keys identify this call (a slug, or a group id)
+function prepForm(body) {
+  return `<details class="newprep" open><summary>New prep from ${body.group ? "this thread" : "this card"}</summary>
+      <form id="newprep"><input type="date" name="call_date" value="${esc(DATA.today)}" required>
+        <input type="text" name="purpose" placeholder="what this call is for (optional)" maxlength="200">
+        <button class="btn primary" type="submit">Write it</button></form>
+      <p class="status-line" id="prepstatus"></p></details>`;
+}
+function wirePrepForm(d, body) {
+  d.querySelector("#newprep").addEventListener("submit", async e => {
+    e.preventDefault();
+    const f = e.target, btn = f.querySelector("button"), out = $("#prepstatus");
+    btn.disabled = true; out.textContent = "writing…";
+    try {
+      const res = await fetch("/api/prep", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.assign({}, body, { call_date: f.call_date.value, purpose: f.purpose.value })) });
+      const jj = await res.json();
+      if (!res.ok) { out.textContent = "refused: " + (jj.error || res.status); }
+      else { out.textContent = jj.note; await load(); openFile(jj.path); }
+    } catch (err) { out.textContent = "could not write: " + err.message; }
+    btn.disabled = false;
+  });
+}
+
+// The live prep FIRST in a drawer (2026-09-21: the call prep sat at the bottom of the group meeting file in the side
+// viewer). The live prep is the newest one no transcript holds; it renders inline, folded by the prep rule, the Reader a click away.
+async function livePrepBlock(preps) {
+  const live = (preps || []).filter(p => !prepHeld(p)).sort((a, b) => String(b.call || "").localeCompare(String(a.call || "")))[0];
+  if (!live) return "";
+  try {
+    const r = await fetch(`/api/file?path=${encodeURIComponent(live.path)}`); const j = await r.json();
+    if (j.error) return `<div class="note">The prep ${esc(live.path)} would not open: ${esc(j.error)}</div>`;
+    return `<details class="fold liveprep" open><summary>Call prep · ${esc(live.call)} <span class="meta">${esc(live.purpose || "")}</span> <a class="preplink" href="/reader?path=${encodeURIComponent(live.path)}">open in Reader</a></summary>
+      <article class="md">${sectionize(md(j.text, { base: live.path.split("/").slice(0, -1).join("/") }), live.path)}</article></details>`;
+  } catch (e) { return `<div class="note">The prep ${esc(live.path)} would not open: ${esc(e.message)}</div>`; }
+}
+
+async function openGroup(id) {
+  const d = $("#drawer"); d.hidden = false; OPENG = id; OPEN = null; render();
+  const g = (GROUPS && GROUPS.groups || []).find(x => x.id === id);
+  if (!g) { d.innerHTML = dh(id) + `<div class="empty">No group “${esc(id)}” in ${esc(GROUPS ? GROUPS.file : "the groups file")}.</div>`; return; }
+  const ps = g.prepList || [];
+  const lp = await livePrepBlock(ps);                                          // the live prep FIRST (2026-09-21)
+  d.innerHTML = dh(GROUPS.file, `<span class="meta">${esc(g.id)}</span>`) + `
+    <article class="md"><h2>${esc(g.name)}</h2></article>
+    ${lp}
+    <details class="fold"><summary>Call preps <span class="meta">${ps.length ? plural(ps.length, "on file") : "none yet"}</span></summary>
+      <ul class="preplist">${ps.map(prepRow).join("") || `<li class="meta">no prep for this thread yet</li>`}</ul>
+      ${prepForm({ group: g.id })}</details>
+    ${g.confirmed ? "" : `<div class="note">Seeded from the transcripts, not confirmed by the owner yet — check the membership before trusting the set. Edit ${link(GROUPS.file, "call-prep-groups.json")}${g.evidence && g.evidence.calls != null ? ` · evidence: ${plural(g.evidence.calls, "call")} in the window${g.evidence.window ? ` ${esc(g.evidence.window)}` : ""}` : ""}.</div>`}
+    ${openBlock(g.name, g.openItems || [])}
+    <div class="prepbar"><span class="kicker">who</span><span class="meta">${esc(g.cadence || "no cadence on record")}</span></div>
+    <ul class="members">${g.members.map(m => `<li><div class="n">${m.path ? `<span class="filelink" data-slug="${esc(m.slug)}">${esc(m.name)}</span>` : esc(m.name)}</div><div class="r">${m.path ? esc(m.path) : "no card in people/ — the prep will refuse until there is one"}</div></li>`).join("")}</ul>
+    ${g.notes ? `<p class="desc">${inline(g.notes)}</p>` : ""}
+    <div class="prepbar"><span class="kicker">last call with all of them</span><span class="meta">${g.lastCall ? `${esc(g.lastCall.date)} · ${link(g.lastCall.path, g.lastCall.title || g.lastCall.path.split("/").pop())}` : "no transcript in the brain has all of them on it"}</span></div>
+`;
+  d.scrollTop = 0;
+  wirePrepForm(d, { group: g.id });
+}
+
+// ---- one ledger write from this page: the same PUT /api/tasks the Projects panel uses, on whichever ledger the item lives in ----
+async function act(project, payload, statusEl) {
+  const res = await ledgerAct(project, payload);
+  if (statusEl) statusEl.textContent = res.message;
+  if (res.ok) { await load(); refreshBadges(); if (OPEN) await openPerson(OPEN, { keepStatus: res.message }); else if (OPENG) openGroup(OPENG); }
+  return res;
+}
+
+// "Open for you about <name>": every open question and open owner task across the ledgers that concerns this person.
+// The routing is the ledger's people: field; an item that merely names them shows up too, marked, until someone tags it.
+function openBlock(name, items, held = []) {
+  const opts = { showProject: true, today: DATA.today, hidePeople: true };
+  // on hold: open, owed, and not asked for until its day; it sits behind one line (2026-09-10, T-0108)
+  const heldFold = held.length ? `<details class="more"><summary>${plural(held.length, "task")} on hold</summary><ul class="items">${held.map(i => row(i, opts)).join("")}</ul></details>` : "";
+  if (!items.length) return `<div class="note" style="margin:0 0 14px">Nothing is open for you about ${esc(name)} right now.${held.length ? ` ${plural(held.length, "task")} of yours about ${esc(name)} ${held.length === 1 ? "is" : "are"} on hold.` : ""}</div>${heldFold}`;
+  const qs = items.filter(i => i.kind === "question"), ts = items.filter(i => i.kind !== "question");
+  return `<div class="openblock">
+    <div class="secthead"><h3>Open for you about ${esc(name)}</h3><span class="meta">${qs.length ? plural(qs.length, "question") : "no questions"}${ts.length ? ` · ${plural(ts.length, "task")} of yours` : ""}${held.length ? ` · ${held.length} on hold` : ""}</span></div>
+    ${qs.map(q => qCard(q, opts)).join("")}
+    ${ts.length ? `<ul class="items">${ts.map(i => row(i, opts)).join("")}</ul>` : ""}
+    ${heldFold}
+  </div>`;
+}
+
+// The card's one status, first on the front, with the date of the fact it states. A card that has not been moved to format v2
+// says so plainly instead of showing whatever its old Status section stopped on.
+function standsBlock(j) {
+  // a stale line shows its date muted and nothing more (direction 10/02); the stale rule stays in the API and lint L12
+  if (!j.stands) return `<p class="stands meta">No current line on the card.</p>`;
+  return `<p class="stands"><span class="sd">${esc(j.stands.date)}</span>${BV.ledgerText(j.stands.text, "", { inline: true })}</p>`;
+}
+
+// Last contact, call frequency and the next call: computed on every read from the dated folds, the transcripts that name them
+// and the preps on file. None of it is typed on a card (people/readme.md, front items 3 and 5).
+function factsBlock(j) {
+  const c = j.contact || {}, n = j.nextCall;
+  const last = c.last
+    ? `${esc(c.last)}${c.days != null ? ` · ${plural(c.days, "day")} ago` : ""} · ${c.kind === "call" ? "a call on file" : "the newest dated fold on the card"}`
+    : "nothing dated on file";
+  const freq = c.cadenceDays
+    ? `about every ${plural(c.cadenceDays, "day")} · ${plural(c.calls90, "call")} in the last 90 days, ${plural(c.calls365, "call")} in the last year`
+    : `${plural(c.calls365 || 0, "call")} on file in the last year, not enough for a frequency`;
+  const next = n ? `${esc(n.call)} · ${link(n.path, "the prep")}${n.purpose ? ` <span class="meta">${esc(n.purpose)}</span>` : ""}` : "none with a prep on file";
+  return `<dl class="facts">
+    <dt>last contact</dt><dd>${last}</dd>
+    <dt>call frequency</dt><dd>${freq}</dd>
+    <dt>next call</dt><dd>${next}</dd></dl>`;
+}
+
+function askForm(slug, name) {
+  const ps = (BADGES && BADGES.projects) || {};
+  const ids = Object.keys(ps), def = (BADGES && BADGES.defaultProject) || ids[0] || "";
+  if (!ids.length) return "";
+  return `<details class="askbox"><summary>Ask about ${esc(name)}</summary>
+    <form id="askform">
+      <select name="project">${ids.map(id => `<option value="${esc(id)}"${id === def ? " selected" : ""}>${esc(ps[id].name || id)}</option>`).join("")}</select>
+      <select name="from"><option value="${BV.owner}">you ask</option><option value="@claude">Claude asks</option></select>
+      <select name="to"><option value="@claude">Claude</option><option value="${BV.owner}">you</option></select>
+      <input name="text" placeholder="the question, about ${esc(name)}…" required>
+      <button class="btn primary" type="submit">Ask</button></form>
+    <p class="status-line" id="askstatus"></p>
+    <p class="meta" style="margin:4px 0 0">It lands on that project's ledger carrying <code>people:${esc(slug)}</code>, so it comes back here and in the viewer at <code>/projects</code>.</p></details>`;
+}
+
+async function openPerson(slug, opts = {}) {
+  const d = $("#drawer"); d.hidden = false; OPEN = slug; OPENG = null; render();
+  if (!opts.keepStatus) d.innerHTML = `<div class="empty">reading the card…</div>`;
+  const r = await fetch(`/api/person?slug=${encodeURIComponent(slug)}`); const j = await r.json();
+  if (j.error) { d.innerHTML = dh(slug) + `<div class="empty">${esc(j.error)}</div>`; return; }
+  const preps = j.preps || [], items = j.openItems || [], held = j.heldItems || [];
+  const front = j.front || [], back = j.back || [];
+  const lp = await livePrepBlock(preps);                                        // the live prep FIRST (2026-09-21)
+  d.innerHTML = dh(j.path, `<span class="meta">touched ${esc(j.mtime)}</span>`) + `
+    <h2 class="pname">${esc(j.name)}</h2>
+    ${(j.threads || []).length ? `<p class="pthreads meta">threads: ${j.threads.map(t => `<a href="${esc(t.href)}">${esc(t.name)}</a>`).join(" · ")}</p>` : ""}
+    ${lp}
+    <details class="fold"><summary>Call preps <span class="meta">${preps.length ? plural(preps.length, "on file") : "none yet"}</span></summary>
+      <ul class="preplist">${preps.map(prepRow).join("") || `<li class="meta">no prep written for ${esc(j.name)} yet</li>`}</ul>
+      ${prepForm({ slug })}</details>
+    ${standsBlock(j)}
+    ${openBlock(j.name, items, held)}
+    ${factsBlock(j)}
+    ${front.map(sec => `<details class="fold" open><summary>${esc(sec.title)}</summary><article class="md">${md(sec.text)}</article></details>`).join("")}
+    ${askForm(slug, j.name)}
+    <details class="fold"><summary>History <span class="meta">${plural(back.length, "section")} · everything the front was written from · ${esc(j.path)}</span></summary>
+      ${back.map(sec => sec.title
+        ? `<details class="fold sub"><summary>${esc(sec.title)} <span class="meta">${sec.chars > 900 ? "long" : ""}</span></summary><article class="md">${md(sec.text)}</article></details>`
+        : `<article class="md">${md(sec.text)}</article>`).join("")}</details>`;
+  d.scrollTop = 0;
+  wirePrepForm(d, { slug });
+  const af = d.querySelector("#askform");
+  if (af) af.addEventListener("submit", async e => {
+    e.preventDefault();
+    const f = e.target, out = $("#askstatus"), btn = f.querySelector("button");
+    btn.disabled = true; out.textContent = "asking…";
+    await act(f.project.value, { action: "ask", text: f.text.value, from: f.from.value, to: f.to.value, people: [slug] }, out);
+    btn.disabled = false;
+  });
+  if (opts.keepStatus) { const el = document.createElement("p"); el.className = "status-line"; el.textContent = opts.keepStatus; d.querySelector(".dh").after(el); }
+}
+
+// Fold a rendered .md into sections by heading, the way the Reader does (2026-09-21: sections in the side viewer should
+// close the way they do in the Reader). A call prep opens on what is used DURING the call:
+// the question groups and the per-person points (section 4's h3 groups, 5 Watch for, 7 Your notes); the who, the why and
+// the facts stay in the file, closed. Any other .md folds with everything open.
+// 2026-09-21, T-0203: the words of BOTH shapes, because the skeleton writes v3 from today while the v2 preps on disk stay
+// valid as held records. v3 (format sections 1 to 4): Questions, Points per person, Decide before, Your notes.
+const PREP_OPEN_H2 = /\b(questions|points per person|decide before|bring|watch for|your notes|carried)\b/i;
+const PREP_CLOSED_H3 = /facts and documents/i;
+function sectionize(html, path) {
+  const t = document.createElement("template"); t.innerHTML = html;
+  const kids = [...t.content.childNodes].filter(n => n.nodeType === 1 || (n.nodeType === 3 && n.textContent.trim()));
+  if (!kids.some(n => n.nodeType === 1 && /^H[23]$/.test(n.tagName))) return html;
+  const isPrep = /call-prep\//.test(path);
+  const count = nodes => { const c = nodes.reduce((n, el) => n + (el.nodeType === 1 ? el.querySelectorAll("li").length + (el.tagName === "LI" ? 1 : 0) : 0), 0); return c ? `${c} item${c === 1 ? "" : "s"}` : ""; };
+  const wrap = (label, body, level, open) => {
+    const d = document.createElement("details"); d.className = `sec l${level}`; d.open = open;
+    const s = document.createElement("summary"); s.innerHTML = `${label} <span class="meta">${count(body)}</span>`; d.appendChild(s);
+    body.forEach(n => d.appendChild(n)); return d;
+  };
+  const groups = []; let cur = null;                                         // split at h2
+  kids.forEach(n => {
+    if (n.nodeType === 1 && n.tagName === "H2") { cur = { h: n, body: [] }; groups.push(cur); }
+    else if (cur) cur.body.push(n); else groups.push({ h: null, body: [n] });
+  });
+  const out = document.createDocumentFragment();
+  const head = groups.filter(g => !g.h).flatMap(g => g.body);              // before the first h2: the title stays up
+  head.filter(n => n.nodeType === 1 && n.tagName === "H1").forEach(n => out.appendChild(n));
+  const rest = head.filter(n => !(n.nodeType === 1 && n.tagName === "H1"));
+  if (rest.length) { if (isPrep) out.appendChild(wrap("Header", rest, 2, false)); else rest.forEach(n => out.appendChild(n)); }
+  groups.filter(g => g.h).forEach(g => {
+    const subs = []; let sc = null;                                          // split each h2 body at h3
+    g.body.forEach(n => {
+      if (n.nodeType === 1 && n.tagName === "H3") { sc = { h: n, body: [] }; subs.push(sc); }
+      else if (sc) sc.body.push(n); else subs.push({ h: null, body: [n] });
+    });
+    const body = subs.flatMap(s => s.h ? [wrap(s.h.innerHTML, s.body, 3, !isPrep || !PREP_CLOSED_H3.test(s.h.textContent))] : s.body);
+    out.appendChild(wrap(g.h.innerHTML, body, 2, !isPrep || PREP_OPEN_H2.test(g.h.textContent)));
+  });
+  const box = document.createElement("div"); box.appendChild(out); return box.innerHTML;
+}
+
+async function openFile(path, frag) { return BV.drawer.open(path, frag); }   // the one shared drawer, viewer-common.js (0.54.1, T-0152)
+
+document.addEventListener("click", async e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; OPEN = OPENG = null; history.replaceState(null, "", "/people"); render(); return; }
+  if (e.target.closest("#widenDrawer")) {
+    const d = $("#drawer"); d.classList.toggle("wide"); lsSet(WIDE_KEY, isWide() ? "1" : null);
+    e.target.closest("#widenDrawer").textContent = isWide() ? "narrow" : "widen"; return;
+  }
+  const nl = e.target.closest("a[data-slug], a[data-group]");
+  if (nl && !(e.ctrlKey || e.metaKey || e.shiftKey || e.button)) {
+    e.preventDefault();
+    history.replaceState(null, "", nl.getAttribute("href"));
+    if (nl.dataset.group) openGroup(nl.dataset.group); else openPerson(nl.dataset.slug);
+    return;
+  }
+  // a ledger item, answered or checked where it is shown -- the write goes to the ledger the item names
+  const cb = e.target.closest("input[type=checkbox][data-id]");
+  if (cb) {
+    e.preventDefault();
+    // a box ticked with words in its reply box carries them along: the reply is written first, then the item closes (T-0078)
+    const pend = BV.replies.pending(cb);
+    if (pend && cb.checked) { const r = await BV.replies.act(pend.project, pend.id, pend.text, pend.ledger); if (r.ok) pend.form.querySelector("textarea").value = ""; }
+    await act(cb.dataset.project, { action: cb.checked ? "done" : "reopen", id: cb.dataset.id }); return;
+  }
+  const ro = e.target.closest("[data-reopen]"); if (ro) { await act(ro.dataset.project, { action: "reopen", id: ro.dataset.reopen }); return; }
+  const pc = e.target.closest(".badge.person"); if (pc) { openPerson(pc.dataset.person); return; }
+  if (e.target.closest("form")) return;          // a click inside a form belongs to that form; re-rendering here would kill its submit
+  const s = e.target.closest("[data-slug]:not(tr)"); if (s) { openPerson(s.dataset.slug); return; }
+  const o = e.target.closest(".filelink[data-open]"); if (o) { openFile(o.dataset.open, o.dataset.frag); return; }   // a real file link only (T-0065)
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); openFile(w.dataset.wikilink.split("#")[0].trim(), w.dataset.wikilink.split("#")[1]); return; }
+});
+document.addEventListener("submit", async e => {
+  const f = e.target;
+  if (!f.dataset.q) return;                       // the prep and ask forms wire themselves
+  e.preventDefault();
+  await act(f.dataset.project, { action: "answer", id: f.dataset.q, text: f.querySelector("textarea").value, by: BV.owner });
+});
+document.addEventListener("keydown", e => {
+  if (BV.typing(e)) return;                                  // no hotkey while typing (T-0112)
+  if (e.key === "Escape") { $("#drawer").hidden = true; OPEN = OPENG = null; history.replaceState(null, "", "/people"); render(); }
+  if (e.key === "/") { e.preventDefault(); $("#q").focus(); }
+});
+$("#q").addEventListener("input", e => { Q = e.target.value.trim(); render(); });
+mountShowAll("people", () => render());
+// the reply boxes on every task of the owner's about a person: one wiring for the page (T-0078)
+BV.replies.wire(document, { status: m => { const st = $("#status") || $("#prepstatus"); if (st) st.textContent = m; },
+                            onDone: async () => { await load(); refreshBadges(); if (OPEN) await openPerson(OPEN); } });
+// hold / bring back on a task of the owner's about this person (T-0108)
+BV.holds.wire(document, { status: m => { const st = $("#status") || $("#prepstatus"); if (st) st.textContent = m; },
+                          onDone: async () => { await load(); if (OPEN) await openPerson(OPEN, { keepStatus: true }); } });
+
+async function load() {
+  const [r, rg, rb, rw] = await Promise.all([fetch("/api/people"), fetch("/api/groups"), fetch("/api/badges"), fetch("/api/people/week").catch(() => null)]);
+  try { WEEK = rw && rw.ok ? await rw.json() : null; } catch (e) { WEEK = null; }
+  // the first thing open for the owner about each weekly person: their card's own open list, read once per load (a handful)
+  const wk = (WEEK && WEEK.weekly) || [];
+  const reads = await Promise.all(wk.map(s => fetch(`/api/person?slug=${encodeURIComponent(s)}`).then(x => x.ok ? x.json() : null).catch(() => null)));
+  WEEKLY = {}; wk.forEach((s, i) => { WEEKLY[s] = (reads[i] && reads[i].openItems) || []; });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || `/api/people returned ${r.status}`);
+  DATA = j;
+  GROUPS = rg.ok ? await rg.json() : { groups: [], count: 0, error: `/api/groups returned ${rg.status}` };
+  BADGES = rb.ok ? await rb.json() : null;      // the project list the Ask form offers, and the counts on the rows
+  render();
+}
+
+// /people?open=<slug> deep-links a card open, ?group=<id> a thread, ?file=<path> a prep, the way /holons?id= and /agents?open= do
+const params = new URLSearchParams(location.search);
+const deepLink = params.get("open"), deepGroup = params.get("group"), deepFile = params.get("file");
+if (mode().propose) {
+  $("#main").innerHTML = `<div class="hh"><h2>People</h2></div><p class="desc">People cards are not part of a team copy. The cards, and the call preps derived from them, stay on the owner's machine.</p>`;
+} else {
+  BV.ledger.prime();   // a code in a Where it stands line reads as the item it names (T-0284)
+  if (lsGet(WIDE_KEY) === "1") $("#drawer").classList.add("wide");
+  load().then(() => { if (deepFile) openFile(deepFile); else if (deepGroup) openGroup(deepGroup); else if (deepLink) openPerson(deepLink); })
+        .catch(e => { $("#main").innerHTML = `<div class="note">Could not load the people: ${esc(e.message)}</div>`; });
+}
+</script>
+</body>
+</html>

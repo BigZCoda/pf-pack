@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Today</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { flex: 1; position: relative; min-height: 0; overflow: hidden; display: flex; }
+  main { flex: 1; overflow: auto; padding: 26px 34px 90px; }
+  .sheet { max-width: 1020px; margin: 0 auto; }
+  section.card, details.card { padding: 14px 18px 16px; margin: 0 0 18px; }
+  section.card > h2, details.card > summary { margin: 0 0 10px; font-family: var(--font-display); font-size: 21px; font-weight: 400; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  section.card > h2 .meta, details.card > summary .meta { font-family: var(--font-ui); font-size: 12.5px; }
+  details.card > summary { cursor: pointer; list-style: none; margin-bottom: 0; }
+  details.card[open] > summary { margin-bottom: 10px; }
+  details.card > summary::-webkit-details-marker { display: none; }
+  details.card > summary::before { content: "▸"; font-size: 11px; color: var(--muted); }
+  details.card[open] > summary::before { content: "▾"; }
+  /* the two groups of Waiting on you: Blocking first, then the rest (2026-09-16, T-0163). Layout only; the line down the
+     blocking group's side is the same --blocked the blocks strip uses, so the two read as one thing. */
+  .grp + .grp { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--rule-soft); }
+  .grp > h3 { margin: 0 0 8px; font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 400; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .grp > h3 .meta { letter-spacing: 0; text-transform: none; font-size: 12px; }
+  .grp.blocking { border-left: 2px solid var(--blocked); padding-left: 12px; margin-left: -2px; }
+  .grp.blocking > h3 { color: var(--blocked); }
+  .grp .none { margin: 0; }
+  /* what a question blocks, inside the question's own card, above the answer box */
+  .holdsup { margin: 0 0 8px; padding: 4px 8px; border-left: 2px solid var(--blocked); background: var(--blocked-tint); border-radius: var(--radius); font-size: 12.5px; color: var(--ink-soft); }
+  .holdsup .kicker { margin-right: 6px; font-size: 10px; }
+  /* one entry of Due today or earlier: a task row or a question card, in one order, divided by a line */
+  .dueitem + .dueitem { border-top: 1px solid var(--rule-soft); margin-top: 8px; padding-top: 8px; }
+  .dueitem ul.items { margin: 0; }
+  .btn.nottoday { padding: 1px 8px; font-size: 11px; color: var(--muted); }
+  .btn.nottoday:hover { color: var(--ink); }
+  /* the three sections that are NOT the ledgers (2026-09-16, T-0150 second stretch): what the app holds for review,
+     today's calls, what landed. Layout only; every color comes from viewer-tokens.css. A row here carries no checkbox,
+     so it uses its own grid rather than li.item's, whose first column means "tick me". */
+  .row { display: grid; grid-template-columns: 20px 1fr; gap: 10px; padding: 7px 0; border-top: 1px solid var(--rule-soft); align-items: start; }
+  .row:first-child { border-top: 0; }
+  .row .mark { font-size: 12px; line-height: 1.5; color: var(--muted); text-align: center; }
+  .row .t { font-size: 14.5px; }
+  .row .m { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 2px; }
+  /* Your open tasks (2026-09-18, T-0185, layout A): a row with its two presses in their own column, so the eye runs
+     down one line of buttons rather than hunting for a checkbox. Layout only; every color comes from viewer-tokens.css. */
+  .mine { position: relative; display: grid; grid-template-columns: 108px 1fr; gap: 12px; padding: 8px 26px 8px 0; border-top: 1px solid var(--rule-soft); align-items: start; }
+  .mine:first-child { border-top: 0; }
+  .mine .press { display: flex; gap: 6px; padding-top: 1px; }
+  .mine .press .btn { padding: 2px 9px; font-size: 11.5px; }
+  .mine .press .btn.done:hover { border-color: var(--done); color: var(--done); }
+  .mine .press .btn:not(.done) { color: var(--muted); }
+  .mine .press .btn:not(.done):hover { color: var(--ink); }
+  .mine .t { font-size: 14.5px; }
+  .mine .m { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 3px; }
+  .mine .keep { margin-top: 3px; }
+  .mine.going { opacity: .45; }
+  @media (max-width: 560px) { .mine { grid-template-columns: 1fr; gap: 4px; } .mine .press { order: 2; padding-top: 4px; } }
+  /* Pending in the app, folded per conversation (2026-09-18, T-0017): 504 items over 61 conversations, so the block is
+     one row a conversation and the items live inside it. Layout only; every color comes from viewer-tokens.css. */
+  details.conv { border-top: 1px solid var(--rule-soft); padding: 2px 0; }
+  details.conv:first-child { border-top: 0; }
+  details.conv > summary { cursor: pointer; list-style: none; padding: 8px 0; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 14.5px; }
+  details.conv > summary::-webkit-details-marker { display: none; }
+  details.conv > summary::before { content: "\25B8"; font-size: 11px; color: var(--muted); }
+  details.conv[open] > summary::before { content: "\25BE"; }
+  details.conv > summary .n { font-size: 12px; color: var(--muted); }
+  details.conv .inside { padding: 2px 0 10px 18px; }
+  details.conv .allline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); padding: 0 0 6px; }
+  .pend { display: grid; grid-template-columns: 148px 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--rule-soft); align-items: start; }
+  .pend:first-child { border-top: 0; }
+  .pend .press { display: flex; gap: 6px; padding-top: 1px; }
+  .pend .press .btn { padding: 2px 9px; font-size: 11.5px; color: var(--muted); }
+  .pend .press .btn.yes:hover { border-color: var(--done); color: var(--done); }
+  .pend .press .btn.no:hover { border-color: var(--blocked); color: var(--blocked); }
+  .pend .t { font-size: 14.5px; }
+  .pend .m { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 3px; }
+  .pend.going { opacity: .45; }
+  .btn.armed { border-color: var(--blocked); color: var(--blocked); }
+  /* an approval row in the run-through (0.65.0): one call, its items folded under it */
+  .qrow.appr { border-left-color: var(--accent); }
+  .qrow .apitems { margin-top: 6px; }
+  .qrow .apitems > summary { cursor: pointer; font-size: 12.5px; color: var(--muted); }
+  .qrow .apitems ul { margin: 6px 0 0; padding: 0; list-style: none; }
+  .qrow.focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .call .prepline .skel { color: var(--blocked); }
+  /* the one line the block shows by default (2026-09-18, T-0191): the count, a way into the app, and the press that
+     opens the queue. Layout only; every color comes from viewer-tokens.css. */
+  .appline { margin: 0; font-size: 13.5px; color: var(--ink-soft); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  @media (max-width: 560px) { .pend { grid-template-columns: 1fr; gap: 4px; } .pend .press { order: 2; padding-top: 4px; } details.conv .inside { padding-left: 6px; } }
+  .whereto { margin: 12px 0 0; padding-top: 9px; border-top: 1px solid var(--rule-soft); font-size: 12.5px; color: var(--muted); max-width: 78ch; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  /* a second sentence in the same foot starts on its own line (T-0192's call line under T-0185's app line) */
+  .whereto .brk { flex-basis: 100%; height: 0; }
+  /* a call: the clock in its own column, the prep one press away */
+  .call { display: grid; grid-template-columns: 96px 1fr; gap: 14px; padding: 10px 0; border-top: 1px solid var(--rule-soft); align-items: baseline; }
+  .call:first-child { border-top: 0; }
+  .call .when { font-family: var(--font-display); font-size: 15.5px; white-space: nowrap; }
+  .call .when .to { display: block; font-size: 11.5px; color: var(--muted); }
+  .call .title { font-size: 15.5px; font-family: var(--font-display); }
+  .call .who { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+  .call .prepline { margin-top: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+  .call .ready { color: var(--done); }
+  .call.now .when, .call.next .when { color: var(--accent); }
+  details.older { margin-top: 10px; }
+  details.older > summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  details.older[open] { margin-top: 14px; }
+  .lead { color: var(--ink-soft); margin: 0 0 14px; max-width: 76ch; }
+  /* the queue (0.58.0, T-0286): one numbered list, its presses under its words. Layout only.
+     0.59.2 (2026-10-05): each item is its own card again with a gap between, as the list was before 0.58.0 (the owner:
+     "I liked it when each item was separate on the listing rather than one big block"), and the kind column is wide
+     enough for QUESTION and DECISION on one line (they were breaking mid-word at 58px). */
+  ol.queue { list-style: none; margin: 0; padding: 0; }
+  .qrow { position: relative; display: grid; grid-template-columns: 26px 74px 1fr; gap: 10px; padding: 12px 30px 12px 8px; margin: 0 0 10px; align-items: start;
+          background: var(--surface); border: 1px solid var(--rule-soft); border-left: 3px solid var(--rule); border-radius: var(--radius); }
+  ol.queue > .qrow:last-child { margin-bottom: 0; }
+  .qrow > .n { font-family: var(--font-display); font-size: 15px; color: var(--muted); text-align: right; line-height: 1.45; }
+  .qrow.due { border-left-color: var(--accent); }
+  .qrow.due > .n { color: var(--accent); }
+  .qrow.blocking { border-left-color: var(--blocked); background: var(--blocked-tint); }
+  .qrow .t { font-size: 14.5px; }
+  .qrow .m { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 3px; }
+  /* the kind label at the row's left (0.58.1, T-0296): task, question, decision, muted so the rotation is visible but quiet */
+  .qrow > .qk { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); line-height: 2.1; white-space: nowrap; }
+  .qrow .press { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+  .qrow .press .btn { padding: 2px 10px; font-size: 12px; }
+  .qrow .press .btn.done:hover, .qrow .press .btn.choice:hover { border-color: var(--done); color: var(--done); }
+  .qrow .holdsup { margin: 5px 0 0; }
+  .qrow .keep { margin-top: 4px; }
+  .qrow form.qbox { display: flex; gap: 8px; align-items: flex-start; margin-top: 7px; }
+  .qrow form.qbox textarea { flex: 1; }
+  .qrow .qnote { margin-top: 6px; }
+  .qrow.going { opacity: .45; }
+  #queueMore > summary { margin-top: 6px; }
+  /* the queue's controls (0.60.2): Show, Order, Project, small, in the Projects page's filter-button style; one line at
+     desktop width, wrapping at phone width. Layout only; every color comes from viewer-tokens.css. */
+  .qctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: -2px 0 12px; font-family: var(--font-ui); font-size: 13px; }
+  .qctl .qc-grp { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+  .qctl .qc-lbl { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-right: 3px; }
+  .qctl button, .qctl select { font: inherit; font-size: 13px; line-height: 1.3; color: var(--ink); padding: 3px 9px; border-radius: var(--radius); border: 1px solid var(--rule); background: var(--surface); cursor: pointer; }
+  .qctl button:hover, .qctl select:hover { background: var(--hover); }
+  .qctl button.on { background: var(--selected); box-shadow: inset 0 -2px 0 var(--accent); }
+  .qctl select { padding-right: 6px; max-width: 46vw; }
+  /* at phone width Show wraps onto its own two lines and Order and Project share the third, their words in the boxes' titles */
+  @media (max-width: 560px) { .qctl { gap: 6px 8px; } .qctl .qc-sel { flex: 1 1 0; } .qctl .qc-sel .qc-lbl { display: none; } .qctl .qc-sel select { flex: 1; width: 100%; max-width: none; min-width: 0; } }
+  ol.queue > li.qgroup { list-style: none; margin: 14px 0 6px; font-family: var(--font-ui); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  ol.queue > li.qgroup:first-child { margin-top: 0; }
+  header.bar .status-line { font-size: 12px; color: var(--muted); }
+  @media (max-width: 900px) { main { padding: 18px 16px 80px; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Today</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="today"></nav>
+</header>
+<div class="stage">
+  <main id="main">
+    <div class="sheet">
+      <p class="lead" id="lead">Reading the ledgers…</p>
+      <section class="card" id="waitcard">
+        <h2>Waiting on you <span class="meta" id="waitSum"></span><span id="outbox"></span></h2>
+        <div class="qctl" id="qctl" aria-label="what the queue shows and in what order"></div>
+        <p class="whereto" id="intakeLine" hidden></p>
+        <div id="waitBody"></div>
+        <p class="whereto" id="queueFoot" hidden></p>
+      </section>
+      <section class="card" id="duecard">
+        <h2>Others owe today <span class="meta" id="dueSum"></span></h2>
+        <div id="dueBody"></div>
+      </section>
+      <section class="card" id="callcard">
+        <h2>Today's calls <span class="meta" id="callSum">reading the calendar…</span></h2>
+        <div id="callBody"></div>
+      </section>
+      <section class="card" id="landcard">
+        <h2>Transcripts landed today <span class="meta" id="landSum">looking in the folders…</span></h2>
+        <div id="landBody"></div>
+      </section>
+      <details class="card" id="closedcard">
+        <summary>Closed today <span class="meta" id="closedSum"></span></summary>
+        <div id="closedBody"></div>
+      </details>
+      <p class="status-line meta" id="status"></p>
+    </div>
+  </main>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script src="/static/attach.js"></script>
+<script>BVAttach.watch(document.getElementById("main"));   // pictures on questions and answers: thumbnails, attach, paste (T-0219)</script>
+<script>
+// ---- the Today page (2026-09-15, ledger T-0150, first stretch) ----
+// The owner asked for one place to see the questions that are holding work back. One page composed
+// in the browser from GET /api/projects -- the same read /projects makes -- so there is no second copy of the ledgers
+// anywhere and nothing new on the server (rules 1 and 2). Every control here is the one /projects uses: the question
+// card and its answer box, the task row and its checkbox, the reply box, hold and bring back, all from viewer-common.js
+// writing through PUT /api/tasks -> tasks.py (clock-stamped, logged). "Not today" is the hold verb with tomorrow's date.
+const { esc, md, isImage, lightbox, fileLink: link, itemRow: row, questionCard: qCard, ledgerAct, refreshBadges, showAll, mountShowAll } = BV;
+const $ = s => document.querySelector(s);
+let DATA = null, MODEL = null;
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const key = i => i.project + "/" + i.id;
+
+// ---- painting ----
+function paint() {
+  if (!MODEL) return;
+  const all = showAll("today");
+  const c = MODEL.counts;
+  // the lead is written after the queue is drawn, from the queue itself (below)
+
+  // ---- 1. Waiting on you: one queue of everything open that is yours, questions and tasks alike (0.58.0, T-0286) ----
+  const opts = q => ({ project: q.project, today: MODEL.today, showProject: true });
+  const queue = paintQueue(all);
+  const mineKeys = new Set(queue.map(key));
+
+  // ---- 2. Due today or earlier: any owner, overdue marked plainly, held items whose day has come ----
+  const others = MODEL.due.filter(i => !mineKeys.has(key(i)));
+  const ledgerRows = queue.filter(r => r.kind !== "approve");
+  const nq = ledgerRows.filter(r => r.kind === "question").length, nb = ledgerRows.filter(r => r.tier === 0).length, nd = ledgerRows.filter(r => r.tier === 1).length, na = queue.length - ledgerRows.length;
+  $("#lead").textContent = queue.length
+    ? `${plural(ledgerRows.length, "thing")} waiting on you: ${plural(nq, "question")} and ${plural(ledgerRows.length - nq, "task")}${nb ? `, ${nb} holding up other work at the top` : ""}${nd ? `, ${nb ? "then " : ""}${nd} due today or earlier${nb ? "" : " at the top"}` : ""}${na ? `, then ${plural(na, "call")} with items to approve in the app` : ""}.`
+    : "Nothing is waiting on you or due.";
+  $("#crumb").textContent = `${MODEL.today} · ${ledgerRows.length} for you · ${c.closed} closed`;
+  $("#duecard").hidden = !others.length;
+  $("#dueSum").textContent = others.length ? `${plural(others.length, "item")} on Claude or someone else · oldest first` : "nothing is due";
+  $("#dueBody").innerHTML = others.length
+    ? others.map(i => `<div class="dueitem" data-key="${esc(key(i))}">${i.kind === "question"
+        ? qCard(i, opts(i))
+        : `<ul class="items">${row(i, { project: i.project, today: MODEL.today, showProject: true })}</ul>`}</div>`).join("")
+    : `<p class="meta" style="margin:0">Nothing is due today or was due earlier, and nothing comes back today.</p>`;
+  // a question addressed to the owner that also carries a due date is in both sections, and the shared card names itself
+  // `q-<project>-<id>`: the copy down here is renamed so two elements never answer to one id (the answer box, the
+  // reopen button and the ledger it writes to are all carried on the form's own data attributes, not on the id)
+  for (const el of $("#dueBody").querySelectorAll(".q[id]")) el.id = "due-" + el.id;
+  paintDueControls();
+
+  // ---- 3. Closed today, folded at the bottom ----
+  const done = MODEL.closed.filter(i => i.kind === "task"), answered = MODEL.closed.filter(i => i.kind === "question");
+  $("#closedSum").textContent = c.closed
+    ? `${plural(done.length, "task")} done · ${plural(answered.length, "question")} answered`
+    : "nothing closed yet today";
+  $("#closedBody").innerHTML = c.closed
+    ? (done.length ? `<ul class="items">${done.map(i => row(i, { project: i.project, today: MODEL.today, showProject: true })).join("")}</ul>` : "")
+      + answered.map(q => qCard(q, opts(q))).join("")
+    : `<p class="meta" style="margin:0">Nothing has been closed today.</p>`;
+  if (all) $("#closedcard").open = true;
+  BV.glossary.scan($("#main"));
+}
+
+// ---- 1. Waiting on you: ONE queue, top to bottom (0.58.0, T-0286) ----
+// 2026-10-02 18:01: what waits on the owner is not only questions but tasks and everything else on the projects page,
+// and the owner works on what is right in front of them. With only questions shown in order here, the other items
+// never got reached because of the layout. So this block is every open item that is the owner's on every
+// ledger, questions and tasks in ONE order, each with its own presses: a question's named choices (or the box), a
+// task's done / hold / note. The order (blocking first since 0.65.1): what holds other work first, most held up first;
+// then what is due today or earlier (or back from a hold today), by its date; then everything else oldest first (its due date where it has one, else the day it was
+// written); the things to try in the viewer last. A held item, a blocked task and a call's own items are not here: they
+// are not the owner's to do today (a call's items live in its prep, T-0192).
+const QLIMIT = 15;
+const REFS = /\b[TQ]-\d{4}\b/g;
+const isTestItem = i => (i.tags || []).some(t => t === "test" || /^test-/.test(t));
+// filed by transcript intake and older than fourteen days: it goes through "Clear what's settled" before the queue shows
+// it again (0.65.0, Round 1 of the viewer review). SEEN is the sweep's record of what it has read (GET /api/sweep/status).
+const INTAKE_DAYS = 14;
+let SEEN = {};
+const sourceOf = i => (i && i.source) || ((i && i.tags) || []).map(String).filter(t => t.startsWith("source:")).map(t => t.slice(7))[0] || "";
+const dayMinus = (iso, n) => { const p = String(iso || "").split("-").map(Number); if (!p[0]) return ""; const d = new Date(p[0], p[1] - 1, p[2] - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const isOldIntake = (i, today) => sourceOf(i) === "import-checkup" && String(i.created || "") < dayMinus(today, INTAKE_DAYS)
+  && !SEEN[i.project + "/" + i.id] && !(i.due && i.due <= today);
+// the item another page linked here (`/?item=<ledger>/<id>`): opened at the top of the queue with its presses
+let FOCUS = (() => { try { return new URLSearchParams(location.search).get("item") || ""; } catch (e) { return ""; } })();
+// the app's calls skipped today, in this browser (a view choice: they are back tomorrow, nothing is written)
+const SKIP_KEY = "bv.today.appskip";
+const skipRead = () => { try { const v = JSON.parse(localStorage.getItem(SKIP_KEY) || "{}"); return v && v.day === (MODEL && MODEL.today) ? v : { day: MODEL && MODEL.today, ids: [] }; } catch (e) { return { day: MODEL && MODEL.today, ids: [] }; } };
+const skipAdd = id => { const v = skipRead(); if (!v.ids.includes(id)) v.ids.push(id); try { localStorage.setItem(SKIP_KEY, JSON.stringify(v)); } catch (e) {} };
+const isColdItem = i => /cold storage/i.test(String(i.note || ""));
+const notedOn = (i, day) => !!day && (String(i.note || "").includes("note " + day + ":") || String(i.note || "").includes("note (viewer, " + day + "):"));
+const mdd = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || "")); return m ? `${+m[2]}/${+m[3]}` : ""; };
+function queueModel() {
+  const t = MODEL.today, ME = BV.owner, items = MODEL.items;
+  const byKey = new Map(items.map(i => [key(i), i]));
+  const open = i => i.kind === "task" ? i.mark !== "x" : i.mark === "?";
+  const holds = new Map();      // what an open item holds up: open tasks on its own ledger that name it in blocked:
+  for (const x of items) {
+    if (x.kind !== "task" || x.mark === "x" || !x.blocked) continue;
+    for (const id of String(x.blocked).match(REFS) || []) {
+      const b = byKey.get(x.project + "/" + id); if (!b || !open(b)) continue;
+      if (!holds.has(key(b))) holds.set(key(b), []); holds.get(key(b)).push(x);
+    }
+  }
+  // the click-through tests in the owner's name are one batch on the rating page now (0.65.0), never in this queue
+  const mine = items.filter(i => !i.call && !isColdItem(i) && !isTestItem(i) && !isOldIntake(i, t) && (
+    (i.kind === "question" && i.mark === "?" && (i.to || ME) === ME) ||
+    (i.kind === "task" && i.mark === " " && i.owner === ME && !BV.holds.is(i, t))));
+  const rows = mine.map(i => {
+    const hs = holds.get(key(i)) || [];
+    // blocking first, then due (0.65.1, 2026-10-06; the owner 9/16, G13: "the primary ones blocking"): an item that holds
+    // other work leads even when it is also due, and keeps its due mark
+    let tier = 2, date = i.due || i.created || "", why = "";
+    if (i.due && i.due < t) { tier = 1; why = "late"; }
+    else if (i.due === t) { tier = 1; why = "today"; }
+    else if (i.kind === "task" && i.until && i.until <= t) { tier = 1; date = i.until; why = "back today"; }
+    if (hs.length) { tier = 0; date = i.created || ""; }
+    // a task with a note written on it today drops to the very bottom for the rest of the day (0.58.1, T-0297; asked
+    // 10/02 18:41: a task answered on Today with a note instead of a done or hold should move to the bottom of the
+    // page, as the questions do). An answered question leaves the list for the day; a
+    // noted task is still open, so it goes last and is back in its own place on tomorrow's load. The day is read from
+    // the stamp /api/reply writes ("note <day>:") or the note-only press writes ("note (viewer, <day>):").
+    if (i.kind === "task" && notedOn(i, t)) tier = 4;
+    return Object.assign({}, i, { tier, sortDate: date, why, holdsUp: hs });
+  });
+  rows.sort((a, b) => a.tier - b.tier || (a.tier === 0 ? b.holdsUp.length - a.holdsUp.length : 0)
+    || String(a.sortDate).localeCompare(String(b.sortDate)) || String(a.created || "").localeCompare(String(b.created || "")) || String(a.id).localeCompare(String(b.id)));
+  // the app's items waiting for approval, one row a call, after the ledgers' own (0.65.0): newest call first
+  const skipped = new Set(skipRead().ids);
+  const appRows = ((APP && !APP.error && APP.conversations) || []).filter(c => c.count && !skipped.has(c.id))
+    .map(c => ({ kind: "approve", qkind: "approve", tier: 5, id: c.id, project: "app", conv: c, holdsUp: [], created: c.newest }));
+  return interleave(rows).concat(appRows);
+}
+// how many intake items the queue is holding back for the sweep, for the line under the controls
+function intakeHeld() {
+  const t = MODEL.today, ME = BV.owner;
+  return MODEL.items.filter(i => isOldIntake(i, t) && !i.call && (
+    (i.kind === "question" && i.mark === "?" && (i.to || ME) === ME) || (i.kind === "task" && i.mark === " " && i.owner === ME && !BV.holds.is(i, t)))).length;
+}
+// 2026-10-02 18:09: the Today page reads better with the kinds mixed, task, question, then decision. (0.58.1, T-0296)
+// Within each tier the rows rotate task, question, decision,
+// each kind keeping its own order; when a kind runs out the rotation goes on with the kinds left. A decision is a
+// question whose text offers named choices (its row answers with one press); a question without them is a question.
+// The app's pending approvals join the end of the run (0.65.0), one row a call.
+const QKINDS = ["task", "question", "decision"];
+const qkind = i => i.kind === "task" ? "task" : (BV.choices(i) ? "decision" : "question");
+function interleave(rows) {
+  const out = [];
+  for (const tier of [...new Set(rows.map(r => r.tier))]) {
+    const lanes = QKINDS.map(k => rows.filter(r => r.tier === tier && (r.qkind = r.qkind || qkind(r)) === k));
+    for (let n = 0; lanes.some(l => l.length); n++) {
+      const l = lanes[n % 3]; if (l.length) out.push(l.shift());
+    }
+  }
+  return out;
+}
+function queueRow(i, n) {
+  if (i.kind === "approve") return appRow(i.conv, n);
+  const p = i.project, isQ = i.kind === "question";
+  const meta = [`<span class="badge">${esc(qShortId(p) || i.projectName || i.project)}</span>`];
+  if (i.why === "late") meta.push(`<span class="badge overdue">due ${esc(mdd(i.due))}</span>`);
+  else if (i.why === "today") meta.push(`<span class="badge overdue">due today</span>`);
+  else if (i.why === "back today") meta.push(`<span class="badge" title="this was on hold until ${esc(i.until)}; it is back">back today</span>`);
+  else if (i.due) meta.push(`<span class="badge">due ${esc(mdd(i.due))}</span>`);
+  meta.push(`<span title="written ${esc(i.created)}">${esc(mdd(i.created))}</span>`);
+  if (i.tier === 4) meta.push(`<span class="badge" title="you wrote a note on it today; it is back in its place tomorrow">noted today</span>`);
+  meta.push(BV.personChips(i));
+  for (const l of i.links || []) meta.push(link(l));
+  meta.push(BV.workLink(i, p));
+  const holdsLine = i.holdsUp.length ? `<div class="holdsup"><span class="kicker">unblocks:</span>${i.holdsUp.map(x => BV.ledgerText(x.text.length > 110 ? x.text.slice(0, 108).replace(/\s+\S*$/, "") + "…" : x.text, p)).join("; ")}</div>` : "";
+  let press, below = "";
+  if (isQ) {
+    const ch = BV.choices(i);
+    press = ch ? ch.map(c => `<button type="button" class="btn choice" data-qchoice="${esc(c)}" data-q="${esc(i.id)}" data-project="${esc(p)}">${esc(c)}</button>`).join("")
+                 + `<button type="button" class="btn" data-qwrite="1" title="answer in your own words">write</button>`
+               : "";
+    below = `<form class="qbox" data-q="${esc(i.id)}" data-project="${esc(p)}"${ch ? " hidden" : ""}><textarea class="grow" rows="1" placeholder="answer" title="Enter for a new line, Ctrl+Enter sends" required></textarea><button class="btn primary" type="submit">Answer</button></form>`;
+  } else {
+    press = `<button type="button" class="btn done" data-qdone="${esc(i.id)}" data-project="${esc(p)}" title="close it on its own ledger">done</button>`
+          + `<button type="button" class="btn" data-hold="${esc(i.id)}" data-project="${esc(p)}" title="put it down for three days; it comes back on its own, still open">hold</button>`
+          + `<button type="button" class="btn" data-qnote="1" title="leave a note; the item stays open">note</button>`;
+    below = `<div class="qnote" hidden>${BV.replies.box(i, p)}</div>`;
+  }
+  return `<li class="qrow${isQ ? " is-q" : ""}${i.why === "late" || i.why === "today" ? " due" : ""}${i.holdsUp.length ? " blocking" : ""}${FOCUS === key(i) ? " focus" : ""}" id="${isQ ? "q" : "t"}-${esc(p)}-${esc(i.id)}" data-key="${esc(key(i))}">${BV.idTag(i.id, i.ledger || "")}
+    <span class="n">${n}</span>
+    <span class="qk">${esc(i.qkind || (isQ ? "question" : "task"))}</span>
+    <div class="body">
+      <div class="t">${BV.ledgerText(i.text, p)}</div>
+      ${holdsLine}
+      <div class="m">${meta.join("")}</div>
+      ${i.note ? `<div class="keep"><span class="kicker">note</span> ${BV.ledgerText(i.note, p)}</div>` : ""}
+      ${press ? `<div class="press">${press}</div>` : ""}
+      ${below}
+      ${BV.provLine(i)}
+    </div></li>`;
+}
+// one call's items waiting for approval in the PF App, as one row of the run-through (0.65.0): approve all, skip (back
+// tomorrow), or open the items to approve or reject one at a time
+function appRow(c, n) {
+  return `<li class="qrow appr" data-conv="${esc(c.id)}" data-key="app/${esc(c.id)}">
+    <span class="n">${n}</span>
+    <span class="qk">approve</span>
+    <div class="body">
+      <div class="t">${esc(c.title)}</div>
+      <div class="m"><span class="badge">to approve in the app</span><span>${plural(c.count, "item")}</span>${c.newest ? `<span>${esc(mdd(c.newest))}</span>` : ""}</div>
+      <div class="press"><button type="button" class="btn done" data-all="${esc(c.id)}" title="approve every item from this call in the app">approve all ${c.count}</button><button type="button" class="btn" data-skip="${esc(c.id)}" title="leave it for today; it is back tomorrow">skip</button><span class="allsay meta"></span></div>
+      <details class="apitems"><summary>see the ${plural(c.count, "item")}</summary><ul class="items">${c.items.map(pendRow).join("")}</ul></details>
+    </div></li>`;
+}
+const qShortId = id => { const pr = ((DATA && DATA.projects) || []).find(x => x.id === id); return pr ? qShort(pr) : ""; };
+
+// ---- the queue's controls (0.60.2, 2026-10-05): what is shown, in what order, from which ledger ----
+// The run-through above is one fixed order, and answering questions wanted a way to narrow and re-sort it. So a small
+// row under the header: Show (one press at a time), Order and Project. The choice is a view choice, so it lives in this
+// browser under one `bv.` key and nowhere in the brain (rules 4b); storage off means the defaults. The full queue still
+// feeds the rest of the page (the dedupe of the block below), only what is DRAWN here follows the controls, and the
+// numbers restart at 1 for what is drawn. Nothing about how an item is answered changes.
+const QV_KEY = "bv.today.queueview";
+const QSHOW = [["all", "everything", "every open item that is yours"], ["questions", "questions", "every question waiting on you, decisions included"],
+  ["tasks", "tasks", "your open tasks"], ["decisions", "decisions", "the questions that answer with one of their named presses"],
+  ["blocking", "blocking", "the items that hold other work"], ["due", "due", "due today or earlier"],
+  ["approve", "approvals", "the calls whose items wait for approval in the app"]];
+const QORDER = [["run", "the run-through"], ["blocking", "blocking first"], ["due", "due first"], ["newest", "newest"], ["oldest", "oldest"], ["project", "by project"]];
+let QV = { show: "all", order: "run", project: "all" };
+try { const v = JSON.parse(localStorage.getItem(QV_KEY) || "null"); if (v && typeof v === "object") QV = Object.assign(QV, v); } catch (e) {}
+if (!QSHOW.some(x => x[0] === QV.show)) QV.show = "all";
+if (!QORDER.some(x => x[0] === QV.order)) QV.order = "run";
+const qvSave = () => { try { localStorage.setItem(QV_KEY, JSON.stringify(QV)); } catch (e) {} };
+// a ledger's short name and the order of the ledgers: the same viewer settings the Projects page reads
+let QSHORT = {}, QPORDER = [];
+const qShort = p => QSHORT[p.id] || p.short || String(p.name || p.id).replace(/\s*\(.*\)\s*$/, "");
+function qLedgers() {
+  const ps = ((DATA && DATA.projects) || []).filter(p => p.exists);
+  return ps.slice().sort((a, b) => { const ia = QPORDER.indexOf(a.id), ib = QPORDER.indexOf(b.id); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
+}
+function paintQueueControls() {
+  const box = $("#qctl"); if (!box) return;
+  const leds = qLedgers();
+  if (QV.project !== "all" && !leds.some(p => p.id === QV.project)) QV.project = "all";
+  box.innerHTML = `<span class="qc-grp" role="group" aria-label="show"><span class="qc-lbl">Show</span>${QSHOW.map(([k, w, t]) =>
+      `<button type="button" data-qshow="${k}" class="${QV.show === k ? "on" : ""}" aria-pressed="${QV.show === k}" title="${esc(t)}">${w}</button>`).join("")}</span>
+    <label class="qc-grp qc-sel"><span class="qc-lbl">Order</span><select data-qorder="1" aria-label="order" title="the order the list is drawn in">${QORDER.map(([k, w]) => `<option value="${k}"${QV.order === k ? " selected" : ""}>${w}</option>`).join("")}</select></label>
+    <label class="qc-grp qc-sel"><span class="qc-lbl">Project</span><select data-qproject="1" aria-label="project" title="which project"><option value="all">every project</option>${leds.map(p =>
+      `<option value="${esc(p.id)}"${QV.project === p.id ? " selected" : ""}>${esc(qShort(p))}</option>`).join("")}</select></label>`;
+}
+function queueView(rows) {
+  const t = MODEL.today;
+  let out = rows.filter(r => {
+    if (QV.project !== "all" && r.project !== QV.project) return false;
+    switch (QV.show) {
+      case "approve": return r.kind === "approve";
+      case "questions": return r.kind === "question";
+      case "tasks": return r.kind === "task";
+      case "decisions": return r.kind === "question" && r.qkind === "decision";
+      case "blocking": return r.holdsUp.length > 0;
+      case "due": return !!r.due && r.due <= t;
+      default: return true;
+    }
+  });
+  // the item another page linked here: first, with its presses, whether or not the queue holds it
+  if (FOCUS) {
+    const at = out.findIndex(r => key(r) === FOCUS);
+    if (at > 0) out.unshift(out.splice(at, 1)[0]);
+    else if (at < 0) {
+      const it = MODEL.items.find(x => key(x) === FOCUS);
+      if (it) out.unshift(Object.assign({}, it, { tier: 0, why: it.due && it.due < t ? "late" : it.due === t ? "today" : "", holdsUp: [], qkind: qkind(it) }));
+    }
+  }
+  const run = new Map(rows.map((r, k) => [key(r), k]));          // the run-through position: every other order's tie-break
+  const byRun = (a, b) => run.get(key(a)) - run.get(key(b));
+  const day = r => String(r.created || "");
+  if (QV.order === "blocking") out.sort((a, b) => b.holdsUp.length - a.holdsUp.length || byRun(a, b));
+  else if (QV.order === "due") out.sort((a, b) => (a.due ? 0 : 1) - (b.due ? 0 : 1) || String(a.due || "").localeCompare(String(b.due || "")) || byRun(a, b));
+  else if (QV.order === "newest") out.sort((a, b) => day(b).localeCompare(day(a)) || String(b.id).localeCompare(String(a.id)) || byRun(a, b));
+  else if (QV.order === "oldest") out.sort((a, b) => day(a).localeCompare(day(b)) || String(a.id).localeCompare(String(b.id)) || byRun(a, b));
+  else if (QV.order === "project") {
+    const pos = new Map(qLedgers().map((p, k) => [p.id, k]));
+    out.sort((a, b) => (pos.has(a.project) ? pos.get(a.project) : 99) - (pos.has(b.project) ? pos.get(b.project) : 99) || byRun(a, b));
+  }
+  return out;
+}
+// the rows as list items; under "by project", a small label wherever the ledger changes (again at the top of the fold)
+function queueItems(list, from) {
+  const names = new Map(qLedgers().map(p => [p.id, qShort(p)]));
+  let last = null;
+  return list.map((r, k) => {
+    const head = QV.order === "project" && r.project !== last ? `<li class="qgroup" aria-hidden="true">${esc(names.get(r.project) || r.projectName || r.project)}</li>` : "";
+    last = r.project;
+    return head + queueRow(r, from + k + 1);
+  }).join("");
+}
+function paintQueue(all) {
+  const rows = queueModel();
+  paintQueueControls();
+  const shown = queueView(rows);
+  const nq = shown.filter(r => r.kind === "question").length, na = shown.filter(r => r.kind === "approve").length, nt = shown.length - nq - na, nd = shown.filter(r => !!r.why).length;
+  const narrowed = QV.show !== "all" || QV.project !== "all";
+  $("#waitSum").textContent = shown.length
+    ? `${plural(nq, "question")} · ${plural(nt, "task")}${na ? ` · ${plural(na, "call")} to approve` : ""}${nd ? ` · ${nd} due` : ""}${narrowed ? ` · of ${rows.length}` : ""}${QV.order === "run" ? "" : " · " + QORDER.find(x => x[0] === QV.order)[1]}`
+    : (rows.length ? `nothing shown · of ${rows.length}` : "nothing");
+  const first = all ? shown : shown.slice(0, QLIMIT), more = all ? [] : shown.slice(QLIMIT);
+  const held = intakeHeld();
+  $("#intakeLine").innerHTML = held ? `<span>${plural(held, "older item")} from calls ${held === 1 ? "waits" : "wait"} for Clear what's settled, above: the queue shows ${held === 1 ? "it" : "them"} again once that pass has read ${held === 1 ? "it" : "them"}.</span>` : "";
+  $("#intakeLine").hidden = !held;
+  $("#waitBody").innerHTML = shown.length
+    ? `<ol class="queue">${queueItems(first, 0)}</ol>`
+      + (more.length ? `<details class="older" id="queueMore"><summary>${more.length} more, in the same order</summary><ol class="queue">${queueItems(more, QLIMIT)}</ol></details>` : "")
+    : rows.length ? `<p class="meta none">Nothing waiting on you matches this. <button type="button" class="btn" data-qreset="1">show everything</button></p>`
+      : `<p class="meta none">Nothing is waiting on you.</p>`;
+  // a linked item that sits below the fold is opened and brought into view, once
+  if (FOCUS) {
+    const el = $(`#waitBody li[data-key="${CSS.escape(FOCUS)}"]`);
+    if (el) { const d = el.closest("details"); if (d) d.open = true; setTimeout(() => el.scrollIntoView({ block: "center" }), 30); }
+  }
+  return rows;
+}
+
+// A question that is blocking something says so, inside its own card and above the answer box: the open task carries
+// `blocked:` naming this question, which is exactly what the owner asked to see (the questions that are holding work
+// back). Placed after the card is drawn rather than inside the shared component, so /projects and /people
+// keep the card they have.
+function paintHolds() {
+  const scope = $("#waitBody");
+  for (const q of MODEL.questions) {
+    if (!q.holds || !q.holds.length) continue;
+    const card = scope.querySelector(`.q[id="${CSS.escape(`q-${q.project}-${q.id}`)}"]`); if (!card) continue;
+    const form = card.querySelector("form");
+    for (const t of q.holds) {
+      const d = document.createElement("div");
+      d.className = "holdsup";
+      d.innerHTML = `<span class="kicker">blocks:</span>${esc(t)}`;
+      card.insertBefore(d, form || null);
+    }
+  }
+}
+
+// "Not today" beside the tick: one press writes `until:` tomorrow through the same hold verb the rest of the app uses,
+// so the item leaves today's list and comes back tomorrow, still open and still owed. Only an OPEN TASK can be held --
+// tasks.py refuses a question ("a question is answered, not held") and refuses anything already closed or blocked -- so
+// the button is only put where it will work.
+function paintDueControls() {
+  for (const i of MODEL.due) {
+    if (i.kind !== "task" || i.mark !== " ") continue;
+    const wrap = $(`#dueBody .dueitem[data-key="${CSS.escape(key(i))}"]`); if (!wrap) continue;
+    const li = wrap.querySelector("li.item"); if (!li) continue;
+    if (i.why === "back today") {
+      const m = li.querySelector(".m");
+      if (m) m.insertAdjacentHTML("afterbegin", `<span class="badge" title="this was on hold until ${esc(i.until)}; it is back">back today</span>`);
+    }
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn nottoday";
+    b.dataset.not = i.id; b.dataset.project = i.project;
+    b.textContent = "not today";
+    b.title = "push this to tomorrow: it leaves today and comes back tomorrow, still open";
+    const holdrow = li.querySelector(".holdrow");
+    if (holdrow) holdrow.insertBefore(b, holdrow.firstChild);
+    else { const s = document.createElement("span"); s.className = "holdrow"; s.appendChild(b); (li.children[1] || li).appendChild(s); }
+  }
+}
+
+// ---- the call items line (2026-09-18, T-0192; under the queue since 0.65.0) ----
+// The "Your tasks by project" fold repeated the queue and is gone (0.65.0, Round 1 of the viewer review). What only it
+// said stays, as one line under the queue: the items that belong to a particular call are not missing, they wait in that
+// call's prep. GET /api/today/tasks counts them.
+let MINE = null;
+function paintQueueFoot() {
+  const foot = $("#queueFoot");
+  const n = MINE && MINE.calls;
+  const who = (MINE && MINE.callPeople || []).map(c => c.slug.replace(/-/g, " ")).slice(0, 3).join(", ");
+  foot.innerHTML = n
+    ? `<span>${n === 1 ? "1 call item is" : n + " call items are"} waiting in their call preps${who ? ` (${esc(who)})` : ""}, not here.</span>
+       <a class="btn" href="/people" style="text-decoration:none">open People</a>`
+    : "";
+  foot.hidden = !n;
+}
+async function mine() {
+  try {
+    const r = await fetch("/api/today/tasks");
+    const j = await r.json();
+    MINE = r.ok && !j.error ? j : null;
+  } catch (e) { MINE = null; }
+  paintQueueFoot();
+}
+
+// ---- the three halves of a day that are not on a ledger (2026-09-16, T-0150 second stretch) ----
+// Each is one read of its own, painted as it answers, so a slow call to the PF App never holds up the ledger sections
+// above. Nothing here is computed in the browser beyond the ordering the server already sent.
+
+// 3. Pending in the app (2026-09-18, ledger T-0017: real presses). The transcript pushes create these ("## Action
+// Items" lines land as approvalStatus `suggested`), and there are 504 of them over 61 conversations -- so this is never
+// a flat list: one row a conversation, opened on a press to its items. Approve and reject write to the app itself
+// through POST /api/pending/action -> POST /api/v1/action-items/:id/status, rehearsed with ?dryRun=1 on the server
+// before anything is written. Approve-all takes two presses and stops at the first refusal, saying how far it got.
+let APP = null;
+
+function pendRow(i) {
+  const meta = [];
+  if (i.owner) meta.push(`<span class="badge">${esc(i.owner)}</span>`);
+  if (i.due) meta.push(`<span class="badge">due ${esc(i.due)}</span>`);
+  if (i.at) meta.push(`<span>${esc(i.at)}</span>`);
+  return `<li class="pend" data-id="${esc(i.id)}">
+    <div class="press">
+      <button type="button" class="btn yes" data-pend="approve" title="approve it in the app; it becomes a real task there">approve</button>
+      <button type="button" class="btn no" data-pend="reject" title="reject it in the app; it leaves the review queue">reject</button>
+    </div>
+    <div>
+      <div class="t">${esc(i.text)}</div>
+      <div class="m">${meta.join("")}</div>
+    </div></li>`;
+}
+
+function appSum() { return ((APP && APP.conversations) || []).filter(c => c.count); }
+
+// ---- the app's items are part of the run-through (0.65.0) ----
+// The separate "Pending in the app" block (one line by default since T-0191) is gone: each call with items waiting for
+// approval is one row at the end of the queue, with approve all, skip and the items folded under it. The read is the same
+// GET /api/pending; when it answers, the queue is drawn again with the rows in it.
+function paintApp(d) {
+  APP = d;
+  if (MODEL) paint();
+}
+
+// one press on one item: the server rehearses it against the app with ?dryRun=1, writes it, logs it, and the row goes.
+// A refusal (already approved, not yours, not visible any more) comes back as a sentence and the row stays where it is.
+async function pendPress(li, action) {
+  const id = String(li.dataset.id || "");
+  li.classList.add("going");
+  let r, j;
+  try {
+    r = await fetch("/api/pending/action", { method: "POST", headers: { "Content-Type": "application/json" },
+                                             body: JSON.stringify({ id, action }) });
+    j = await r.json().catch(() => ({}));
+  } catch (e) { li.classList.remove("going"); return { ok: false, say: e.message }; }
+  li.classList.remove("going");
+  if (!r.ok) return { ok: false, say: j.error || ("the server answered " + r.status) };
+  pendGone(li, id);
+  return { ok: true, say: j.message || (action + "d") };
+}
+
+// the row leaves the list without a reload, its conversation's count moves, and an emptied conversation goes with it
+function pendGone(li, id) {
+  const row = li.closest("li.qrow.appr");
+  li.remove();
+  const c = APP && (APP.conversations || []).find(x => x.id === (row && row.dataset.conv));
+  if (c) { c.items = c.items.filter(x => x.id !== id); c.count = c.items.length; }
+  if (APP) APP.count = Math.max(0, (APP.count || 0) - 1);
+  if (c && row && c.count) {
+    const all = row.querySelector("[data-all]"); if (all && !all.dataset.busy) all.textContent = `approve all ${c.count}`;
+    const s = row.querySelector(".apitems > summary"); if (s) s.textContent = `see the ${plural(c.count, "item")}`;
+  } else if (MODEL) paint();
+}
+
+// approve all, on one call (0.65.0): one press, one call to the server, which approves each item through the same
+// rehearse-then-write route a single press uses and stops at the first refusal, saying how far it got.
+async function pendAll(btn) {
+  const row = btn.closest("li.qrow.appr"), say = row.querySelector(".allsay");
+  const c = APP && (APP.conversations || []).find(x => x.id === row.dataset.conv);
+  if (!c || !c.count) return;
+  btn.disabled = true; btn.dataset.busy = "1"; btn.textContent = `approving ${c.count}…`;
+  let j = {}, ok = false;
+  try {
+    const r = await fetch("/api/pending/approve-all", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation: c.id }) });
+    j = await r.json().catch(() => ({})); ok = r.ok;
+  } catch (e) { j = { error: e.message }; }
+  delete btn.dataset.busy;
+  if (!ok) { btn.disabled = false; btn.textContent = `approve all ${c.count}`; say.textContent = j.error || "the app did not take it"; $("#status").textContent = j.error || ""; return; }
+  $("#status").textContent = `${j.done} of ${j.total} approved in the app and logged`;
+  if (APP) { APP.conversations = APP.conversations.filter(x => x.id !== c.id); APP.count = Math.max(0, (APP.count || 0) - j.done); }
+  paint();
+}
+
+// 4. Today's calls. The calendar is only reachable through the Claude Code MCP tool, so the /start-session recap writes
+// what it already read into context/today-calendar.json and this draws THAT: no file, one plain line, never a guess.
+const hm = t => { const m = /(?:^|T)(\d{1,2}):(\d{2})/.exec(String(t || "")); return m ? (+m[1]) * 60 + (+m[2]) : null; };
+const clock = t => { const m = /(?:^|T)(\d{1,2}):(\d{2})/.exec(String(t || "")); if (!m) return String(t || ""); const h = +m[1];
+  return `${((h % 12) || 12)}:${m[2]}${h < 12 ? "am" : "pm"}`; };
+function paintCalls(d) {
+  const sum = $("#callSum"), body = $("#callBody");
+  if (!d || d.error) {
+    sum.textContent = "not read";
+    body.innerHTML = `<p class="note">Could not read the calendar file: ${esc((d && d.error) || "the server did not answer")}</p>`;
+    return;
+  }
+  if (!d.exists || !d.count) {
+    sum.textContent = d.exists ? "nothing on the calendar" : "no calendar file yet";
+    body.innerHTML = `<p class="meta" style="margin:0">${d.exists
+      ? `Nothing was on the calendar for today when the recap last read it.`
+      : `No calendar yet today. It appears once a session starts.`}</p>`;
+    return;
+  }
+  const now = new Date().getHours() * 60 + new Date().getMinutes();
+  let nextDone = false;
+  // a block (therapy, an event with nobody else on it) is listed with its time and title and nothing about a prep
+  const nCalls = d.calls ?? d.count, nOther = d.count - nCalls;
+  sum.textContent = `${nCalls ? `${plural(nCalls, "call")} · ${d.withPrep} with a prep` : "no calls"}${nOther ? ` · ${plural(nOther, "other event")}` : ""}${d.stale ? " · this is yesterday's calendar" : ""}`;
+  body.innerHTML = d.events.map(e => {
+    const s = hm(e.start), en = hm(e.end);
+    let when = "";
+    if (!d.stale && s !== null && en !== null && now >= s && now <= en) when = "now";
+    else if (!d.stale && s !== null && now < s && !nextDone) { when = "next"; nextDone = true; }
+    const prep = e.preps && e.preps[0];
+    if (e.call === false) return `<div class="call ${when}">
+      <div class="when">${esc(clock(e.start))}${e.end ? `<span class="to">to ${esc(clock(e.end))}</span>` : ""}</div>
+      <div><div class="title">${esc(e.title)}${when ? ` <span class="badge">${when}</span>` : ""}</div></div></div>`;
+    return `<div class="call ${when}">
+      <div class="when">${esc(clock(e.start))}${e.end ? `<span class="to">to ${esc(clock(e.end))}</span>` : ""}</div>
+      <div>
+        <div class="title">${esc(e.title)}${when ? ` <span class="badge">${when}</span>` : ""}</div>
+        <div class="who">${e.people.filter(p => !p.self).map(p => {
+          const org = e.organizer && p.name === e.organizer ? " · organizes" : "";
+          return p.slug
+            ? `<span class="badge person" data-person="${esc(p.slug)}" title="open ${esc(p.name)} on the People page">${esc(p.name)}${org}</span>`
+            : `<span title="nobody in people/ answers to this name — flagged, never created for you">${esc(p.name)}${org} <span class="meta">no card</span></span>`;
+        }).join("") || `<span class="meta">no attendees on the invite</span>`}</div>
+        <div class="prepline">${e.join && !d.stale ? `<a class="btn primary" href="${esc(e.join)}" target="_blank" rel="noopener" style="text-decoration:none">join</a>` : ""}${prep
+          ? `${prep.state === "skeleton" ? `<span class="skel" title="the prep has its people and subjects, and nothing written for this call yet">skeleton, not written yet</span>`
+              : prep.state === "held" ? `<span class="meta">held, the notes are in</span>` : `<span class="ready">prep ready</span>`}<a class="btn" href="/call?prep=${encodeURIComponent(prep.path)}" style="text-decoration:none" title="the call page: the prep as boxes to tick, and the notes box">call page</a><span class="filelink" data-open="${esc(prep.path)}" title="${esc(prep.path)}">read it</span>${prep.purpose ? `<span class="meta">${esc(prep.purpose)}</span>` : ""}`
+          : `<span class="meta">no prep</span><span class="meta">write one on the People page</span>`}</div>
+      </div></div>`;
+  }).join("") + (d.stale
+    ? `<p class="whereto"><span>This is yesterday's calendar: no session has started today, so nothing here is current.</span></p>` : "");
+}
+
+// 5. Transcripts landed today, and whether each has been taken in. "Intaken" means its import-checkup report exists --
+// the runbook's retained artifact -- not that a file merely arrived.
+function paintLanded(d) {
+  const sum = $("#landSum"), body = $("#landBody");
+  if (!d || d.error) {
+    sum.textContent = "not read";
+    body.innerHTML = `<p class="note">Could not read the transcript folders: ${esc((d && d.error) || "the server did not answer")}</p>`;
+    return;
+  }
+  sum.textContent = d.count ? `${plural(d.count, "transcript")} · ${d.intaken} read in` : "nothing landed today";
+  body.innerHTML = d.count
+    ? `<ul class="items">${d.landed.map(r => `<li class="row"><span class="mark" title="${r.report ? "read in" : "not read in yet"}">${r.report ? "✓" : "◇"}</span><div>
+        <div class="t" title="${esc(r.stem)}">${esc(r.title || r.stem)}</div>
+        <div class="m">${r.files.map(f => `<span class="filelink" data-open="${esc(f.path)}" title="${esc(f.path)}">.${esc(f.ext)}</span>`).join("")}<span class="badge">${esc(r.mirror ? "app mirror" : "brain")}</span><span>${esc(r.mtime)}</span>${r.report
+          ? `<span class="badge done">read in</span><span class="filelink" data-open="${esc(r.report)}" title="${esc(r.report)}">the report</span>${BV.readerLink(r.report, "read it")}`
+          : `<span class="badge overdue">not read in yet</span>`}</div>
+      </div></li>`).join("")}</ul>`
+    : `<p class="meta" style="margin:0">Nothing with today's date landed in ${d.folders.map(f => `<code>${esc(f)}</code>`).join(" or ")}.</p>`;
+}
+
+async function outside() {
+  const get = async (u, paint) => {
+    try { const r = await fetch(u); paint(await r.json()); }
+    catch (e) { paint({ error: e.message }); }
+  };
+  await Promise.all([get("/api/pending", paintApp), get("/api/calls", paintCalls), get("/api/landed", paintLanded)]);
+  BV.glossary.scan($("#main"));
+}
+
+// ---- one ledger write, then the page reads itself back ----
+async function act(project, payload) {
+  const res = await ledgerAct(project, payload);
+  $("#status").textContent = res.message;
+  if (!res.ok) return null;
+  await load();
+  refreshBadges(); BV.quests.refresh();
+  $("#status").textContent = res.message;   // the repaint above clears it: the message is written after, not before
+  return res.json;
+}
+
+// ---- the read drawer (the same one /projects opens) ----
+async function openFile(path, frag) { return BV.drawer.open(path, frag); }   // the one shared drawer, viewer-common.js (0.54.1, T-0152)
+
+document.addEventListener("click", async e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  // the queue's presses (0.58.0): a named choice answers the question, write opens the box, done closes a task, note opens its note box
+  const qc = e.target.closest("#waitBody [data-qchoice]");
+  if (qc) { e.preventDefault(); qc.closest("li").classList.add("going"); await act(qc.dataset.project, { action: "answer", id: qc.dataset.q, text: qc.dataset.qchoice, by: BV.owner }); return; }
+  const qw = e.target.closest("#waitBody [data-qwrite]");
+  if (qw) { e.preventDefault(); const f = qw.closest("li").querySelector("form.qbox"); if (f) { f.hidden = !f.hidden; if (!f.hidden) f.querySelector("textarea").focus(); } return; }
+  const qd = e.target.closest("#waitBody [data-qdone]");
+  if (qd) {
+    e.preventDefault(); const li = qd.closest("li"); li.classList.add("going");
+    const pend = BV.replies.pending(qd);      // words left in its note box are written before it closes
+    if (pend) await BV.replies.act(pend.project, pend.id, pend.text, pend.ledger);
+    await act(qd.dataset.project, { action: "done", id: qd.dataset.qdone }); return;
+  }
+  const qn = e.target.closest("#waitBody [data-qnote]");
+  if (qn) { e.preventDefault(); const b = qn.closest("li").querySelector(".qnote"); if (b) { b.hidden = !b.hidden; if (!b.hidden) b.querySelector("textarea").focus(); } return; }
+  const ap = e.target.closest("#waitBody [data-pend]");
+  if (ap) { e.preventDefault(); const li = ap.closest("li.pend");
+            if (li) { const out = await pendPress(li, ap.dataset.pend); $("#status").textContent = out.ok ? out.say + " · written to the app and logged" : "refused: " + out.say; } return; }
+  const aa = e.target.closest("#waitBody [data-all]");
+  if (aa) { e.preventDefault(); await pendAll(aa); return; }
+  const sk = e.target.closest("#waitBody [data-skip]");
+  if (sk) { e.preventDefault(); skipAdd(sk.dataset.skip); paint(); $("#status").textContent = "Skipped for today; it is back tomorrow."; return; }
+  // the queue's controls (0.60.2): one Show press at a time, remembered in this browser
+  const qs = e.target.closest("#qctl [data-qshow]");
+  if (qs) { e.preventDefault(); QV.show = qs.dataset.qshow; qvSave(); paint(); return; }
+  const qr = e.target.closest("#waitBody [data-qreset]");
+  if (qr) { e.preventDefault(); QV.show = "all"; QV.project = "all"; qvSave(); paint(); return; }
+  const cb = e.target.closest("input[type=checkbox][data-id]");
+  if (cb) {
+    e.preventDefault();
+    const pend = BV.replies.pending(cb);      // words left in the reply box are written before the item closes (T-0078)
+    if (pend && cb.checked) { const r = await BV.replies.act(pend.project, pend.id, pend.text, pend.ledger); if (r.ok) pend.form.querySelector("textarea").value = ""; }
+    await act(cb.dataset.project, { action: cb.checked ? "done" : "reopen", id: cb.dataset.id }); return;
+  }
+  const nt = e.target.closest("[data-not]");
+  if (nt) { e.preventDefault(); await act(nt.dataset.project, { action: "hold", id: nt.dataset.not, until: BV.day.tomorrow() }); return; }
+  const ro = e.target.closest("[data-reopen]"); if (ro) { await act(ro.dataset.project, { action: "reopen", id: ro.dataset.reopen }); return; }
+  const pc = e.target.closest(".badge.person"); if (pc) { location.href = `/people?open=${encodeURIComponent(pc.dataset.person)}`; return; }
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); const t = w.dataset.wikilink.split("#")[0].trim(); if (t.endsWith(".canvas")) location.href = BV.forgeHref(t); else openFile(t, w.dataset.wikilink.split("#")[1]); return; }
+  const o = e.target.closest(".filelink[data-open]"); if (o) { openFile(o.dataset.open, o.dataset.frag); }
+});
+document.addEventListener("submit", async e => {
+  const f = e.target;
+  if (f.dataset.reply) return;                 // the reply box is wired once, in viewer-common (BV.replies.wire)
+  if (!f.dataset.q) return;
+  e.preventDefault();
+  await act(f.dataset.project, { action: "answer", id: f.dataset.q, text: f.querySelector("textarea").value, by: BV.owner });
+});
+document.addEventListener("change", e => {
+  const o = e.target.closest("#qctl select[data-qorder]"); if (o) { QV.order = o.value; qvSave(); paint(); return; }
+  const p = e.target.closest("#qctl select[data-qproject]"); if (p) { QV.project = p.value; qvSave(); paint(); return; }
+});
+document.addEventListener("keydown", e => { if (BV.typing(e)) return; if (e.key === "Escape") $("#drawer").hidden = true; });
+
+mountShowAll("today", () => paint(), { liveLabel: "showing today", allLabel: "showing everything" });
+BV.replies.wire(document, { status: m => { $("#status").textContent = m; }, onDone: async () => { await load(); refreshBadges(); } });
+BV.holds.wire(document, { status: m => { $("#status").textContent = m; }, onDone: async () => { await load(); refreshBadges(); } });
+
+async function load() {
+  // the ledgers' short names and order, from the same settings the Projects page reads (read once, cached by BV.prefs)
+  const pr = await BV.prefs();
+  QSHORT = (pr.project_labels && typeof pr.project_labels === "object") ? pr.project_labels : {};
+  QPORDER = Array.isArray(pr.project_order) ? pr.project_order : [];
+  DATA = await BV.day.load();
+  try { const r = await fetch("/api/sweep/status"); const j = await r.json(); SEEN = (j && j.seen) || {}; } catch (e) { SEEN = {}; }
+  MODEL = BV.day.model(DATA);
+  paint();
+  return MODEL;
+}
+// Clear what's settled, in the Waiting on you header (0.60.0, renamed 0.60.1 and 0.60.2): a finished check reads the ledgers
+// again and the queue is drawn from them. There is no send press since 0.65.0: every press reaches the session on its own.
+BV.outbox.mount($("#outbox"), { onSweepDone: async () => { await load(); await mine(); BV.quests.refresh(); } });
+load().then(mine)   // the call-items line under the queue
+  .catch(e => { $("#lead").textContent = ""; $("#main").innerHTML = `<div class="note">Could not read the ledgers: ${esc(e.message)}</div>`; });
+outside();   // the app, the calendar and the transcript folders: painted as each answers, never holding up the ledgers
+</script>
+</body>
+</html>

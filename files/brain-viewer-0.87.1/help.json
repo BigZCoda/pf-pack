@@ -1,0 +1,1604 @@
+{
+  "_about": "What each page of the Brain Viewer is for, in plain words. One entry per route in serve.py's PAGES. The question mark button on every page shows its own entry; the home page shows this one plus a line per widget it is carrying. Written for a person who has just opened the app, so no ids, no codes, no jargon. Since 2026-10-16 the file also carries the glossary (the `glossary` key): every word the app uses, grouped, with the ledger's kinds and tags among them.",
+  "updated": "2026-10-21",
+  "pages": {
+    "/": {
+      "what": "The page the viewer opens on, and the one place an item is answered, closed or put off. It runs in the order of the day. Up first: one to three items the session picked for you to answer now, each with a line on why it is up here. Then the calls: the one now or next with its prep, and the one just held with a press to what came out of it. Then the work in progress as one strip of instruments, one per project, each with your next move on it as its one press. Then what is due today beside what is new since you last looked. Then the folds: the backlog with its count, what you put on hold, what others owe today, what waits on another person, the transcripts that landed today, what closed, and what was built. Every press reaches the session on its own; there is nothing to send.",
+      "parts": [
+        {
+          "name": "Up first",
+          "line": "The first band: one to three of your items the session picked, drawn as full cards with their presses and one small line each saying why it is up here, so that what most needs an answer is the first thing on the page. The session writes the pick at its start and after every batch of your answers; when it has not written one today, the page picks for itself: a question with named choices that is new since you last looked, then anything due today, then an item blocking another. An item drawn here is not drawn again below."
+        },
+        {
+          "name": "Calls",
+          "line": "The call now or next as the lead card with its prep, and a call just held with a press to what came out of it (its transcript or report once it is in the brain). A block on the calendar, such as therapy or an all-day marker, is not a call and is not drawn here. The header counts today's calls and names the next one."
+        },
+        {
+          "name": "In progress",
+          "line": "One strip of instruments, one per project the sessions register as being worked on, newest first: the project's name (a press opens its page), a dot and when it was last touched, one line of state, how many of your items are open on it, and your next move on it as the one press. Nothing else of the project is drawn here; its notes, files and other items live on its own page."
+        },
+        {
+          "name": "Due today and New since you last looked",
+          "line": "Two columns, one at phone width: what is due today, and what is new since your last visit, each row marked with what changed and when, each with its presses and an undo. A pick, a choice between pages to look at, carries Compare, which opens the options side by side. An item already drawn up first or as a project's next move is not drawn again. Under them the backlog, everything older or dated later, folded under one line with its count."
+        },
+        {
+          "name": "Built, to look at",
+          "line": "The three newest things built in the brain, a site or a page, each by its name. Press one and the page itself opens in a new tab, full window. All goes to the Artifacts page with every one of them. With nothing built, the band is not drawn."
+        },
+        {
+          "name": "On hold",
+          "line": "Your tasks put down for later, folded at the end of the list with their count, each with the day it comes back on its own; bring back returns one now. A task held because it waits on a person it names is under Waiting on others instead."
+        },
+        {
+          "name": "Might annoy you",
+          "line": "Up to three cards, each something in the brain's own output that resembles one you have reacted to before: the moment quoted, then the pattern it resembles with its rule. Press Annoying or Not annoying, or write a comment; the answer goes into the record of how you work and reaches the session like any other press. With no card open, the band is not drawn."
+        },
+        {
+          "name": "Clear what's settled",
+          "line": "Reads each open question and task of yours against the brain since it was written, and closes or rewrites what has moved. Items from calls older than two weeks wait for this pass before the list shows them again."
+        },
+        {
+          "name": "To approve in the app",
+          "line": "One row per call whose action items wait for approval in the app, at the end of the backlog, or with what is new when the call came after your last visit: approve all, skip until tomorrow, or open the items one by one."
+        },
+        {
+          "name": "Others owe today",
+          "line": "What is due today or earlier on someone else, oldest first; Claude's own are one line with their count. Nothing of yours is here: what you put on hold is under On hold."
+        },
+        {
+          "name": "Calls and transcripts",
+          "line": "Today's calls, each row one press to its call page (the prep as boxes to tick, and the notes box); join is its own press, the prep's state is the word at the right (a skeleton says so), and its purpose shows in full. Then what landed in the transcript folders, each by its title."
+        }
+      ]
+    },
+    "/home": {
+      "what": "The board: instruments only. The date across the top with the day's line under it; beside it the slot you choose an instrument for (the day as a band with today's calls on it, one project as the track of its stages, or the week as seven columns). On the right the sun carries the sessions running right now and the moon says whether the night agent ran. Under that: one line for the call in front of you, which opens Today, the chat, the people your week is made of, the countdowns, what moved in the brain, the brain wired to everything it exchanges anything with, and a lamp for every part that runs on its own. Nothing is answered or closed here: that is Today, the page the viewer opens on. The edit button in the top right rearranges all of it: drag an instrument, make it a third, a half, two thirds or the full width, let it stand two rows tall, switch one off, or add one that is off. What you set is saved for you and comes back on any browser. Along the foot of the board, one lamp per status file: lit when it was written in the last three days, dim when older, red when it cannot be read or a check in it failed. Press one to read it.",
+      "parts": [
+        {
+          "name": "The header",
+          "line": "The date, a clock, the sessions running right now as dots going round the sun, and the moon beside it: lit when the night agent ran last night, and as full as the number of the last seven nights it ran. The middle of the header is yours to choose: press day, project or week in its corner. Day is a band from seven in the morning to seven at night with each call a block on it and a gold line where the hour is. Project draws one project as a track of its stages, the done ones filled and the one you are on lit, with a chooser for which project. Week is seven narrow columns with the calls on them and today marked."
+        },
+        {
+          "name": "Mantra",
+          "line": "One line a day under the date, picked from the date itself so it is the same all day and changes at midnight. Hover it for next, which shows another of today's lines, and add, which puts a line of your own into the pool everyone on the team draws from."
+        },
+        {
+          "name": "Next",
+          "line": "One line: when the next call is, what it is and who is on it, and a link to Today's calls, where the join press and the prep are."
+        },
+        {
+          "name": "Chat",
+          "line": "The conversation, under Next. The last thing you asked and the answer it gave, the box to send the next message with Enter, a new one on a press, a chooser in its corner for which conversation you are in, and a lit dot for each one with a turn running when more than one is. The whole thread, with its tool calls, is one link away."
+        },
+        {
+          "name": "People",
+          "line": "Everyone on your calendar between today and seven days out together with everyone the open items still name, in one of two forms you press for in its corner. In graph they are bubbles around the mark of the brain, moving under the same physics as the bubbles on the map: the line to the middle is heavier the more calls and open items tie a person there, two people sitting on the same call are threaded to each other, and anyone you speak to inside two days is in the burgundy. Drag a bubble and the rest answer, drag the ground to move the view, wheel to zoom, hover for when you next speak and how much is open, press to open the prep for that call or their card. The three words beside the forms choose what stands in the middle: the sun, Saturn or Venus. In list they are a roll of names that drifts upward on its own, with the next call beside each one, and it stops the moment you put the pointer on it."
+        },
+        {
+          "name": "Moved",
+          "line": "What changed in the brain, newest first, grouped by the hour, in the words of whoever changed it."
+        },
+        {
+          "name": "Horizon",
+          "line": "Days left to each milestone this brain sets in context/horizon.json, in one of two forms you press for in its corner: numerals, one count per milestone with a bar for how far through the run today is, or road, the whole run drawn as one track from its start day to the last milestone with each milestone marked on it, every step the ledgers give a day set where its day falls, and a marker at today with the count to the next milestone above it. With no file it says so in one line."
+        },
+        {
+          "name": "Flow",
+          "line": "The brain in the middle and the eight things it exchanges anything with around it: the ProspectForge app, the onboarding API, the calendar, GitHub, Obsidian Sync, the team copy, the scheduled agents and your Claude Code sessions. A wire is bright when it carried something in the last day, and a gold dot runs along it the moment something crosses, because it is watching the brain's log as it is written. Hover a node for the last thing that moved there, press one to open its page, or expand it to the full width."
+        },
+        {
+          "name": "System",
+          "line": "A lamp for every part of this brain that runs on its own, with the last time each one ran under it: the calendar read, the week file, the sync with the ProspectForge app, the night agent, the weekly librarian, git, and this app. Green is inside its rhythm, gold has missed a turn, red is overdue or has never run."
+        },
+        {
+          "name": "Space, the command line, the sundial, the constellation and the rest",
+          "line": "Off the board and waiting in the add strip when you press edit, which becomes a small window of its own once you scroll past it: carry it anywhere by the bar across its top, pull the bottom right corner to make it bigger, and it opens where you left it next time. Space is a blank one: it draws nothing and holds a gap open wherever you put it. The command line is one message to the main agent with no conversation around it. Tally is the three counts of the day in a form you choose. The sundial is the older drawing of the day as an arc, and the constellation is the brain drawn as projects, threads and people around the sun."
+        },
+        {
+          "name": "The status lamps",
+          "line": "One lamp per part of the brain that writes a file about its own state. Press one to read the file."
+        }
+      ]
+    },
+    "/index.html": {
+      "what": "The same page as the one the viewer opens on, Today, reached by its other address.",
+      "parts": [
+        {
+          "name": "Built, to look at",
+          "line": "The three newest things built in the brain, a site or a page, each by its name. Press one and the page itself opens in a new tab, full window. All goes to the Artifacts page with every one of them. With nothing built, the band is not drawn."
+        },
+        {
+          "name": "Today",
+          "line": "Everything yours to do, what is new since you last looked first, today's calls and what landed. The board of instruments is at /home."
+        }
+      ]
+    },
+    "/today": {
+      "what": "The page the viewer opens on, and the one place an item is answered, closed or put off. It runs from the top: Up first, the one to three items picked for you to answer now, each with why it is up there; then the calls as the day has them; then In progress, one instrument for each piece of work being made; then Due today beside New since you last looked; then the backlog, what is on hold and the rest of the day, each folded under one line with its count. An item is drawn once on the page, in the first place it belongs. Every press reaches the session on its own and can be taken back for the rest of the day; there is nothing to send. A task that carries steps draws them under its words as a numbered list with a tick box each, before the chips and the note; a tick is a press like any other, and once every step is ticked, done is the card's lead press. A long note sits under the steps folded to its first line, with a more press that opens it.",
+      "parts": [
+        {
+          "name": "Up first",
+          "line": "The first band: one to three of your items as full cards with their presses, each with one line saying why it is up here, so what needs answering is the first thing on the page. A session picks them, and the evening run picks them for the next morning; the header says who picked them and when. On a day nothing has been picked, or once what was picked is done, the viewer ranks its own: a question with named choices that is new since you last looked, then what is due today, then what other work waits on. An item opened from another page sits here first. Clear what's settled is in this band's header."
+        },
+        {
+          "name": "Calls",
+          "line": "The calls as on the day. The call just held and the call now or next are the lead cards: the one held carries a press to what came out of it, the report or the transcript once its recording is in the brain; the one now or next carries its prep and its join press. With no call left today, the next one on the calendar is the next card, with its day. The day's other calls are rows under them, each one press to its call page. A block, such as therapy, an all-day marker or an event with nobody else on it, is never a call and is not drawn here."
+        },
+        {
+          "name": "In progress",
+          "line": "One strip of instruments, one for each piece of work being made, the newest first: its name, how fresh it is (a dot and when it was last touched), one line on where it stands, the count of your open items on it, and your next move on it as the one press that item carries (an answer, done, Take the survey or Compare). Pressing an instrument opens the project's page, where its notes, its files and its other items are. With nothing registered as in progress, the strip is not drawn."
+        },
+        {
+          "name": "Due today",
+          "line": "Beside New since you last looked, and above it at phone width: what of yours is due today or back from a hold today and is not drawn higher up, each with its presses; every press has an undo for the rest of the day."
+        },
+        {
+          "name": "New since you last looked",
+          "line": "What was filed for you, answered, noted, handed to you, come back to you or changed since your previous visit, newest first, each marked new with what changed and when; a reload inside ten minutes is the same visit, so the marks stay. What is drawn in Up first or as an instrument's next move is not drawn again here."
+        },
+        {
+          "name": "Backlog",
+          "line": "Everything else of yours, folded under one line with its count: past its day, dated later and undated alike, each keeping its date, what holds other work first. One press opens it, and it stays open until you leave the page. Show, Order and Project, inside it, narrow and re-sort it and the On hold fold. A question answers with one of its named presses or in your own words; a task is done, held for three days, or given a note. A survey carries one press, Take the survey; a choice between things to look at leads with Compare, which opens its workspace on them side by side. A survey, a pick and a card from the record of how you work each say in one small line what kind of card they are and what the press does; a test is not listed here (it waits under To try on the from-Claude page) and says what it is only when opened by its own link, which puts it at the top of the page."
+        },
+        {
+          "name": "On hold",
+          "line": "Your tasks put down for later, folded under the backlog with their count, each with the day it comes back on its own; bring back returns one now. A task held because it waits on a person it names is under Waiting on others instead."
+        },
+        {
+          "name": "Others owe today",
+          "line": "What is due today or earlier on someone else, oldest first; Claude's own are one line with their count. Nothing of yours is here: what you put on hold is under On hold. Folded, with its count."
+        },
+        {
+          "name": "Waiting on others",
+          "line": "What another person moves next, each with who and since when, folded with its count: nudge writes on it that you asked, drop closes it with a reason."
+        },
+        {
+          "name": "Transcripts landed today",
+          "line": "The recordings that landed today, each by its title and whether it has been read in, folded with its count; not drawn on a day nothing landed."
+        },
+        {
+          "name": "Closed today",
+          "line": "What was done or answered today, folded with its count; each one you pressed carries undo, and an answered question a change of answer."
+        },
+        {
+          "name": "Might annoy you",
+          "line": "Folded, with its count: up to three cards, each something in the brain's own output that resembles one you have reacted to before: the moment quoted, then the pattern it resembles with its rule. Press Annoying or Not annoying, or write a comment; the answer goes into the record of how you work and reaches the session like any other press. With no card open, the band is not drawn."
+        },
+        {
+          "name": "Built, to look at",
+          "line": "The newest things built in the brain that are still in play, folded with their count; press one and the page itself opens in a new tab. Everything built goes to the Artifacts page."
+        },
+        {
+          "name": "To approve in the app",
+          "line": "One row per call whose action items wait for approval in the app, at the end of the backlog, or under New since you last looked when the call came after your last visit: approve all, skip until tomorrow, or open the items one by one."
+        }
+      ]
+    },
+    "/projects": {
+      "what": "Every project's list of work, read straight off the files that hold it. One project at a time: its milestones, the tasks and questions under each, who owns them, what is blocked and what closed. This is where an item gets sorted into a milestone, answered, ticked off or reopened. At the foot, Every part of the brain lists the registry: each folder and file the brain treats as one unit of work, nested as it nests, with its rules, its runbook and its status file.",
+      "parts": [
+        {
+          "name": "The project picker",
+          "line": "One row per project with how much is open on it."
+        },
+        {
+          "name": "Milestones",
+          "line": "The work grouped the way the project groups it; an Inbox group means not yet sorted."
+        },
+        {
+          "name": "An item",
+          "line": "Its text, its owner, its date, and the controls to answer, tick, block or hold it."
+        },
+        {
+          "name": "Every part of the brain",
+          "line": "The registry as a tree, folded. Open a row for what it is, where it lives and the files that govern it."
+        }
+      ]
+    },
+    "/studio": {
+      "what": "The image studio: write a prompt, pick a provider (OpenAI, Gemini, fal.ai, or Flux Krea on this computer's own graphics card through ComfyUI, which costs nothing and needs ComfyUI running) and a model, and the pictures land in a job folder under deliverables/studio where you mark the ones worth keeping as candidates. The edit button under a picture changes it with the model you picked; the local one redraws the whole picture from your words, keeping its layout."
+    },
+    "/people": {
+      "what": "The people in your world, one card each. What the card says about them, what is open that concerns them, the calls you have had, and the prep for the next one. A prep can be written and edited here. In a team copy it lists the cards the copy holds, read only, with no preps.",
+      "parts": [
+        {
+          "name": "This week's calls",
+          "line": "Every call in the calendar this week with someone carded on it: the day and time, each person as a link to their card, and the prep with its state (ready, skeleton, held, no prep yet)."
+        },
+        {
+          "name": "Who you talk to weekly",
+          "line": "The people on a call in two or more of the last four weeks, one line each: a dot per week they spoke, where they stand, the first thing open for you, the next call."
+        },
+        {
+          "name": "Everyone else",
+          "line": "Folds by relationship (mentees, mentors and their companies, partners, candidates, family, the rest, the standing threads), each with how much is waiting on you."
+        },
+        {
+          "name": "A person",
+          "line": "Their card read back in the drawer, the items naming them, their transcripts and their preps. Widen at its top opens it to most of the page."
+        },
+        {
+          "name": "Their circle",
+          "line": "Under a person who holds any reach: the people and companies reachable through them, each with its one line, the opportunities it is attached to with their stage, and where it came up. Open in the drawer, where the edit press changes a line, moves a stage or sets the next move."
+        },
+        {
+          "name": "Opportunities on a card",
+          "line": "Under the open items in the drawer: each opportunity the person is on, one line with its stage, linking to the opportunities page."
+        },
+        {
+          "name": "The prep editor",
+          "line": "Write or edit the dated prep for a call, saved where the preps live."
+        }
+      ]
+    },
+    "/chat": {
+      "what": "Talk to the brain's agents. The main agent reads the brain and answers, puts a question that outlives the message onto the right project list, and hands project work to sub-agents. A conversation fixed to a project boots from that project's notes and writes only to its list. Each conversation is a real session on this machine, so it can be picked up again later. Above the conversation, Running now shows the sessions working on this machine, and Every session lists the last two weeks of them with a press that opens any one here.",
+      "parts": [
+        {
+          "name": "The rail",
+          "line": "The main agent, one entry per project, and the conversations you have already had."
+        },
+        {
+          "name": "The thread",
+          "line": "The answer as it arrives, with the tool calls and sub-agents folded behind one line."
+        },
+        {
+          "name": "The composer",
+          "line": "Your message, the model to run it on, and what the turn cost."
+        },
+        {
+          "name": "Every session",
+          "line": "Each recent session on this machine, newest first. Open one this page started, or take any other into the chat and carry on with it."
+        }
+      ]
+    },
+    "/reader": {
+      "what": "Read one brain document as a page: its headings, its text and its lists in one column, nothing folded. Strike an item, reorder it, edit a section or ask a question about it; every change is written back to the real file. Opens the build document when no file is named.",
+      "parts": [
+        {
+          "name": "The outline",
+          "line": "Every heading down the left, indented by level. Press one to go there; the heading you are reading is marked as you scroll. On a phone it sits behind the outline button."
+        },
+        {
+          "name": "Edit and Ask",
+          "line": "Point at a section and they appear in the margin beside its heading. Edit opens that section's raw text to change it; Ask writes a question about it onto a project list, with a link that opens right back here."
+        },
+        {
+          "name": "The list controls",
+          "line": "Point at a list item for strike (it stays in the file, struck and dated) and the two arrows (it swaps with its neighbour). Each one rewrites that single line."
+        },
+        {
+          "name": "The agent layer",
+          "line": "One switch at the top, off to begin with. Off, the parts written for agents are not on the page: the block at the top of the file, the notes in quotes, the status lines, the comments and the dated history sections. On, they sit where they are written, tagged agent. A link that points into one turns it on for that visit."
+        },
+        {
+          "name": "The foot of the outline",
+          "line": "The open items on the project lists that point at this document, grouped by the heading they name, answerable there; and a search of every brain file, whose hits open here at their line."
+        }
+      ]
+    },
+    "/files": {
+      "what": "Every file in the brain in one table, the newest first, so any file can be opened here instead of in a program on the desktop. Press a column's name to sort by it and press it again to reverse. A file changed today is marked in the accent color, one changed this week more softly.",
+      "parts": [
+        {
+          "name": "The folders",
+          "line": "Down the left: every top-level folder with how many files it holds. Press one to show only its files; the arrow beside it opens the folders inside it."
+        },
+        {
+          "name": "The types",
+          "line": "A row of chips above the folders: press one to show only that kind of file, press it again to show all."
+        },
+        {
+          "name": "The box",
+          "line": "Type part of a name or a path and the table keeps only the files whose path holds it."
+        },
+        {
+          "name": "A row",
+          "line": "Opens the file: a document, a script or a data file in the Reader, a picture in the picture viewer, a drawing in the Forge, read mode, anything else (a spreadsheet, a Word file, a PDF) as a download. The back button returns to the table as you left it."
+        },
+        {
+          "name": "Last touched by",
+          "line": "Who last wrote a line in the brain's log naming the file, and what they did."
+        }
+      ]
+    },
+    "/preview": {
+      "what": "A web page shown inside the viewer, so a site mockup, a page design or a dev server can be looked at next to the brain without leaving it. A page from the brain reloads by itself when its file changes, and the width row shows it as a phone, a tablet or a laptop would.",
+      "parts": [
+        {
+          "name": "The pages",
+          "line": "Down the left: every web page in the brain, grouped by folder, the newest first. Press one to show it."
+        },
+        {
+          "name": "The address box",
+          "line": "Type an address and press open: a dev server running on this computer (localhost) or a live site."
+        },
+        {
+          "name": "The widths",
+          "line": "Full, 1280, 768 and 375: the frame takes that width and sits in the middle, so the page can be checked at laptop, tablet and phone size."
+        },
+        {
+          "name": "Reload",
+          "line": "Loads the page again now. A page from the brain also reloads on its own within two seconds of its file changing, and says when."
+        },
+        {
+          "name": "The links",
+          "line": "Open the source shows the page's file in the Reader; open in a new tab shows it on its own."
+        },
+        {
+          "name": "A blank frame",
+          "line": "Some sites refuse to be shown inside another page. When the frame stays blank, open the site in a tab instead."
+        }
+      ]
+    },
+    "/threads": {
+      "what": "Every piece of work that runs across the ledgers, one row each: a placement, a partnership, a launch. A piece of a larger thread sits under it, indented, and the larger thread's count includes its pieces'. Each row says who it is about, how many open items wait on you and how many are open in all, and the date of its newest dated line. Press a row to open its thread.",
+      "parts": [
+        {
+          "name": "A row",
+          "line": "The thread's name, its people, your open items and all of its open items. Press it to open the thread."
+        }
+      ]
+    },
+    "/thread": {
+      "what": "One piece of work on one page, its workspace. From the top: the way back (every thread, and the thread this is a piece of), the thing being made right now, where it stands, how it connects to other work, its pieces, what was built for it, its documents, and what needs you. Beside it: the next call, the progress so far and the people. It is read from the subject file and the ledgers each time it opens, so it is never out of date. Press an item's words to work on it here: the item, its brief, its files, its history and its note take the top of the page and the thread stays around it; back to the thread clears it. An item that belongs to no thread opens here on its own, with every block around it. An item whose answer is a choice between things to look at opens on them first, side by side, each with its answer press under it.",
+      "parts": [
+        {
+          "name": "The way back",
+          "line": "Above the name: every thread, then the thread this one is a piece of, when it is one. Each is one press."
+        },
+        {
+          "name": "In progress",
+          "line": "The thing being made right now for this work, framed at the top: its name, one line on what it is, Open (a page opens itself in a new tab, a document opens in the Reader), Preview for a page, and what happens next on it."
+        },
+        {
+          "name": "Where it stands",
+          "line": "The subject file's own summary. An item it names is a small press carrying the item's words, never a code; another thread it names is a press to that thread; the file opens in the Reader from the foot."
+        },
+        {
+          "name": "How it connects",
+          "line": "A small drawing: this work in the middle, what it is part of above, its pieces below, what feeds it or what it feeds to the left, what sits beside it or what it builds on to the right. Each box is a press to that work, with one line on how they connect under it. Only connections the subject file records are drawn."
+        },
+        {
+          "name": "Pieces of this",
+          "line": "The threads that are pieces of this one, each with its open items. Their items are counted here too, and an item two of them take in belongs to the piece."
+        },
+        {
+          "name": "Built here",
+          "line": "Every page or site made for this work, by its own name, with Open (the thing itself, in a new tab), Preview (inside the viewer at phone, tablet and laptop widths) and About (the note kept beside it)."
+        },
+        {
+          "name": "Documents",
+          "line": "The rest of the work's files, by their names, newest first, each opening in the Reader."
+        },
+        {
+          "name": "What needs you",
+          "line": "Every open item on every ledger that belongs to this work. The ones other work waits on come first, then yours, then Claude's, then everyone else's. Answer, close, hold or leave a note right here, the same presses as the Today page. A survey carries one press, Take the survey, which opens it on a page of its own. A choice between things to look at carries one press, Compare, which opens it here on them side by side."
+        },
+        {
+          "name": "Next call",
+          "line": "The next call on the calendar with one of its people, and its prep when one is written."
+        },
+        {
+          "name": "Progress",
+          "line": "A fold beside the page, closed until you open it; it remembers whether it is open for each thread. Inside, a column you can scroll and make taller or shorter from the handle at its foot: what is done (newest first, with what each made), what is next (press one to work on it here) and what is held for later."
+        },
+        {
+          "name": "Working on",
+          "line": "The item you pressed, at the top: its presses, a brief that says what you need to know (Brief me writes it, Refresh writes it again), its own files, its history and a box for its note. Back to the thread clears it, and the browser's back button steps through the items you opened."
+        },
+        {
+          "name": "Compare",
+          "line": "An item whose answer is a choice between things to look at opens on them first, one column each, side by side on a wide window and one under the other on a narrow one: the name on top, the thing itself below it (a page or a document in a frame, a picture as itself), Full screen to open it in its own tab, a press for each screen when the page has several, and under it the press that answers with that one, which then takes you back to where you came from. An option with nothing to look at, such as none of these, is a column with its name and its press. Under the columns, a box to answer in your own words. Once answered, your answer is marked and the presses go."
+        },
+        {
+          "name": "People",
+          "line": "Each person the thread is about, with where things stand with them."
+        }
+      ]
+    },
+    "/forge": {
+      "what": "One drawing of how part of the brain works, in one of three modes, switched at the top. Read shows it as drawn, and a part that names another drawing opens that drawing, with the back press walking back through them. Live shows the same drawing against what really runs: each part tied to the file, project or service it stands for, lit by what moved in the last two weeks. Edit changes it: cells with typed parts and labelled lines, saved back to the same file Obsidian reads. With no drawing named, it is the picker: the maps first, grouped by what they are for, each with how much of it moved recently (the counts fill in a moment after the page shows), then every other drawing by family, and a box to start a new one. The header's forge entry opens it; old maps links land here.",
+      "parts": [
+        {
+          "name": "The picker",
+          "line": "The maps by purpose, then the other drawings by family. Open live, read or edit on each row opens that drawing on this page."
+        },
+        {
+          "name": "Read, live, edit",
+          "line": "The three views of the same drawing. The address carries the mode, so a link opens the view it was sent in."
+        },
+        {
+          "name": "A cell",
+          "line": "One piece of the system: its outer band is what people see, its core is what runs."
+        },
+        {
+          "name": "A part",
+          "line": "Typed, and able to carry the document that specifies it. In read mode a part that names a drawing or a file opens it."
+        },
+        {
+          "name": "Stages",
+          "line": "Concept, prototype, built, stable. The colour and the weight say which."
+        }
+      ]
+    },
+    "/mentee": {
+      "what": "Every mentee-facing piece of the programme in the order a mentee meets it, each one editable in place. What the stage is for, what pieces belong to it, whether each piece exists yet and when it last changed.",
+      "parts": [
+        {
+          "name": "A stage",
+          "line": "One step of the programme, with why it is there."
+        },
+        {
+          "name": "A piece",
+          "line": "The document a mentee actually gets, openable and editable."
+        },
+        {
+          "name": "Mark reviewed",
+          "line": "Saves the manifest back after a pass through it."
+        }
+      ]
+    },
+    "/glossary": {
+      "what": "Every word this app uses, with a definition, an example and a picture where there is one. The same definitions appear as dotted underlines across all the other pages, so a word you do not know can be hovered wherever it appears.",
+      "parts": [
+        {
+          "name": "A term",
+          "line": "Its definition, what else it is called, and an example."
+        },
+        {
+          "name": "Keys",
+          "line": "The keyboard shortcuts, per page, named in the corner of that page."
+        }
+      ]
+    },
+    "/call": {
+      "what": "One call on one flat page, for while you are on it: the call's name and time with a press to join it, a card for everyone on it that opens their page, what is due on this call, the questions grouped as the prep writes them with a box to tick each one, the points per person, and your notes. Nothing is folded. Reached from Next on the board, or from a prep in the Reader.",
+      "parts": [
+        {
+          "name": "Join the call",
+          "line": "Opens the meeting link from the calendar in a new tab."
+        },
+        {
+          "name": "The cards",
+          "line": "One per person on the call, with their role and where it stands; press one for their page."
+        },
+        {
+          "name": "The questions",
+          "line": "Tick a question when it is asked. The tick is written into the prep itself, and ticked ones move to the bottom of their group."
+        },
+        {
+          "name": "Your notes",
+          "line": "Saved into the prep's notes section when you click away from the box."
+        },
+        {
+          "name": "A code in the text",
+          "line": "Shows the item's first words beside it; press it to open that item on Projects."
+        }
+      ]
+    },
+    "/from-claude": {
+      "what": "What Claude filed for your say, on one page. Proposals to rate with one press, the changes to the viewer waiting for you to try, the problems the overnight checks found, and, only when there is something, what a team copy or another person's viewer sent you. Nothing here is due: it waits until you look.",
+      "parts": [
+        {
+          "name": "A card",
+          "line": "One proposal: what it says now, what changed since it was written, and good, off or wrong. A line of your own only if you want one."
+        },
+        {
+          "name": "To try",
+          "line": "Changes to the viewer, ten to a page, oldest first. Open one, try it, then say it works or what is off."
+        },
+        {
+          "name": "Found overnight",
+          "line": "Problems the checks filed on the projects, the most repeated and the oldest first, ten to a page. The chips at the top show one source at a time; the project and owner presses on a row narrow to that one."
+        },
+        {
+          "name": "Sent to you",
+          "line": "Shown only when something arrived: what another person's viewer sent through a shared folder, and the changes a team copy proposed."
+        },
+        {
+          "name": "Rated",
+          "line": "The fold at the bottom: every card you answered, when, and a press to change the answer."
+        }
+      ]
+    },
+    "/opportunities": {
+      "what": "Every opportunity the brain carries, by stage: heard of, in conversation, offered, live, and the dead ones folded at the foot. Each says who it reaches through, who it is with, what could come of it, how long since it was named and since it last moved, and the next move.",
+      "parts": [
+        {
+          "name": "The top lines",
+          "line": "How many opportunities there are at each stage, and how many of each kind."
+        },
+        {
+          "name": "through and kind",
+          "line": "Narrow the list to the ones one person holds, or to one kind. Nothing to type."
+        },
+        {
+          "name": "move to",
+          "line": "Press a stage on a row to move it there. The row's moved count starts again from today, and the change is written to the file with a log line."
+        },
+        {
+          "name": "set next move",
+          "line": "Write the next move and whose it is; change or clear it later. The same goes onto the card's own opportunity line on People."
+        },
+        {
+          "name": "Names",
+          "line": "A name with a card opens it on People. A name with no card opens the card of the person they are reached through, where they sit under Their circle."
+        }
+      ]
+    },
+    "/artifacts": {
+      "what": "Everything built in the brain, by its name: the sites, the page designs, the mockups, the newest first. A site of several pages is one row, opened at its first page. This is the place to find a website that is being made and look at it.",
+      "parts": [
+        {
+          "name": "The name",
+          "line": "What the thing is called, taken from the page's own title. Pressing it opens the page itself in a new tab."
+        },
+        {
+          "name": "The line under it",
+          "line": "What it is, from the note kept beside it when there is one, and when it last changed. The small grey line is where its file sits, for reference only."
+        },
+        {
+          "name": "open",
+          "line": "The page itself, full window, in a new tab, working as it would for anyone who visits it."
+        },
+        {
+          "name": "preview",
+          "line": "The same page inside the viewer, where the width row shows it as a phone, a tablet or a laptop would, and it reloads when its file changes."
+        },
+        {
+          "name": "about",
+          "line": "Shown when the thing has a note beside it: opens that note in the Reader, which says what it is for and how it was made."
+        },
+        {
+          "name": "Its other pages",
+          "line": "A site's other pages, each one press that opens it in a new tab."
+        }
+      ]
+    },
+    "/survey": {
+      "what": "A survey on a page of its own, opened by the one press a survey question carries, Take the survey. Its title and what it is for come first, then each statement as a card with a press for every answer it offers and a line for anything you want to add. A press is saved into the survey's own file at once, and a line when you leave its box, so you can stop and come back. Finish closes the question that opened it, saying how many you answered, and goes back to Today.",
+      "parts": [
+        {
+          "name": "The statements",
+          "line": "One card each, numbered as the survey numbers them: the statement, then one press per answer it offers (agree, partly or no in most). The press you chose is filled in; press another to change it. A statement with no presses is answered in your own words, in its line."
+        },
+        {
+          "name": "Your line",
+          "line": "The box under each statement takes one line of your own. It is saved when you leave the box or press Enter."
+        },
+        {
+          "name": "Answered so far",
+          "line": "How many statements have an answer, at the top and again beside Finish. A statement left blank keeps the default the survey names under its introduction."
+        },
+        {
+          "name": "Finish",
+          "line": "Answers the question on Today that opened the survey, saying how many statements you answered and that the answers are in the survey's file, then takes you back to Today. Every answer is already saved before you press it."
+        },
+        {
+          "name": "The file in the Reader",
+          "line": "The survey's own file, where each answer sits on its statement's Answer line. The Reader shows the same lines."
+        }
+      ]
+    },
+    "/usage": {
+      "what": "Which prompts and actions used the most of the plan, today and over the last seven days, so what drains it can be seen and changed. A turn is one prompt with everything it set off, its workers included. The figures are in API $ equivalent, a proxy for plan usage: the plan publishes no figure per prompt, so each reply is priced at the API's list price for its model, and writing to the cache at one and a quarter to two times the input price. Read from the Claude Code sessions on this computer only.",
+      "parts": [
+        {
+          "name": "The week",
+          "line": "Seven bars, one a day, the picked day dark and today named under its date. Press a day to see its turns. Under the bars, the week's total split by who started the turns."
+        },
+        {
+          "name": "Top turns",
+          "line": "The ten turns of the picked day that cost the most, then the ten of the whole week. Each shows its cost, its time, who started it, its first words (a background task, a scheduled run or a command by its name), its session, the models, the split and why it cost that."
+        },
+        {
+          "name": "Who started it",
+          "line": "you: a prompt you sent. background wake: a background task or a watcher finished and woke the session. another session: a worker's report or a message from another session. session brief: the brief a session was started with. scheduled: a scheduled run. app event: a notice from the app."
+        },
+        {
+          "name": "The split",
+          "line": "The small bar: the session's own share of the cost and its workers' (subagents'), the workers' percentage beside it. A worker's cost belongs to the turn that sent it."
+        },
+        {
+          "name": "Why",
+          "line": "The line under a turn says where most of its cost went: its workers, writing its context to the cache, re-reading its context call after call, its output, or new input."
+        },
+        {
+          "name": "Sessions this week",
+          "line": "Every session of the week, the most first, with its turn count and what it cost on the picked day. Press one to open its turns of that day in order: the time, the cost, the calls, the context size, who started it and how long the session sat idle before. Pressing a session's name on any turn opens the same."
+        },
+        {
+          "name": "Why an idle wake costs what it does",
+          "line": "A session keeps its context in a cache that lives five minutes or an hour. The first turn after a longer pause writes the whole context to the cache again, at one and a quarter to two times the input price, before it does anything else. A long session carries a big context, so a short answer late in it, or a watcher waking it after an hour, can cost as much as a working turn."
+        },
+        {
+          "name": "What the figures are not",
+          "line": "The plan's own meter: its percentages for the five hours and the week are not on this page. Each figure here is what the same tokens would cost at the API's list price."
+        }
+      ]
+    },
+    "/share": {
+      "what": "One person's copy of the brain as a checklist: everything the sharing tiers send to that copy, each with a tick, so you can hold back what should not go before the next send. Opens folded, each band with its count.",
+      "parts": [
+        {
+          "name": "Folders and files that go",
+          "line": "Each shared folder with how many of its files go; open it for the files. Untick a folder or a file to hold it back from this copy only, and say why in a line if you want. It stays out from the next send."
+        },
+        {
+          "name": "People cards",
+          "line": "Every card, ticked when it goes. Untick one to hold it back from every copy; tick a held one to send it. Open a card's sections to keep one part out: that section is marked [private] on its heading in the card, and every copy leaves it out."
+        },
+        {
+          "name": "Not shared",
+          "line": "The folders the sharing tiers keep private. Their tier is changed in the brain's registry, never with a tick here."
+        },
+        {
+          "name": "Never crosses",
+          "line": "The root files, the code except the tools a copy runs, and any person marked never crosses. Nothing here has a tick."
+        }
+      ]
+    }
+  },
+  "glossary": {
+    "_about": "Every word the app uses, with a definition, an example and, where there is one, the Septabee analog. Served at GET /api/glossary and rendered at /glossary; every term is underlined wherever it appears, with its definition on hover (the everyday words only where a writer marks them). A group's pages say which group the glossary opens for the page the ? panel was pressed on. Moved here from brain-viewer-holon/brain-viewer-glossary.md on 2026-10-16, with the ledger's kinds and tags added (The things on a ledger) and the entries on where an item is acted on and what the ? button opens corrected.",
+    "keys_note": "While the cursor is in anything you type into (the notepad, a message, a reply, an answer, a Forge name, the glossary search), no key below does its page job; Escape leaves the box first, then works as listed. Every key the app already answers to. No key is hidden: the ones that apply on the page you are looking at are named in the bottom-right corner of that page.",
+    "groups": [
+      {
+        "name": "The things on a canvas",
+        "pages": [
+          "forge",
+          "map",
+          "canvases",
+          "home"
+        ],
+        "note": "",
+        "hover": true,
+        "terms": [
+          {
+            "term": "Node",
+            "aliases": [],
+            "definition": "Any single thing drawn on a canvas: a box, a ring, a dot. The most general word. A node has no promise about what it does.",
+            "example": "every bubble on [the map](/map).",
+            "analog": ""
+          },
+          {
+            "term": "Module",
+            "aliases": [],
+            "definition": "A node that does a job and has settings. You can swap one module for another that does the same job differently.",
+            "example": "the transcript processor is a module; so is the call-prep generator.",
+            "analog": ""
+          },
+          {
+            "term": "Component",
+            "aliases": [],
+            "definition": "One of the base parts every brain gets, each with a spec, a writer, a checker and an adapter; the components doc froze this word in July and rules out calling one a module. Rule of thumb: components are the organs every brain is born with, modules are the tools you add.",
+            "example": "the transcript artery, the people-card system.",
+            "analog": ""
+          },
+          {
+            "term": "Part",
+            "aliases": [],
+            "definition": "A typed piece inside a cell: a screen, form, dashboard or message on the band; a step, hook, ferryman, schedule or gate in the core; a mind, a store, or something outside. A part is a node with a type, and the palette on the right of the Forge is the list of them. (A cell's **output** is not one: it is a section of the cell's own shell.)",
+            "example": "in the onboarding cell canvas, \"Script · Autopopulate\" is a part.",
+            "analog": ""
+          },
+          {
+            "term": "Adapter",
+            "aliases": [
+              "the box"
+            ],
+            "definition": "A boundary the brain calls across, drawn as one part: an API, an export, a scheduled hook. **On a drawing it is one symbol and nothing else** — the gate — with its counts underneath: how many routes the other side has, how many the token the brain holds may call, how many nothing in the brain calls yet. A small clock on it means the inventory it was drawn from is more than a week old. **Double-clicking it opens its [adapter sheet](#adapter-sheet)**, the second view, in a page of its own. Which adapters exist is a file, `skills/brain-viewer/adapters.json`, so an `**Adapter · <name>**` head on any canvas binds to the same boundary by name. Nothing of the second view is stored in the drawing; it is computed from the other system's own catalog every time the page asks, so it cannot go stale the way a hand-drawn map does. `Ferryman` is the same word (it keeps the boat symbol).",
+            "example": "the Ferryman on [the Ferryman map](/live?path=projects%2Fpf-build%2Farchitecture%2Fdata-flow%2Fferryman-map.canvas), 71 ports, and its written twin at [[pf-app-holon/pf-app-adapter-ferryman.md]].",
+            "analog": ""
+          },
+          {
+            "term": "Adapter sheet",
+            "aliases": [],
+            "definition": "The second view of an adapter, in a place of its own: `/forge?adapter=<name>`, opened by double-clicking the adapter on any drawing. Three columns, all generated and read-only — on the left the skills that call the boundary, one named box each; down the middle the adapter with one **port** per route, grouped by resource and, inside a group, by who may call it; on the right the other system's stores, one named box per resource group — with a short straight **cable** from each port to what calls it and to what it reaches. It exists because the same thing drawn on top of a hand-drawn map was unreadable: the names were hidden, the boxes were blank and the cables landed on the title block. Nothing hand-drawn competes with it, and nothing on it is written to any canvas. **back** returns to the drawing you came from.",
+            "example": "[the Ferryman's sheet](/forge?adapter=ferryman).",
+            "analog": ""
+          },
+          {
+            "term": "Port",
+            "aliases": [],
+            "definition": "Two things, one word, and the drawing tells them apart by what you are looking at. **On an adapter:** one route on the other side of the boundary — a method and a path — drawn as a dot, in a group per resource. **Solid** means the token the brain holds may call it, **dim** means it needs the admin key, **hollow** means the route exists in the app and nothing in the brain calls it (built, not yet wired), and **red** means a skill calls a path the app's catalog has never listed. A red ring around it means a probe came back 4xx or 5xx, and a **dotted** edge means it is a [manual port](#manual-port). Hover for the method and the path, press it for its card: the purpose, who may call it, every caller as a `file:line` you can open, when the resource last ran, whether the brain keeps a mirror, and the health code. **On a part, a cell or a blob:** the four points on its rim that appear under the pointer, where a line can start or end.",
+            "example": "`POST /api/v1/transcripts/import` on the Ferryman, solid, called by `skills/ferryman/push.py`; and dragging from one on the onboarding app cell's rim to draw a line.",
+            "analog": ""
+          },
+          {
+            "term": "Port group",
+            "aliases": [],
+            "definition": "The ports of one resource, kept together: every `/contacts` route in one band, every `/transcripts` route in the next, each with the store it reaches on the app side. Inside a group the ports are ordered by **tier** — the ones the personal token may call first, the ones needing the admin key next, the ones nothing in the brain calls last — so what is wired and what is not read as two halves rather than a shuffle. When an adapter sits inside a cell, the whole thing shrinks to three counted arcs on its rim in those same three tiers. Most groups are read from the catalog; a group can also be added by hand — see **manual port**.",
+            "example": "*transcripts* on the Ferryman, nine routes, mirrored at `pf-app-holon/transcripts/`.",
+            "analog": ""
+          },
+          {
+            "term": "Manual port",
+            "aliases": [],
+            "definition": "A port written by hand in `skills/brain-viewer/adapters.json` rather than read from the other system's catalog, for a boundary that does not describe itself. It is merged into its resource group like any other port and drawn with a **dotted** edge everywhere, because it is a claim a person made and not the app's own word. Its callers are named in the registry too. When the system does grow a catalog, the hand-written group is replaced and the dots go away.",
+            "example": "the five `/candidates` calls on [the onboarding pull](/forge?adapter=onboarding), which has no self-description to read.",
+            "analog": ""
+          },
+          {
+            "term": "Cable",
+            "aliases": [],
+            "definition": "A line on an [adapter sheet](#adapter-sheet), drawn rather than typed: from a port to what calls it on the brain side, and from that port to the store it reaches in the outside system; and, when an adapter sits inside a cell, from its arcs to the parts of that cell that call it. **The arrowhead is the direction the call pushes:** a GET points toward the brain, a POST, PUT, PATCH or DELETE points toward the app. A cable to a port nothing calls is dashed and faint, a cable from a drift row is red, and a cable to a manual port is dotted. Hover one for its plain name, the first clause of the route's purpose. It is a **line** seen at the adapter level: a line is drawn by hand and saved in the canvas, a cable is generated and saved nowhere.",
+            "example": "`skills/call-prep` to `GET /api/v1/contacts` to the contacts store.",
+            "analog": ""
+          },
+          {
+            "term": "Bundle",
+            "aliases": [],
+            "definition": "Retired 2026-09-18. It used to mean one cable standing for a whole resource group while the whole drawing was on screen, with the group's ports collapsed behind a count — the way an adapter fanned out onto the map it sat on. Nothing fans out onto a map any more: a drawing shows the adapter as one symbol with its counts, the detail moved to the **adapter sheet**, and the compact form inside a cell is three counted arcs, one per **port group** tier. The word is kept here only so an older note that uses it can be read.",
+            "example": "",
+            "analog": ""
+          },
+          {
+            "term": "Line",
+            "aliases": [
+              "edge"
+            ],
+            "definition": "Information moving from one node to another, in a direction, labelled with what moves.",
+            "example": "\"pull the application\" between the website cell and the app cell.",
+            "analog": ""
+          },
+          {
+            "term": "Bubble",
+            "aliases": [],
+            "definition": "A node drawn as a circle standing for one thing you can open: a conversation, a session, a sub-agent, a project, a person. A ring band, the thing's own glyph in the middle, its name under it, a count on the corner when it has one, and a gold ring while it is running; double-click one for what is inside it. The gold dot travelling along a line is an **in-flight bubble** (below) and is the only other thing the word covers.",
+            "example": "every conversation and session on [the agents page](/agents), and the small ones in Running now on [the home page](/).",
+            "analog": ""
+          },
+          {
+            "term": "Blob",
+            "aliases": [],
+            "definition": "A store drawn against the OUTSIDE of a cell's wall: a round shape touching the rim, where what the cell keeps sits beside the mouth. It slides to a free stretch of rim so it never covers a name, it carries a pointer to the real table, file or page behind it, and a double-click opens that beside the drawing. Far out it draws the store's own symbol where its name would be. A blob is a **store** seen from outside the wall; the same store drawn inside the core is the green box.",
+            "example": "the profiles store at the wall of [the onboarding app cell](/forge?path=projects/pf-build/architecture/womb-phase/onboarding-app-cells.canvas).",
+            "analog": ""
+          },
+          {
+            "term": "Cell",
+            "aliases": [],
+            "definition": "A container that holds parts and sets how they behave; the outside band is what people see (UI), the inside is what runs.",
+            "example": "the onboarding app drawn as a cell.",
+            "analog": ""
+          },
+          {
+            "term": "Output",
+            "aliases": [
+              "mouth"
+            ],
+            "definition": "The one section of a cell's shell that what it makes leaves through: a segment on the outside of its wall, in its own color, which slides around the ring so it can face whatever comes next. Double-click it for its shelf: the loose fields the cell makes and the packages already named. It replaced the old core part called *assumed output* on 2026-09-10, so there is one word for this and one place it is drawn.",
+            "example": "the mouth on [the onboarding app cell](/forge?path=projects/pf-build/architecture/womb-phase/onboarding-app-cells.canvas), facing the interview.",
+            "analog": ""
+          },
+          {
+            "term": "Field",
+            "aliases": [],
+            "definition": "One thing a cell makes, by the name the real record gives it: an email address, a location, an archetype. Where the cell is bound to something real the fields are read from that thing's own records rather than typed, so a schema that gains a key gains a field.",
+            "example": "`email` and `profile.whyProspectforge`, read from the onboarding app's candidate records.",
+            "analog": ""
+          },
+          {
+            "term": "Package",
+            "aliases": [],
+            "definition": "Fields picked and named together because they travel as one thing: a form, a card, a packet. A package sits as a tile **on** the ring, its inner edge flush against the mouth, and dragging it onto another cell draws the line from the tile, labelled with its name and nothing else. It is one of the few things still drawn with the whole drawing on screen, because seeing what is packed is the point.",
+            "example": "*the application form* on the onboarding app cell, eleven fields, shipped to the brain as a people card.",
+            "analog": ""
+          },
+          {
+            "term": "Packet",
+            "aliases": [],
+            "definition": "One filled package on its way: the fields of a package with a single record's values in them, travelling down a line as one thing. The **package** is the shape (which fields go together, under one name); the packet is one of them actually going, and it is what the gold dot on a line stands for.",
+            "example": "one candidate's application form arriving at the interview cell — the *application form* package, with that candidate's eleven answers in it.",
+            "analog": ""
+          },
+          {
+            "term": "Holon",
+            "aliases": [],
+            "definition": "A folder in the brain that declares what it is and what lives in it, which agent runs inside it, its rules and its status. Holons hold other holons.",
+            "example": "the PF company folder, [[brain-viewer-holon/readme.md|the Brain Viewer holon]], the PF App holon. A cell is a holon drawn; a holon is a cell stored.",
+            "analog": ""
+          },
+          {
+            "term": "Forge",
+            "aliases": [],
+            "definition": "The page where a system is designed before it exists: cells, typed parts and labelled lines drawn on a canvas, with a palette of part types on the right, an inspector for the selected thing, undo, and an explicit save back to the same canvas file Obsidian reads.",
+            "example": "[the onboarding pipeline opened in the Forge](/forge?path=projects/pf-build/architecture/womb-phase/onboarding-app-cells.canvas); the picker of every drawing at [/forge](/forge).",
+            "analog": ""
+          }
+        ]
+      },
+      {
+        "name": "The things that move and decide",
+        "pages": [
+          "home",
+          "chat",
+          "agents",
+          "status"
+        ],
+        "note": "",
+        "hover": true,
+        "terms": [
+          {
+            "term": "Hook",
+            "aliases": [],
+            "definition": "A rule or a small skill that fires when something happens and decides what to do next.",
+            "example": "the dispatcher's rules over the log; the log-integrity check that runs at the end of every turn.",
+            "analog": ""
+          },
+          {
+            "term": "Primary current",
+            "aliases": [
+              "central line"
+            ],
+            "definition": "The main agent's line of thought: the chat the owner talks to, and everything that rides along it.",
+            "example": "the Main chat on [the home page](/).",
+            "analog": ""
+          },
+          {
+            "term": "Dispatch",
+            "aliases": [],
+            "definition": "Handing a job from the primary current to a holon's agent and getting a shaped result back.",
+            "example": "the main chat farming research out to a scout.",
+            "analog": ""
+          },
+          {
+            "term": "Ferryman",
+            "aliases": [],
+            "definition": "The brain's transcoder between the brain and an app: it reads one shape and delivers another. It is an **adapter** (the same part type, drawn with the boat), so on a drawing it carries the generated port level.",
+            "example": "the push that carries a transcript's summary into the PF App.",
+            "analog": ""
+          },
+          {
+            "term": "Agent",
+            "aliases": [],
+            "definition": "A model with instructions and a scope, running inside a holon.",
+            "example": "the Brain Viewer agent, the PF App agent, a scout.",
+            "analog": ""
+          },
+          {
+            "term": "Sub-agent",
+            "aliases": [],
+            "definition": "An agent another agent started for one job, with its own model and instructions, which reports back and then ends. Drawn as a smaller bubble attached to the one that started it.",
+            "example": "the opus workers a project agent sends off, under their conversation on [the agents page](/agents).",
+            "analog": ""
+          },
+          {
+            "term": "Conversation",
+            "aliases": [],
+            "definition": "One continuous line of talk with an agent: the same agent, holding the same memory, picked up again every time you send. The app keeps it as a Claude Code session and resumes that session, so a conversation and a session are two words for the same thing seen from either end.",
+            "example": "any row in the list on the left of [the home page](/).",
+            "analog": ""
+          },
+          {
+            "term": "Send-to",
+            "aliases": [],
+            "definition": "Handing one agent's answer to another: the quoted reply plus your note become the next message in that agent's conversation, and the line between the two is kept so the drawing can show it. Started by the control under an answer, or by dragging one bubble onto another.",
+            "example": "an answer from a project agent handed to Main to be checked.",
+            "analog": ""
+          },
+          {
+            "term": "Open in chat",
+            "aliases": [
+              "adopt"
+            ],
+            "definition": "Taking a Claude Code session you ran in the terminal into the app's list, so your next message carries on the same session with the same agent. Refused while that session is still being written to, because two programs writing one transcript at once corrupt it.",
+            "example": "the control on a session bubble on [the agents page](/agents).",
+            "analog": ""
+          }
+        ]
+      },
+      {
+        "name": "The things that record and organize",
+        "pages": [
+          "projects",
+          "people",
+          "requests",
+          "mentee"
+        ],
+        "note": "",
+        "hover": true,
+        "terms": [
+          {
+            "term": "Ledger",
+            "aliases": [],
+            "definition": "One file per project holding its tasks and questions, one per line, with an owner and dates. Listed by milestone on [the Projects panel](/projects); answered, closed or put off on Today and on the item's thread page.",
+            "example": "[[brain-viewer-holon/brain-viewer-tasks.md|this holon's own ledger]].",
+            "analog": ""
+          },
+          {
+            "term": "Stage line",
+            "aliases": [],
+            "definition": "The build order drawn as one horizontal line, a dot per step, filled once a step closes, with the step the build is on marked and named; hover or click a dot for its name and, once it is done, a link to what it built. It reads the Straight-line milestone off the ledgers, so it is the ledger seen sideways rather than a second copy of it.",
+            "example": "the nine dots above [Waiting on you on the home page](/), and the same line above the milestones on [the Brain Viewer ledger](/projects?id=brain-viewer-holon).",
+            "analog": ""
+          },
+          {
+            "term": "Reply",
+            "aliases": [],
+            "definition": "A line you write back on a task instead of ticking it: it is saved as that item's note, dated, and the item stays open. The box sits under every task of yours on Today and on the task's thread page; a box ticked with words still in it writes both.",
+            "example": "the note box under a task in Yours to do on [Today](/).",
+            "analog": ""
+          },
+          {
+            "term": "Notepad",
+            "aliases": [],
+            "definition": "The box in the bottom-left corner of every page, folded to one line until you open it: somewhere to write a note the moment you have it, with a picture pasted or attached to it. Saving writes one dated markdown file into `thoughts/notepad/` with the picture beside it, and the note is then a real brain file: it opens in the Reader and its path can be dropped into a message or onto a ledger item.",
+            "example": "the notepad tab at the bottom left of [the Projects panel](/projects).",
+            "analog": ""
+          },
+          {
+            "term": "Panel",
+            "aliases": [],
+            "definition": "One screen of the app (the word *page* means the same thing).",
+            "example": "People, Projects, Chat, Map, Canvases.",
+            "analog": ""
+          },
+          {
+            "term": "Canvas",
+            "aliases": [],
+            "definition": "A hand-drawn diagram (Obsidian format) the app renders; the intent layer of a machine.",
+            "example": "the data-flow map, the onboarding cells, on [the Canvases panel](/canvases).",
+            "analog": ""
+          },
+          {
+            "term": "Registry",
+            "aliases": [],
+            "definition": "The list of holons and what each declares.",
+            "example": "[[context/holon-registry.json]].",
+            "analog": ""
+          },
+          {
+            "term": "Log",
+            "aliases": [],
+            "definition": "The append-only record of every agent action, the event stream the dispatcher reads.",
+            "example": "[[context/log.md]].",
+            "analog": ""
+          },
+          {
+            "term": "Section ask",
+            "aliases": [],
+            "definition": "A ledger question that points at one part of a document: the portion you must strike, reorder or decide, with a link that opens the Reader at that section, so the document stays whole. Answered on Today or the item's thread page; the Projects panel lists it.",
+            "example": "[the build doc's undecided list, section 7](/reader?path=brain-viewer-holon/brain-viewer-build-doc.md#7-undecided-the-conversation), asked from the viewer's ledger; the ask button sits on every section header.",
+            "analog": ""
+          },
+          {
+            "term": "Agent notes",
+            "aliases": [],
+            "definition": "The blocks in a brain file written for whoever reads it next rather than for you: the banners in quotes at the top, a previous header kept under a comment, the `**STATUS:` lines, and anything a writer marks `<!-- agent -->`. The Reader keeps them off the front of a document and puts them back exactly where they sit in the file when you press *show agent notes*, dimmed and each one tagged *agent*.",
+            "example": "the rule banner at the top of [the pricing file](/reader?path=projects/pf-build/pf-pricing.md).",
+            "analog": ""
+          },
+          {
+            "term": "History",
+            "aliases": [
+              "the back of a file"
+            ],
+            "definition": "Every dated block in a document: a previous header, a superseded section, a dated priority stack, the folds on a person's card. A heading that starts with a date, or carries *previous*, *superseded*, *history* or *Cold storage*, puts its whole section on the back; *history* in the Reader turns to it and *front* returns. A date in parentheses is provenance and leaves the heading on the front, and a file that is nothing but dated blocks keeps them all on its front.",
+            "example": "the dated folds on a long-running mentee's card, opened in the Reader from [the people list](/people).",
+            "analog": ""
+          },
+          {
+            "term": "Reader",
+            "aliases": [],
+            "definition": "The page that opens a brain document organized by its headings, with strike and reorder on every list item, saved back to the file and logged.",
+            "example": "[the build doc opened at section 8](/reader?path=brain-viewer-holon/brain-viewer-build-doc.md#8-possible-next-moves-for-him-to-strike-or-reorder-nothing-starts-until-he-says). Lives at `/reader?path=<file>#<heading>`; the *reader* link sits at the right of every top bar.",
+            "analog": ""
+          },
+          {
+            "term": "Where it stands",
+            "aliases": [],
+            "definition": "The one status a people card carries: a single line under the person's name, dated, saying where they stand today. Rewritten in place whenever it changes, never appended to, and every clause in it traces to something already on the card. It is what the People page shows first and what an agent reads before answering any question about that person.",
+            "example": "the dated line on the card of a mentee who dropped out, which says so and where the seat went; every card is at [/people](/people).",
+            "analog": ""
+          },
+          {
+            "term": "Front",
+            "aliases": [
+              "of a card"
+            ],
+            "definition": "What you get on click: the Where-it-stands line and its date, what is open for you about them, when you last spoke and how often, the next call, what they are building, how to reach them. The page composes it from the card's standard sections plus what it can compute, so nothing on the front is typed twice.",
+            "example": "the top of a mentor's card at [/people](/people).",
+            "analog": ""
+          },
+          {
+            "term": "Back",
+            "aliases": [
+              "history"
+            ],
+            "definition": "Everything the front was written from, behind one fold: the dated folds, the flags and watchouts, the pipeline detail, the notes, and any status section the card carried before the format changed. Kept, never deleted, and never current unless the front says it is.",
+            "example": "the *History* fold on a long-running mentee's card at [/people](/people), twenty sections.",
+            "analog": ""
+          },
+          {
+            "term": "Stale",
+            "aliases": [
+              "a card"
+            ],
+            "definition": "A card whose status has stopped without anyone noticing: no Where-it-stands line at all, a line more than thirty days old, or a dated `[status]` fold newer than the line. Marked on the card and on the row in the list, and reported by the brain's lint as check L12.",
+            "example": "the mark on every card not yet moved to the new format, in the list at [/people](/people).",
+            "analog": ""
+          },
+          {
+            "term": "Blocking",
+            "aliases": [
+              "blocked"
+            ],
+            "definition": "A question the work cannot move past: an open task on the same ledger is marked as waiting on that question, so it stays stopped until the question is answered. A blocking question comes first in its group of Yours to do on [Today](/), naming the task it blocks, and wears a **blocking** badge on [the Projects panel](/projects). It is not *on hold*: on hold is work you put down yourself, blocking is work somebody else is waiting on.",
+            "example": "the open question about where call preps and their notes go after a call, with the task that files them waiting behind it.",
+            "analog": ""
+          },
+          {
+            "term": "On hold",
+            "aliases": [],
+            "definition": "A task of yours you are not doing now and have not finished: it carries the day it comes back, and until then it leaves Yours to do on Today, the project pages, the people pages and the thread pages. It is still open and still owed: nothing about it is closed, and nobody else is waiting on it, which is what makes it different from blocked. The **hold** press beside a task on Today or its thread page puts it down for three days; the small date box beside that press picks another day; **bring back** returns it early. Today keeps the held tasks folded under one *On hold* line with their count.",
+            "example": "a test item you would rather look at next week.",
+            "analog": ""
+          }
+        ]
+      },
+      {
+        "name": "The things on a ledger",
+        "pages": [
+          "today",
+          "thread",
+          "threads",
+          "projects",
+          "people",
+          "from-claude",
+          "fromclaude"
+        ],
+        "note": "What a project's list of work is made of, and the shapes the pages draw them in. The rules an agent files by are in `skills/brain-tasks/readme.md`; this is the same vocabulary for a person reading the page.",
+        "hover": true,
+        "terms": [
+          {
+            "term": "Task",
+            "aliases": [],
+            "definition": "Something one person owes: you, Claude, or a contact with a card. It is open, done, blocked on a question, or on hold until a day. On Today a task of yours has the done press, the hold press with its date box, and the note box.",
+            "example": "a task under Yours to do on [Today](/).",
+            "analog": ""
+          },
+          {
+            "term": "Steps",
+            "aliases": [],
+            "definition": "What you do to finish a task, each a short line with the place to go, drawn under the task's words as a numbered list with a tick box each, before the chips and the note. A tick is written to the ledger at once and reaches the session like any press, with an undo for the rest of the day; once every step is ticked, done is the card's lead press. The note sits under the steps, folded to its first line when it is long. Twelve steps at most; the history stays in the note, the reasoning in the linked file.",
+            "example": "a task with its steps under Up first on [Today](/).",
+            "analog": ""
+          },
+          {
+            "term": "Question",
+            "aliases": [],
+            "definition": "Something one party asks the other. A plain question answers Yes or No, or in your own words; once answered it closes, and any task waiting on it is released.",
+            "example": "a question under Yours to do on [Today](/).",
+            "analog": ""
+          },
+          {
+            "term": "Decision",
+            "aliases": [],
+            "definition": "A question that names its choices: one press per choice, drawn from the choices the asker wrote. Today's *Show* filter *decisions* lists these, and within each group of Yours to do the rows rotate task, question, decision so no kind sits in a block.",
+            "example": "a question with Friday, Monday and neither as its presses.",
+            "analog": ""
+          },
+          {
+            "term": "Picture question",
+            "aliases": [],
+            "definition": "A question whose choices are pictures: each choice names an image in the brain, or the question links one image per choice. The presses are the pictures themselves, with the choice's words under each.",
+            "example": "a choice between two drafts of a card, drawn as the two cards.",
+            "analog": ""
+          },
+          {
+            "term": "Survey",
+            "aliases": [],
+            "definition": "A question answered on a page of its own, many statements at once. It carries one press, *Take the survey*, which opens the survey page; Finish there answers the question.",
+            "example": "[the survey page](/survey) opened from a survey question on Today.",
+            "analog": ""
+          },
+          {
+            "term": "Pick",
+            "aliases": [],
+            "definition": "A question answered by choosing between things to look at: design directions, versions of a page, pictures. It leads with one press, *Compare*, which opens its workspace on the options side by side, each with its answer press under it; the answer records the option's name.",
+            "example": "a choice between two header directions opened side by side on the thread page.",
+            "analog": ""
+          },
+          {
+            "term": "Test",
+            "aliases": [],
+            "definition": "A task that is a click-through for you to try something built. Tests are not listed on Today or the home board; they wait under *To try* on the from-Claude page, and a test opened by its own link shows at the top of Today with a line saying what it is. New ones are no longer filed: how to try a finished step is written on the what's-new page instead.",
+            "example": "*To try* on [the from-Claude page](/from-claude).",
+            "analog": ""
+          },
+          {
+            "term": "Proposal",
+            "aliases": [
+              "review"
+            ],
+            "definition": "An item put up for your rating on the from-Claude page: a card rated good, off or wrong with one press, and a line of your own only if you want one.",
+            "example": "a card on [the from-Claude page](/from-claude).",
+            "analog": ""
+          },
+          {
+            "term": "Raised on a call",
+            "aliases": [
+              "call tag"
+            ],
+            "definition": "An item meant for one person's next call. It leaves Today, which says how many are waiting in preps, and arrives in that person's next call prep under Context, where it is closed once a transcript shows it was raised.",
+            "example": "a question for a mentor that waits in the prep for your next call with them, not on Today.",
+            "analog": ""
+          },
+          {
+            "term": "Future",
+            "aliases": [],
+            "definition": "A label on an idea kept for a later phase: owed by nobody on any day, listed wherever its ledger is listed, and nothing more. Not a hold, which has a day it comes back.",
+            "example": "a viewer idea marked future on [the Projects panel](/projects).",
+            "analog": ""
+          },
+          {
+            "term": "Later",
+            "aliases": [],
+            "definition": "A plain label from the ledger's first days, kept on the lines that carry it; the viewer does nothing with it. To put a task off, hold it.",
+            "example": "an early design task marked later.",
+            "analog": ""
+          },
+          {
+            "term": "From",
+            "aliases": [
+              "source"
+            ],
+            "definition": "The small *from:* line under an item: who filed it, a session, a check that runs on its own, a transcript's intake, or you. It is for the agent that will look for its own items again; it tells you nothing about the item.",
+            "example": "*from: import-checkup* under a task that came out of a call.",
+            "analog": ""
+          },
+          {
+            "term": "Might annoy you",
+            "aliases": [
+              "friction card"
+            ],
+            "definition": "A card on Today that is not a ledger item: something in the brain's own output that resembles one you reacted to before, the moment quoted, then the pattern it resembles with its rule. Press *Annoying* or *Not annoying*, or write a comment; the answer goes into the record of how you work.",
+            "example": "the *Might annoy you* band on [Today](/), drawn only when a card is open.",
+            "analog": ""
+          },
+          {
+            "term": "To approve in the app",
+            "aliases": [],
+            "definition": "A row on Today that is not a ledger item: one call whose action items wait for approval in the ProspectForge app. Approve all, skip until tomorrow, or open the items one by one; every press writes to the app.",
+            "example": "a row under Yours to do on [Today](/) after a call lands.",
+            "analog": ""
+          },
+          {
+            "term": "Hold",
+            "aliases": [],
+            "definition": "The press beside a task of yours on Today and on its thread page: puts the task down for three days (or a date you pick) and takes it out of the lists until it comes back, still open.",
+            "example": "a test you cannot run until the next call.",
+            "analog": ""
+          }
+        ]
+      },
+      {
+        "name": "The layers of a drawing",
+        "pages": [
+          "canvases",
+          "maps"
+        ],
+        "note": "",
+        "hover": true,
+        "terms": [
+          {
+            "term": "Intent",
+            "aliases": [],
+            "definition": "What should exist: the drawing itself, cells and parts and lines (build doc, section 12).",
+            "example": "the onboarding cells canvas as drawn, before anything was bound to it.",
+            "analog": ""
+          },
+          {
+            "term": "Build",
+            "aliases": [],
+            "definition": "The same drawing with every part bound to a real thing: a file, a skill, an agent, a table, an endpoint.",
+            "example": "that canvas with \"Script · Autopopulate\" pointing at the script that actually runs.",
+            "analog": ""
+          },
+          {
+            "term": "Runtime",
+            "aliases": [],
+            "definition": "The same drawing lit by what actually happened: log lines, transcripts, pushes, chats; the gold bubbles moving.",
+            "example": "the same canvas showing which parts fired today.",
+            "analog": ""
+          },
+          {
+            "term": "Womb phase",
+            "aliases": [],
+            "definition": "Binah is the candidate name.",
+            "example": "[[brain-viewer-holon/brain-viewer-build-doc.md|the build doc]], section 11.",
+            "analog": ""
+          },
+          {
+            "term": "Stage",
+            "aliases": [],
+            "definition": "How far along a cell is, one of four: concept (drawn only), prototype (some parts exist, not all real), built (every part bound to something real), stable (built and trusted). Set in the Forge's inspector, shown as a badge on the cell, stored beside the drawing in its .forge.json; a drawing with no such file has every cell at concept.",
+            "example": "the onboarding app cell marked prototype while the website cell stays at concept.",
+            "analog": ""
+          },
+          {
+            "term": "Binding",
+            "aliases": [],
+            "definition": "The real thing a node on a drawing stands for: a file, a canvas, a holon, a skill, an agent, a page of this app, or an outside service. Worked out from the node's own words (its wikilink or path first, then a holon or skill or agent named on its title line, then a page or a service), never stored until you press save bindings, when it is written beside the drawing in its .forge.json so the drawing carries it forward. A node bound to nothing is a concept.",
+            "example": "on [the data-flow map, live](/live?path=projects%2Fpf-build%2Farchitecture%2Fdata-flow%2Fpf-data-flow-map.canvas), Ferryman PULL is bound to the ferryman skill and INDEX.md to the file itself.",
+            "analog": ""
+          },
+          {
+            "term": "Symbols",
+            "aliases": [],
+            "definition": "How a drawing reads with the whole of it on screen: every part is the symbol printed beside its word in this glossary and nothing else, a store is that symbol inside its blob, and a band part is the symbol already on its segment. A cell keeps its title and its stage badge, and a package keeps its name, because those are what tell you where you are and what is being shipped. Rest the pointer on a part and it says its own name again; past 60% every word is drawn.",
+            "example": "the onboarding drawing at the zoom that fits it on screen, where ten parts read as ten symbols. The corner readout says which of the two you are looking at.",
+            "analog": ""
+          },
+          {
+            "term": "Live map",
+            "aliases": [],
+            "definition": "An existing canvas read against real state: the same drawing the Forge edits, read-only, with the build layer (what each node is bound to) and the runtime layer (what the log recorded about it in the last fourteen days, a gold bubble on every line active today) over the intent. Several of them, one per canvas, picked by purpose.",
+            "example": "[the maps page](/maps) and its five groups: information flow, apps and services, the OS, machines, the daily workflow.",
+            "analog": ""
+          }
+        ]
+      },
+      {
+        "name": "The rooms and the work",
+        "pages": [
+          "today",
+          "thread",
+          "threads",
+          "chat",
+          "studio",
+          "preview",
+          "home"
+        ],
+        "note": "",
+        "hover": true,
+        "terms": [
+          {
+            "term": "Thread",
+            "aliases": [],
+            "definition": "One matter worked through with people over several calls, with its own page: who it is about, where it stands, every open item on any project that concerns it, the next call and its prep, and what has been decided. Each thread is one subject file under a project's `subjects/` folder. Not a conversation in the chat, and not a standing call series (the Friday call is a series).",
+            "example": "a partnership worked out with a partner company's president over several calls; every thread at [/threads](/threads).",
+            "analog": ""
+          },
+          {
+            "term": "Workspace",
+            "aliases": [],
+            "definition": "One item opened with everything around it: the item and its presses, its brief, its files, the people it concerns, its history and a box for notes. It is drawn inside the item's thread page, focused on that item; an item on no thread opens on a thread page of its own.",
+            "example": "press the words of any item on [a thread page](/threads).",
+            "analog": ""
+          },
+          {
+            "term": "Brief",
+            "aliases": [],
+            "definition": "A short write-up of one item, made on request by a model that reads the item, its thread, its files and its people and changes nothing: what it is, where it stands, what is in the way. Made with *Brief me* in the item's workspace and kept under `deliverables/briefs/`.",
+            "example": "the *Brief* block in any item's workspace.",
+            "analog": ""
+          },
+          {
+            "term": "Studio",
+            "aliases": [],
+            "definition": "The page that makes pictures: a prompt, the things to leave out, a provider and a model, then the run as a grid to star, edit or attach to a task. A provider whose last call was refused for money or rate shows as not ready until a run works.",
+            "example": "[the studio](/studio).",
+            "analog": ""
+          },
+          {
+            "term": "Preview",
+            "aliases": [],
+            "definition": "The page that shows a web page inside the viewer at phone, tablet, laptop or full width: any page in the brain, reloaded when its file changes, or an address.",
+            "example": "[preview](/preview).",
+            "analog": ""
+          },
+          {
+            "term": "Budding",
+            "aliases": [],
+            "definition": "The owner's word for snipping a shaped set of blocks, rules and data off as a standalone brain that keeps one thread back to the parent: it is built inside this brain first, given shape and a week of data, then cut loose to run on its own, with its checks still reaching the owner.",
+            "example": "a mentee's first week of a placement, shaped here and then budded off as their own brain.",
+            "analog": ""
+          }
+        ]
+      },
+      {
+        "name": "The parts you can drop in",
+        "pages": [
+          "canvases",
+          "map"
+        ],
+        "note": "The picker from build doc section 14, one line each. These are reference entries: they name what a part *is* when you drop it into a cell, so they are not auto-underlined in ordinary prose — the words are too everyday. Groups: containers, people-facing (the cell's outer band), running parts (its core), minds, stores, outside, flow. The flow group also holds the **Adapter** — a boundary the brain calls across, defined with the things on a canvas above, because what it is worth knowing about it is the second view it opens. `Ferryman` is that same type under its own name and keeps the boat symbol.",
+        "hover": false,
+        "terms": [
+          {
+            "term": "Screen",
+            "aliases": [],
+            "definition": "A people-facing part: something a person looks at inside a cell. Carries who sees it and what it hands inward.",
+            "example": "the onboarding app's application form screen. Draws as an arc segment on the cell's outer band.",
+            "analog": ""
+          },
+          {
+            "term": "Form",
+            "aliases": [],
+            "definition": "A screen that collects: fields in, one record out.",
+            "example": "the intake application. Draws as an arc segment, gold-tinted.",
+            "analog": ""
+          },
+          {
+            "term": "Dashboard",
+            "aliases": [
+              "view"
+            ],
+            "definition": "A screen that only shows: no writing, a read of state.",
+            "example": "the mentee content dashboard at `/mentee`.",
+            "analog": ""
+          },
+          {
+            "term": "Message",
+            "aliases": [],
+            "definition": "A people-facing part that leaves the cell to reach a person: an email, a text, an app notification.",
+            "example": "the check-in nudge.",
+            "analog": ""
+          },
+          {
+            "term": "Step",
+            "aliases": [
+              "script"
+            ],
+            "definition": "A running part in the cell's core: one job, deterministic, no model.",
+            "example": "`skills/brain-log/log.py` appending a line.",
+            "analog": ""
+          },
+          {
+            "term": "Schedule",
+            "aliases": [],
+            "definition": "A running part that fires on a clock rather than on an event.",
+            "example": "the nightly qmd re-index.",
+            "analog": ""
+          },
+          {
+            "term": "Gate",
+            "aliases": [],
+            "definition": "A running part that waits for an approval, from a person or a rule, before the flow continues.",
+            "example": "the owner approving a placement; propose mode's request queue.",
+            "analog": ""
+          },
+          {
+            "term": "Skill",
+            "aliases": [],
+            "definition": "A packaged procedure an agent can call, with its own instructions.",
+            "example": "`skills/call-prep/`. A mind-type part.",
+            "analog": ""
+          },
+          {
+            "term": "Prompt",
+            "aliases": [],
+            "definition": "The instructions a mind runs with, stored as a part so it can be read and changed.",
+            "example": "`skills/brain-viewer/chat-prompts/main.md`.",
+            "analog": ""
+          },
+          {
+            "term": "Store",
+            "aliases": [],
+            "definition": "A file or a table a cell writes to and reads from.",
+            "example": "`context/chats/`. Draws as a green box inside the cell, or, dragged against the cell wall, as a round blob touching the rim from outside — where what is kept sits beside the mouth. A blob takes a **free stretch of the rim**: it starts beside the mouth (or at the angle you dropped it) and slides to the nearest stretch clear of the band names, the packages and the lines, so it never sits on top of a name. A blob carries a pointer to the real table, file or page, and a double-click opens it beside the drawing; that view closes on Escape, on its close button, or on a press anywhere on the drawing. Far out, the blob draws the store’s own symbol where its name would be, and the name comes back with the pointer on it. Example: the profiles store at the wall of [the onboarding app cell](/forge?path=projects/pf-build/architecture/womb-phase/onboarding-app-cells.canvas).",
+            "analog": ""
+          },
+          {
+            "term": "Catalogue",
+            "aliases": [],
+            "definition": "A store whose whole job is listing what exists, for something else to read.",
+            "example": "`pf-app-holon/pf-app-api-catalog.json`.",
+            "analog": ""
+          },
+          {
+            "term": "App",
+            "aliases": [],
+            "definition": "An outside system with its own users and database that a cell talks to.",
+            "example": "the PF App, the onboarding app. Draws as a hexagon at the cell's edge.",
+            "analog": ""
+          },
+          {
+            "term": "Service",
+            "aliases": [],
+            "definition": "An outside system with no users of ours: an API we call.",
+            "example": "GitHub, Google Calendar.",
+            "analog": ""
+          },
+          {
+            "term": "Person",
+            "aliases": [],
+            "definition": "A named human in the flow, drawn because the machine waits on them.",
+            "example": "a team member accepts, the owner decides.",
+            "analog": ""
+          },
+          {
+            "term": "In-flight bubble",
+            "aliases": [],
+            "definition": "A gold dot moving along a line: one message, file, record or event actually travelling right now.",
+            "example": "a chat turn arriving on the map.",
+            "analog": ""
+          }
+        ]
+      }
+    ],
+    "keys": [
+      {
+        "key": "Escape",
+        "pages": [
+          "projects",
+          "people",
+          "canvases",
+          "maps",
+          "requests",
+          "holons",
+          "agents",
+          "glossary"
+        ],
+        "what": "closes whatever is open on top: the read drawer, the image viewer, a live map's text drawer, the sheet that hands an answer to another agent."
+      },
+      {
+        "key": "Enter",
+        "pages": [
+          "home",
+          "chat"
+        ],
+        "what": "sends the message you are typing."
+      },
+      {
+        "key": "Enter or Space",
+        "pages": [
+          "agents",
+          "home"
+        ],
+        "what": "with a bubble focused, opens its history read-only: the same as a double-click on it."
+      },
+      {
+        "key": "Shift+Enter",
+        "pages": [
+          "home",
+          "chat"
+        ],
+        "what": "a new line inside the message instead of sending it."
+      },
+      {
+        "key": "/",
+        "pages": [
+          "people",
+          "holons",
+          "mentee"
+        ],
+        "what": "jumps to that page's search box."
+      },
+      {
+        "key": "f",
+        "pages": [
+          "maps",
+          "forge"
+        ],
+        "what": "fits the whole drawing back on screen, on the Forge and on a live map."
+      },
+      {
+        "key": "i b r",
+        "pages": [
+          "maps"
+        ],
+        "what": "on a live map, turn the intent, build and runtime layers on and off; any of the three can be on at once, and the page remembers the choice."
+      },
+      {
+        "key": "g",
+        "pages": [
+          "canvases"
+        ],
+        "what": "turns the canvas grid on and off."
+      },
+      {
+        "key": "Ctrl+Enter / Cmd+Enter",
+        "pages": [
+          "every page",
+          "in the notepad"
+        ],
+        "what": "saves the note you are writing without reaching for the button."
+      },
+      {
+        "key": "?",
+        "pages": [
+          "every page"
+        ],
+        "what": "opens this page's help panel: what the page is and what each part of it does, in plain words; the glossary is one press further in, from a link inside the panel, and opens in a small window meant to stay beside your work."
+      },
+      {
+        "key": "S",
+        "pages": [
+          "forge"
+        ],
+        "what": "grow or shrink what is selected; hold S and drag a selected thing away from its middle to grow it, toward the middle to shrink it, or tap S once with something selected to stay in scale mode until the next scale or Escape. S is scale whenever no line is being dragged."
+      },
+      {
+        "key": "Delete",
+        "pages": [
+          "forge"
+        ],
+        "what": "asks before removing the selected parts, cells or line; a cell offers to take the parts inside it along."
+      },
+      {
+        "key": "Ctrl+Z / Ctrl+Shift+Z",
+        "pages": [
+          "forge"
+        ],
+        "what": "undo and redo, up to sixty steps, before anything is saved."
+      },
+      {
+        "key": "Ctrl+S",
+        "pages": [
+          "forge"
+        ],
+        "what": "saves everything you have changed; the drawing and its sibling .forge.json are both written, and nothing is saved until you press this or Save."
+      },
+      {
+        "key": "h s a d u",
+        "pages": [
+          "forge"
+        ],
+        "what": "only while you are dragging a line: h drops a hook onto it, s a step, a an agent, d a store, u a screen, and the line carries on from the part you just dropped. The five letters are named on screen while the line is in your hand. At any other time they do nothing, which is why s on its own is scale. (There were six until 2026-09-10: **o** left the list when an output became a section of a cell's shell rather than a part you could drop on a line.)"
+      },
+      {
+        "key": "o",
+        "pages": [
+          "forge"
+        ],
+        "what": "opens the output shelf of whatever you have selected, a cell or its mouth: the loose fields the cell makes on the left, the packages already named on the right. A double-click on the mouth itself does the same."
+      },
+      {
+        "key": "Alt+click",
+        "pages": [
+          "forge",
+          "in the shelf"
+        ],
+        "what": "picks a loose field for a package. Hold Alt and click as many as belong together, then name what they make and press Package; the boxes beside each field do the same thing for one at a time."
+      },
+      {
+        "key": "Shift",
+        "pages": [
+          "forge"
+        ],
+        "what": "with a click adds to the selection; with a drag on empty canvas draws a selection box."
+      },
+      {
+        "key": "Shift+click",
+        "pages": [
+          "home",
+          "projects"
+        ],
+        "what": "on a project in the list: keeps the one that is already open and opens this one beside it. A plain click opens one project at a time and closes the last, which is how both lists work now."
+      },
+      {
+        "key": "1 2 3",
+        "pages": [
+          "review"
+        ],
+        "what": "rates the card you are on: good, off, wrong. The rating is written straight onto the item and the next card comes up; the line beside the buttons is optional and nothing waits for it."
+      },
+      {
+        "key": "1 2 3 on a rated row",
+        "pages": [
+          "review"
+        ],
+        "what": "in the Rated fold, click a row and press 1, 2 or 3 to give it that answer (good, off, wrong) without opening its change press. Pressing the answer it already has does nothing and says so."
+      },
+      {
+        "key": "Enter or ↓",
+        "pages": [
+          "review"
+        ],
+        "what": "the next card. **Backspace or ↑** goes back to the one before. A card you have already rated is stepped over."
+      },
+      {
+        "key": "Escape",
+        "pages": [
+          "forge"
+        ],
+        "what": "one step back at a time: cancels a line being drawn, then closes the output shelf, then the store's view, then the delete question, then leaves scale mode, then clears the selection. The shelf and the store's view each close three ways: this key, the close button on their head, or a press outside them."
+      }
+    ]
+  }
+}

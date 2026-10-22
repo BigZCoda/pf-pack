@@ -4,7 +4,7 @@ What each released version of the component changed, newest first. Written by re
 
 ## 0.88.0 (2026-10-21)
 
-0.88.0, on top of 0.87.1 released earlier today. In a team member's copy, Today is back in the menu and opens on From Zak: the questions and new files from the owner's side, drawn so the member can act on them where they are, with the answer, done and note presses writing requests that travel back to the owner, and a line after each press saying where the request really is (sent, waiting, landed). The propose box's button reads Send in a copy and says the same.
+0.88.0, on top of 0.87.1 released earlier today. In a team member's copy, Today is back in the menu and opens on the From band, named after the brain's owner: the questions and new files from the owner's side, drawn so the member can act on them where they are, with the answer, done and note presses writing requests that travel back to the owner, and a line after each press saying where the request really is (sent, waiting, landed). The propose box's button reads Send in a copy and says the same.
 
 ## 0.87.1 (2026-10-21)
 

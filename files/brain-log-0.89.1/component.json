@@ -1,0 +1,7 @@
+{
+  "component": "brain-log",
+  "version": "0.89.1",
+  "releasedAt": "2026-10-21",
+  "installRoot": "skills/brain-log",
+  "note": "Released with brain-viewer 0.89.1 by its release.py; the viewer requires it."
+}

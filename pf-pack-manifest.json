@@ -1,8 +1,8 @@
 {
   "pack": "prospectforge-base",
   "manifestVersion": 2,
-  "updatedAt": "2026-10-22",
-  "manifestChangelog": "2026-10-22 release: brain-viewer 0.91.0 (Changed since you last looked: a band at the top of Today, under the pick, whenever the viewer changed since you last looked (the newest entry's lines, a press into the full page, a Seen press), and t). 2026-10-22 release: brain-viewer 0.90.0 (Pictures in a note, a one-line header on the phone, a thread kept to its own pieces, and for a team copy: the From band reads the newer what's-new page (what became of your requests, the sentences on). 2026-10-21 release: brain-viewer 0.89.1 (0.89.1, on top of 0.88.0 released earlier today. A link written in an item's words, as a path with a label or a markdown link, is drawn as a link on those words; a page route written in the words or i). 2026-10-21 release: brain-viewer 0.88.0 (0.88.0, on top of 0.87.1 released earlier today. In a team member's copy, Today is back in the menu and opens on the From band, named after the brain's owner: the questions and new files from the owne). 2026-10-21 release: brain-viewer 0.87.1 (From 0.68.0 to 0.87.1. Today opens on the day: Up first (the one to three things picked for you), In progress (the projects you are working in), what is new since you last looked, and one list you can). 2026-10-07 release: brain-viewer 0.68.0 (Viewer 0.68.0: Today is the landing page and the one queue; the menu folds; stable question ids so answers flow back into preps; the day drawing derived; the chat picker; the exclusive port bind and a). 2026-10-02 release: brain-viewer 0.59.0 (The home board's horizon milestones and the flow ring now read from files in your brain (context/horizon.json and context/flow.json) instead of being written into the widgets; with no file they say so). 2026-10-02 release: brain-viewer 0.56.1 (Everything since 0.48.0. Numbered lists count again and a question opens the file it points at (0.48.1). The chat stands alone, pictures drop onto the notepad, and a call's prep shows before its card). 2026-10-02 release: brain-survey 1.0.0, mentee-project 0.1.0 and brain-status 0.1.0 join the pack as folder components. 2026-10-02 release: ferryman 1.3.1 (User-Agent on every call, the Cloudflare 1010 fix; BRAIN_ROOT override). 2026-09-23 release: brain-viewer 0.48.0 (The viewer is now a pf-pack component, replaced whole on update, and what you make lives outside it. Your settings, board layouts, looks and widgets live in viewer/ at the brain root, which no update). 2026-09-23 release: update 1.1.0 (folder components: install-component.py replaces a component folder whole; the Brain Viewer ships as one). 2026-09-03 release: ferryman 1.3.0 (push.py was sending a `source` key the import schema rejects 422, so every 1.2.0 push failed at validate -- removed; --participants ships as a frontmatter YAML list; --base flag; runbook example corrected; participants matrix row LIVE). 2026-08-28 release: ferryman 1.2.0 (PATCH correction path, API catalog, owner rules, Topics trap, participants gap documented), transcript-processor 1.2.1 (owner rules + corrected push facts + verbatim check), people-adapter 1.0.1 (career-arc facet), shell v0.2 (standing reminders folded into current-focus, dispatcher-cursor dropped, Ferret reference removed). v2 (2026-07-28): per-skill files[] mappings (src in this repo -> dest in a brain) so the assembler can build a new brain straight from the registry; shell component versioned; update-skill + ferryman-adapter-contract now bundled. All v1 fields unchanged — /update keeps working.",
+  "updatedAt": "2026-10-26",
+  "manifestChangelog": "2026-10-26 release: brain-viewer 0.93.0 (Your answers wait until you send them: a Send press at the bottom right of every page, answers going on their own when you leave the viewer or after five quiet minutes, and a Settings page where the h). 2026-10-22 release: brain-viewer 0.91.0 (Changed since you last looked: a band at the top of Today, under the pick, whenever the viewer changed since you last looked (the newest entry's lines, a press into the full page, a Seen press), and t). 2026-10-22 release: brain-viewer 0.90.0 (Pictures in a note, a one-line header on the phone, a thread kept to its own pieces, and for a team copy: the From band reads the newer what's-new page (what became of your requests, the sentences on). 2026-10-21 release: brain-viewer 0.89.1 (0.89.1, on top of 0.88.0 released earlier today. A link written in an item's words, as a path with a label or a markdown link, is drawn as a link on those words; a page route written in the words or i). 2026-10-21 release: brain-viewer 0.88.0 (0.88.0, on top of 0.87.1 released earlier today. In a team member's copy, Today is back in the menu and opens on the From band, named after the brain's owner: the questions and new files from the owne). 2026-10-21 release: brain-viewer 0.87.1 (From 0.68.0 to 0.87.1. Today opens on the day: Up first (the one to three things picked for you), In progress (the projects you are working in), what is new since you last looked, and one list you can). 2026-10-07 release: brain-viewer 0.68.0 (Viewer 0.68.0: Today is the landing page and the one queue; the menu folds; stable question ids so answers flow back into preps; the day drawing derived; the chat picker; the exclusive port bind and a). 2026-10-02 release: brain-viewer 0.59.0 (The home board's horizon milestones and the flow ring now read from files in your brain (context/horizon.json and context/flow.json) instead of being written into the widgets; with no file they say so). 2026-10-02 release: brain-viewer 0.56.1 (Everything since 0.48.0. Numbered lists count again and a question opens the file it points at (0.48.1). The chat stands alone, pictures drop onto the notepad, and a call's prep shows before its card). 2026-10-02 release: brain-survey 1.0.0, mentee-project 0.1.0 and brain-status 0.1.0 join the pack as folder components. 2026-10-02 release: ferryman 1.3.1 (User-Agent on every call, the Cloudflare 1010 fix; BRAIN_ROOT override). 2026-09-23 release: brain-viewer 0.48.0 (The viewer is now a pf-pack component, replaced whole on update, and what you make lives outside it. Your settings, board layouts, looks and widgets live in viewer/ at the brain root, which no update). 2026-09-23 release: update 1.1.0 (folder components: install-component.py replaces a component folder whole; the Brain Viewer ships as one). 2026-09-03 release: ferryman 1.3.0 (push.py was sending a `source` key the import schema rejects 422, so every 1.2.0 push failed at validate -- removed; --participants ships as a frontmatter YAML list; --base flag; runbook example corrected; participants matrix row LIVE). 2026-08-28 release: ferryman 1.2.0 (PATCH correction path, API catalog, owner rules, Topics trap, participants gap documented), transcript-processor 1.2.1 (owner rules + corrected push facts + verbatim check), people-adapter 1.0.1 (career-arc facet), shell v0.2 (standing reminders folded into current-focus, dispatcher-cursor dropped, Ferret reference removed). v2 (2026-07-28): per-skill files[] mappings (src in this repo -> dest in a brain) so the assembler can build a new brain straight from the registry; shell component versioned; update-skill + ferryman-adapter-contract now bundled. All v1 fields unchanged — /update keeps working.",
   "shell": {
     "component": "brain-shell",
     "version": "0.2",
@@ -106,10 +106,10 @@
     },
     {
       "skill": "brain-viewer",
-      "version": "0.91.0",
-      "installedAs": "0.91.0",
-      "changelog": "Changed since you last looked: a band at the top of Today, under the pick, whenever the viewer changed since you last looked (the newest entry's lines, a press into the full page, a Seen press), and the same band naming what landed overnight (a run's delivery note, the night review's audit, the engineer's run); a permanent what's-new link under the header's more fold with a dot while unread.",
-      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/brain-viewer-0.91.0.md",
+      "version": "0.93.0",
+      "installedAs": "0.93.0",
+      "changelog": "Your answers wait until you send them: a Send press at the bottom right of every page, answers going on their own when you leave the viewer or after five quiet minutes, and a Settings page where the hold is set (0.92.0). The rules for an easy viewer in one place and the first build against them (0.93.0): on a task's steps the box is the only tick and a step that names a place carries an open press; Claude's reply to a note, an answer or a done press is drawn under the item's note apart from your words, the newest first and the older ones folded; on a thread page the other open questions stand under Working on and the next takes the answered one's place; a project's name on the In progress strip opens its own work; the Projects page answers questions and acts on tasks; notes from the notepad ride the send.",
+      "promptUrl": "https://raw.githubusercontent.com/BigZCoda/pf-pack/main/updates/brain-viewer-0.93.0.md",
       "blurb": "the Brain Viewer: a local app over your brain (home board of widgets, today, projects, people, the reader, canvases and maps). An application, replaced whole on update; what you make for it lives in viewer/ and is never touched.",
       "specPath": "skills/brain-viewer/brain-viewer-skill.md",
       "update": "replace-folder",
@@ -140,512 +140,512 @@
       ],
       "files": [
         {
-          "src": "files/brain-viewer-0.91.0/adapter.py",
+          "src": "files/brain-viewer-0.93.0/adapter.py",
           "dest": "skills/brain-viewer/adapter.py",
           "sha256": "98f836459882b8c5bdb95de8a6499120004a56df1477aa469ae94f7dfad5bd7e"
         },
         {
-          "src": "files/brain-viewer-0.91.0/adapters.json",
+          "src": "files/brain-viewer-0.93.0/adapters.json",
           "dest": "skills/brain-viewer/adapters.json",
           "sha256": "dff38b1768ea52823a6fcf15f413b24e28ba4f73cd8dbf1a9b4b8297019295ee"
         },
         {
-          "src": "files/brain-viewer-0.91.0/artifacts.html",
+          "src": "files/brain-viewer-0.93.0/artifacts.html",
           "dest": "skills/brain-viewer/artifacts.html",
           "sha256": "d77f22303c5a97f3e7d252b0fb77f209d03eed10e5ae2198c421a4f29f5f6003"
         },
         {
-          "src": "files/brain-viewer-0.91.0/attach.js",
+          "src": "files/brain-viewer-0.93.0/attach.js",
           "dest": "skills/brain-viewer/attach.js",
           "sha256": "7f25f5279e6d56d5395f8e49cec698854524b9477b32cad5a22ecee669a0b2cc"
         },
         {
-          "src": "files/brain-viewer-0.91.0/brain-viewer-plugin-contract.md",
-          "dest": "skills/brain-viewer/brain-viewer-plugin-contract.md",
-          "sha256": "cfc10826281c669f1ea5901c16c616765a59c7de612dd6325d1f0867e51470ca"
-        },
-        {
-          "src": "files/brain-viewer-0.91.0/brain-viewer-releases.md",
+          "src": "files/brain-viewer-0.93.0/brain-viewer-releases.md",
           "dest": "skills/brain-viewer/brain-viewer-releases.md",
-          "sha256": "03a518434dfdeb3f92d27638a8a09bb2ef72b9c9a0de9bfe9e56ee49a2c09981"
+          "sha256": "510f53ca07e8b3cb21add6e37779feefde81d03a54abb2b5b34c6ee4032ca7c3"
         },
         {
-          "src": "files/brain-viewer-0.91.0/brain-viewer-skill.md",
+          "src": "files/brain-viewer-0.93.0/brain-viewer-skill.md",
           "dest": "skills/brain-viewer/brain-viewer-skill.md",
-          "sha256": "deef0504f9554b357bd400ae2440626c984baaa9f2cca8ac16476b6b15fccf7f"
+          "sha256": "b170ea9e6654f6781b1ddbdfb628a42b8b7cd4fcf4a14a3bdcd35530d26bfe7f"
         },
         {
-          "src": "files/brain-viewer-0.91.0/call.html",
+          "src": "files/brain-viewer-0.93.0/call.html",
           "dest": "skills/brain-viewer/call.html",
           "sha256": "e0c77aa618c2efb07bdb09a955699cd1efcd615df293eb008edb4b89696cb8ab"
         },
         {
-          "src": "files/brain-viewer-0.91.0/chat-prompts/main.md",
+          "src": "files/brain-viewer-0.93.0/chat-prompts/main.md",
           "dest": "skills/brain-viewer/chat-prompts/main.md",
           "sha256": "d08869d4ed37bfc9fcfc21871dff5c395bd59f9d1b40cedfe7c03896d19ca943"
         },
         {
-          "src": "files/brain-viewer-0.91.0/chat-prompts/project.md",
+          "src": "files/brain-viewer-0.93.0/chat-prompts/project.md",
           "dest": "skills/brain-viewer/chat-prompts/project.md",
           "sha256": "89c109dac61ffdf904fb3b42500a70df5b9607276f31d8b6e8858ed8cf33ce55"
         },
         {
-          "src": "files/brain-viewer-0.91.0/chat.html",
+          "src": "files/brain-viewer-0.93.0/chat.html",
           "dest": "skills/brain-viewer/chat.html",
           "sha256": "f67c4bc8246f93972355db1e6b750780d66304b309af45ac9aa868937b031162"
         },
         {
-          "src": "files/brain-viewer-0.91.0/circle.js",
+          "src": "files/brain-viewer-0.93.0/circle.js",
           "dest": "skills/brain-viewer/circle.js",
           "sha256": "afc27705d4cdd0b2984edeac0fe1d7f8b3b32fbdea46e126015f886582121d9b"
         },
         {
-          "src": "files/brain-viewer-0.91.0/component.json",
+          "src": "files/brain-viewer-0.93.0/component.json",
           "dest": "skills/brain-viewer/component.json",
-          "sha256": "46993d6cd69c4b277db97fba66feb273bdf325e6e81335d093db1755640d852b"
+          "sha256": "83949262a6f7b1b5e785df7e7c7c9cce083dab5fea260482463c63a933288d34"
         },
         {
-          "src": "files/brain-viewer-0.91.0/derive_day.py",
+          "src": "files/brain-viewer-0.93.0/derive_day.py",
           "dest": "skills/brain-viewer/derive_day.py",
           "sha256": "3f7b13465c3158f8f7571de487d8774a7ac8bfcc5d474e172d2cc4aee7c3d3d7"
         },
         {
-          "src": "files/brain-viewer-0.91.0/files.html",
+          "src": "files/brain-viewer-0.93.0/files.html",
           "dest": "skills/brain-viewer/files.html",
           "sha256": "4586563e96771c3e304369d1b3cf5a3c490ce86cf995296568f935c35352050a"
         },
         {
-          "src": "files/brain-viewer-0.91.0/forge-browser-checks.py",
+          "src": "files/brain-viewer-0.93.0/forge-browser-checks.py",
           "dest": "skills/brain-viewer/forge-browser-checks.py",
           "sha256": "355e2e5e2e7afa998c342123983ea321114f05b983ef0cdf8b121ad5db06eeab"
         },
         {
-          "src": "files/brain-viewer-0.91.0/forge-routing.js",
+          "src": "files/brain-viewer-0.93.0/forge-routing.js",
           "dest": "skills/brain-viewer/forge-routing.js",
           "sha256": "13221dbfc8b700e20a39c1004703b43ba8352267a44ab790cde37607b45dd9e5"
         },
         {
-          "src": "files/brain-viewer-0.91.0/forge.html",
+          "src": "files/brain-viewer-0.93.0/forge.html",
           "dest": "skills/brain-viewer/forge.html",
           "sha256": "479578cb28d21f324d9f2a7ecceefa8cbcff8d73b0975d546de0dd2f2f699e8b"
         },
         {
-          "src": "files/brain-viewer-0.91.0/glossary.html",
+          "src": "files/brain-viewer-0.93.0/glossary.html",
           "dest": "skills/brain-viewer/glossary.html",
           "sha256": "4a860839eeb67324835ec78115135f067db3c5b2258fc42449e0704addbe7843"
         },
         {
-          "src": "files/brain-viewer-0.91.0/graph-physics.js",
+          "src": "files/brain-viewer-0.93.0/graph-physics.js",
           "dest": "skills/brain-viewer/graph-physics.js",
           "sha256": "c3100e0fa3d761b749aa29a50fdf401007819a035d19da80bce6093f56a034bc"
         },
         {
-          "src": "files/brain-viewer-0.91.0/help.json",
+          "src": "files/brain-viewer-0.93.0/help.json",
           "dest": "skills/brain-viewer/help.json",
-          "sha256": "905c3510e5217a3b6a478152881a0f3e55d4ac9db30a6de6130e5aa2da4b376f"
+          "sha256": "522cebbcb8ee85cd805f237ae5e474f5209a58d193a272dc0a2e5cdfb0af6efd"
         },
         {
-          "src": "files/brain-viewer-0.91.0/home.html",
+          "src": "files/brain-viewer-0.93.0/home.html",
           "dest": "skills/brain-viewer/home.html",
           "sha256": "eb8dd236e1f620cc17baba3a5019dd400dd6388ade07efd614acb61c7bb8e45c"
         },
         {
-          "src": "files/brain-viewer-0.91.0/launch-viewer.ps1",
+          "src": "files/brain-viewer-0.93.0/launch-viewer.ps1",
           "dest": "skills/brain-viewer/launch-viewer.ps1",
           "sha256": "8d9879997c3fa9d81f9fd73b899151f9fdbc804e1ec9db2517a04cd0a72cb4a2"
         },
         {
-          "src": "files/brain-viewer-0.91.0/looks/default.css",
+          "src": "files/brain-viewer-0.93.0/looks/default.css",
           "dest": "skills/brain-viewer/looks/default.css",
           "sha256": "025c842d00ee4977f813798d4372aa675d07ba7bb4aa750d5547eb577eaaf8a0"
         },
         {
-          "src": "files/brain-viewer-0.91.0/looks/paper.css",
+          "src": "files/brain-viewer-0.93.0/looks/paper.css",
           "dest": "skills/brain-viewer/looks/paper.css",
           "sha256": "3a40bf25db7d86792508e832a2a8f0b1f6f8974445d20190eb556070043d91a3"
         },
         {
-          "src": "files/brain-viewer-0.91.0/looks/readme.md",
+          "src": "files/brain-viewer-0.93.0/looks/readme.md",
           "dest": "skills/brain-viewer/looks/readme.md",
           "sha256": "0e4a382cb6f4b5f2aad3a610d0da2766cdbf4645982839434d7ace084f47b5fe"
         },
         {
-          "src": "files/brain-viewer-0.91.0/maps.html",
+          "src": "files/brain-viewer-0.93.0/maps.html",
           "dest": "skills/brain-viewer/maps.html",
           "sha256": "5fd785fd1120cf3ec0de36d7f4774bddf3d7d78b868c478a81aaad4e8627cecf"
         },
         {
-          "src": "files/brain-viewer-0.91.0/mentee-dashboard.html",
+          "src": "files/brain-viewer-0.93.0/mentee-dashboard.html",
           "dest": "skills/brain-viewer/mentee-dashboard.html",
           "sha256": "22d950ce1ed0830700fd71fa83844126bb49403ecba887f3484df425c868d242"
         },
         {
-          "src": "files/brain-viewer-0.91.0/opportunities.html",
+          "src": "files/brain-viewer-0.93.0/opportunities.html",
           "dest": "skills/brain-viewer/opportunities.html",
           "sha256": "92c6ce69003533190f0fdf15edf4e16aa1e4bdd4a0f5761fb7102bd58a70e84e"
         },
         {
-          "src": "files/brain-viewer-0.91.0/part_chat.py",
+          "src": "files/brain-viewer-0.93.0/part_chat.py",
           "dest": "skills/brain-viewer/part_chat.py",
           "sha256": "3bbb74d50103e06e835a36afe7f622f298e5ea1d54a8f2e2290eae34074b7268"
         },
         {
-          "src": "files/brain-viewer-0.91.0/part_circle.py",
+          "src": "files/brain-viewer-0.93.0/part_circle.py",
           "dest": "skills/brain-viewer/part_circle.py",
           "sha256": "bb69fdc52e9863c867a1fa85c2cf5b1330a8d6ef97b726101a3c81341eac276d"
         },
         {
-          "src": "files/brain-viewer-0.91.0/part_live.py",
+          "src": "files/brain-viewer-0.93.0/part_live.py",
           "dest": "skills/brain-viewer/part_live.py",
           "sha256": "344048921ad2dc7a3347a66f46439050a554b132cc516ad145c3d8d98b8a5301"
         },
         {
-          "src": "files/brain-viewer-0.91.0/part_studio.py",
+          "src": "files/brain-viewer-0.93.0/part_studio.py",
           "dest": "skills/brain-viewer/part_studio.py",
           "sha256": "edfae0350afda163deb7b722e19a9ab04ab50fd6d09b08a0ff766f8746c68805"
         },
         {
-          "src": "files/brain-viewer-0.91.0/part_usage.py",
+          "src": "files/brain-viewer-0.93.0/part_usage.py",
           "dest": "skills/brain-viewer/part_usage.py",
           "sha256": "33f97f6abf6ffdefeeecf295af4b1ac7fae75a53660c2e4cf23746a8e883fc60"
         },
         {
-          "src": "files/brain-viewer-0.91.0/people.css",
+          "src": "files/brain-viewer-0.93.0/people.css",
           "dest": "skills/brain-viewer/people.css",
           "sha256": "1c31c45182c4bd1ddfa72da6aa24b3f9a5a6bfe01cbf6efa25b1e7d7f3edd1f2"
         },
         {
-          "src": "files/brain-viewer-0.91.0/people.html",
+          "src": "files/brain-viewer-0.93.0/people.html",
           "dest": "skills/brain-viewer/people.html",
           "sha256": "5e6b0f7bad923caabbe0fcefcd3ca9a56c999b7dedf00fe914de7bc802fb77f2"
         },
         {
-          "src": "files/brain-viewer-0.91.0/preview.html",
+          "src": "files/brain-viewer-0.93.0/preview.html",
           "dest": "skills/brain-viewer/preview.html",
           "sha256": "0c3e58ee8d4642a6350cf8712cda218644a885e275148eca0514035fade2b52d"
         },
         {
-          "src": "files/brain-viewer-0.91.0/projects.css",
+          "src": "files/brain-viewer-0.93.0/projects.css",
           "dest": "skills/brain-viewer/projects.css",
           "sha256": "0aba53a244bc8ac5a8cd5111163bb9ca9cea0d0a56513b996fc99401fa7a6395"
         },
         {
-          "src": "files/brain-viewer-0.91.0/projects.html",
+          "src": "files/brain-viewer-0.93.0/projects.html",
           "dest": "skills/brain-viewer/projects.html",
-          "sha256": "610b6caf37bb6086ff8792962a0207a3517e3fe455a669b83abc3287c8cfc473"
+          "sha256": "70490c4fca46c1668452582e5989d711c76fc9490f22f7a81b2b31f1d7db85ae"
         },
         {
-          "src": "files/brain-viewer-0.91.0/providers/comfy_local.py",
+          "src": "files/brain-viewer-0.93.0/providers/comfy_local.py",
           "dest": "skills/brain-viewer/providers/comfy_local.py",
           "sha256": "a2d7c92583ca15ac4f77853cc1e892e30990a09fe8e84615625f8adb68c0e096"
         },
         {
-          "src": "files/brain-viewer-0.91.0/providers/comfy_workflows/flux-krea-gguf-img2img.json",
+          "src": "files/brain-viewer-0.93.0/providers/comfy_workflows/flux-krea-gguf-img2img.json",
           "dest": "skills/brain-viewer/providers/comfy_workflows/flux-krea-gguf-img2img.json",
           "sha256": "43a3321d09d72caf90d1d9bed5711a509dab8567edb52bf7db3a07d383decb96"
         },
         {
-          "src": "files/brain-viewer-0.91.0/providers/comfy_workflows/flux-krea-gguf.json",
+          "src": "files/brain-viewer-0.93.0/providers/comfy_workflows/flux-krea-gguf.json",
           "dest": "skills/brain-viewer/providers/comfy_workflows/flux-krea-gguf.json",
           "sha256": "72c87691098079d259077a58caf72b02d7188d19e4fca7c61f7a7990b2e5c18e"
         },
         {
-          "src": "files/brain-viewer-0.91.0/providers/fal_image.py",
+          "src": "files/brain-viewer-0.93.0/providers/fal_image.py",
           "dest": "skills/brain-viewer/providers/fal_image.py",
           "sha256": "7e06e18391fd44bbb32678f486a2f51870f46bcf6cd73c68175ccc747006e851"
         },
         {
-          "src": "files/brain-viewer-0.91.0/providers/gemini_image.py",
+          "src": "files/brain-viewer-0.93.0/providers/gemini_image.py",
           "dest": "skills/brain-viewer/providers/gemini_image.py",
           "sha256": "ad5cdb80c3656def7027af255fffb4a9753b67c913b3e06a2a9e46fe76fc8f30"
         },
         {
-          "src": "files/brain-viewer-0.91.0/providers/openai_image.py",
+          "src": "files/brain-viewer-0.93.0/providers/openai_image.py",
           "dest": "skills/brain-viewer/providers/openai_image.py",
           "sha256": "38b6c1e8cd7b87f47893da130ba33d89788adb26830b465f084ed15dade22e79"
         },
         {
-          "src": "files/brain-viewer-0.91.0/providers/readme.md",
+          "src": "files/brain-viewer-0.93.0/providers/readme.md",
           "dest": "skills/brain-viewer/providers/readme.md",
           "sha256": "6317c3f793967633ccfebdea37135a066047e30bca3b416fe8d51da50a1dd2b5"
         },
         {
-          "src": "files/brain-viewer-0.91.0/reader.html",
+          "src": "files/brain-viewer-0.93.0/reader.html",
           "dest": "skills/brain-viewer/reader.html",
           "sha256": "703614a9bd6c3de840867b45a0e0893db6d7c4807306c58674065da227026ebe"
         },
         {
-          "src": "files/brain-viewer-0.91.0/readme.md",
+          "src": "files/brain-viewer-0.93.0/readme.md",
           "dest": "skills/brain-viewer/readme.md",
           "sha256": "924abf900434a93e08aa5a52f0b1f32c1c087e1467329740d2050862e9349831"
         },
         {
-          "src": "files/brain-viewer-0.91.0/review.html",
+          "src": "files/brain-viewer-0.93.0/review.html",
           "dest": "skills/brain-viewer/review.html",
           "sha256": "90f285b4c335477d4cc0ee42ee9f23a678ebf7f312c7d2fd264d230ae47ac2df"
         },
         {
-          "src": "files/brain-viewer-0.91.0/serve.py",
+          "src": "files/brain-viewer-0.93.0/serve.py",
           "dest": "skills/brain-viewer/serve.py",
-          "sha256": "19c9c37df65959de453e9b37262189afa3ad6f5b8b8416c57bfab1df76eb1d12"
+          "sha256": "556258e5d7ad49d519020cdcdba19cbc5f80eecc5e131b84afb57c40319a8d20"
         },
         {
-          "src": "files/brain-viewer-0.91.0/share.html",
+          "src": "files/brain-viewer-0.93.0/settings.html",
+          "dest": "skills/brain-viewer/settings.html",
+          "sha256": "4c71a1a892c6fa37ac56b35fc45c019481829a6405b2b64365f201e9e124e47f"
+        },
+        {
+          "src": "files/brain-viewer-0.93.0/share.html",
           "dest": "skills/brain-viewer/share.html",
           "sha256": "e49d876b8279ab6f241983275263623649f902af57e370627eda3a6ea46f1786"
         },
         {
-          "src": "files/brain-viewer-0.91.0/studio.html",
+          "src": "files/brain-viewer-0.93.0/studio.html",
           "dest": "skills/brain-viewer/studio.html",
           "sha256": "60e91a8f659e5d0596bcf5f3dc9b38089a549874da26ade2bd5a9342d41d5899"
         },
         {
-          "src": "files/brain-viewer-0.91.0/sun-favicon.png",
+          "src": "files/brain-viewer-0.93.0/sun-favicon.png",
           "dest": "skills/brain-viewer/sun-favicon.png",
           "sha256": "c57f698727085a292b7571ff2cb95b246ff1ddecd45e4b2abca7cb27ba55e273"
         },
         {
-          "src": "files/brain-viewer-0.91.0/sun-mark.png",
+          "src": "files/brain-viewer-0.93.0/sun-mark.png",
           "dest": "skills/brain-viewer/sun-mark.png",
           "sha256": "cefdac55d04261f843fd2d7479ea47271246542d8761cb58238e1d5600a011e7"
         },
         {
-          "src": "files/brain-viewer-0.91.0/sun.ico",
+          "src": "files/brain-viewer-0.93.0/sun.ico",
           "dest": "skills/brain-viewer/sun.ico",
           "sha256": "c25d4d77985acc28731b4392fc6b051630bc6fd498d24b162f8f1f71bb211533"
         },
         {
-          "src": "files/brain-viewer-0.91.0/survey.html",
+          "src": "files/brain-viewer-0.93.0/survey.html",
           "dest": "skills/brain-viewer/survey.html",
           "sha256": "25c58b4c65373d537f9e5efbc88c36c81c8d9abcf22405bc31920f712b41a2d2"
         },
         {
-          "src": "files/brain-viewer-0.91.0/thread.html",
+          "src": "files/brain-viewer-0.93.0/thread.html",
           "dest": "skills/brain-viewer/thread.html",
-          "sha256": "0bdb02cc8ab1dfbde44844ed881ba92e0cf9f955c1dde9420c72b9ecf52de6dc"
+          "sha256": "ec59d48d49223da705031b8f8aa9d694fa88e880cb2ac4306bd779907c51eb4b"
         },
         {
-          "src": "files/brain-viewer-0.91.0/today.html",
+          "src": "files/brain-viewer-0.93.0/today.html",
           "dest": "skills/brain-viewer/today.html",
-          "sha256": "e7daf89a39f3d959e36c9d971743213f7b08809f18b3ad8934da94674fd0329b"
+          "sha256": "2017bbe9a98b2877694baff50dc745b2d7d94d8e4044d6d353610edcd706611c"
         },
         {
-          "src": "files/brain-viewer-0.91.0/usage.html",
+          "src": "files/brain-viewer-0.93.0/usage.html",
           "dest": "skills/brain-viewer/usage.html",
           "sha256": "3156a68a1d7fee4127e83de8d89c31a39a85ccc0be59fb215acc958325f01978"
         },
         {
-          "src": "files/brain-viewer-0.91.0/vendor/force-graph.min.js",
+          "src": "files/brain-viewer-0.93.0/vendor/force-graph.min.js",
           "dest": "skills/brain-viewer/vendor/force-graph.min.js",
           "sha256": "5e28f9cad10fa9731ed746a16fd006106d6f7f2bac05fe28598b9f87c0fd6e6a"
         },
         {
-          "src": "files/brain-viewer-0.91.0/viewer-common.js",
+          "src": "files/brain-viewer-0.93.0/viewer-common.js",
           "dest": "skills/brain-viewer/viewer-common.js",
-          "sha256": "2ade3f90e73be5a39bf34cd770b41f0af9e1f189306ab44463b170f23d7f86fd"
+          "sha256": "6a70c48f46bcf89f7ec0789cba774baea84a45b8b95291b50858ac3d0fb2d03f"
         },
         {
-          "src": "files/brain-viewer-0.91.0/viewer-tokens.css",
+          "src": "files/brain-viewer-0.93.0/viewer-tokens.css",
           "dest": "skills/brain-viewer/viewer-tokens.css",
-          "sha256": "fba37e992f4ef114e0a01c586e64e47714cb834ae6bda44283d0b0abd31eacdf"
+          "sha256": "7129e4172aafd9da5ab38859ac866a9439c6d164b3d474096e3c099aee339f92"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/chat.js",
+          "src": "files/brain-viewer-0.93.0/widgets/chat.js",
           "dest": "skills/brain-viewer/widgets/chat.js",
           "sha256": "2bbf65e4ac37ada09240ea2798d18e220f0453e1e48ed25b91d71cffa6ea147e"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/command.js",
+          "src": "files/brain-viewer-0.93.0/widgets/command.js",
           "dest": "skills/brain-viewer/widgets/command.js",
           "sha256": "4b8b16affce2db80a2d2e485e24453c86ad81b1b0f9265bbf14542014011593a"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/curriculum.md",
+          "src": "files/brain-viewer-0.93.0/widgets/curriculum.md",
           "dest": "skills/brain-viewer/widgets/curriculum.md",
           "sha256": "6c230c837f53362aa97d2eb90275771ef795added22bd66fcd1a47b928daee60"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/decide.js",
+          "src": "files/brain-viewer-0.93.0/widgets/decide.js",
           "dest": "skills/brain-viewer/widgets/decide.js",
           "sha256": "bcc8b4438d5336a97044d3b8dacd3fc604a402dbe7953d7445f4091dcf3f94be"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/deck.js",
+          "src": "files/brain-viewer-0.93.0/widgets/deck.js",
           "dest": "skills/brain-viewer/widgets/deck.js",
           "sha256": "3285a32e0f4f17bf29e8353cd7cc595bb65ec2ffce29d7651179ed44c00b3a5f"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/dial.js",
+          "src": "files/brain-viewer-0.93.0/widgets/dial.js",
           "dest": "skills/brain-viewer/widgets/dial.js",
           "sha256": "4525a0591dcd589da0f2870e242a653131a7207de53b20ba533159f2be876bee"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/flow.js",
+          "src": "files/brain-viewer-0.93.0/widgets/flow.js",
           "dest": "skills/brain-viewer/widgets/flow.js",
           "sha256": "5a209873e42032c727337c7aef4058606cf257618bb879b67265bce0627a3fc2"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/glossary.js",
+          "src": "files/brain-viewer-0.93.0/widgets/glossary.js",
           "dest": "skills/brain-viewer/widgets/glossary.js",
           "sha256": "8faf0fd3dea0f2953d9568d755210b3dfa183de6d08c4951a7ac68c724fb207b"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/harness.py",
+          "src": "files/brain-viewer-0.93.0/widgets/harness.py",
           "dest": "skills/brain-viewer/widgets/harness.py",
           "sha256": "bd00b7893525333b58bc47953b1a4dba87c4adf3eddbce1e7e50ea035120b531"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/holons.js",
+          "src": "files/brain-viewer-0.93.0/widgets/holons.js",
           "dest": "skills/brain-viewer/widgets/holons.js",
           "sha256": "ce3c23db0c24cd02e49080481f1982313096dfdc857e61d0fdd8047c02744a62"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/horizon.js",
+          "src": "files/brain-viewer-0.93.0/widgets/horizon.js",
           "dest": "skills/brain-viewer/widgets/horizon.js",
           "sha256": "7eb3373f668df96926e6189636f22f4a22ba945c7ec46c7636794e0db4af3a98"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/in-progress.js",
+          "src": "files/brain-viewer-0.93.0/widgets/in-progress.js",
           "dest": "skills/brain-viewer/widgets/in-progress.js",
           "sha256": "514b650b1e225b4591fa0c67912724e9ee19343f048fbd0caa7b8e56a33af87b"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/landed.js",
+          "src": "files/brain-viewer-0.93.0/widgets/landed.js",
           "dest": "skills/brain-viewer/widgets/landed.js",
           "sha256": "9b943f64cbfbe569b6986ed9da2bd24192eaea031c39262ac01908a5ba2b60af"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/live.js",
+          "src": "files/brain-viewer-0.93.0/widgets/live.js",
           "dest": "skills/brain-viewer/widgets/live.js",
           "sha256": "b73a8f4950fcb726ed7da197a2a39c0ce7b71ad80ae1be7356b43af3132cf1d2"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/mantra.js",
+          "src": "files/brain-viewer-0.93.0/widgets/mantra.js",
           "dest": "skills/brain-viewer/widgets/mantra.js",
           "sha256": "c7ebd8800ac6467d5c2417d6f934eeb89f388aaf53c703a7b34f7f2c9ea6c645"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/maps.js",
+          "src": "files/brain-viewer-0.93.0/widgets/maps.js",
           "dest": "skills/brain-viewer/widgets/maps.js",
           "sha256": "c2de63078e5a4ec68308b1d1149e333109d0a242b240b96894f6ae399e96d081"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/masthead.js",
+          "src": "files/brain-viewer-0.93.0/widgets/masthead.js",
           "dest": "skills/brain-viewer/widgets/masthead.js",
           "sha256": "3800dcef651fcce4220c25c52c453d08d9a13af50911766dd9d98896acbffb04"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/mentee.js",
+          "src": "files/brain-viewer-0.93.0/widgets/mentee.js",
           "dest": "skills/brain-viewer/widgets/mentee.js",
           "sha256": "3f78c0f28850ef79f9a3de0c78deee4624b8e6ca6fe3d8d17c2131e4b54babb1"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/minimap.js",
+          "src": "files/brain-viewer-0.93.0/widgets/minimap.js",
           "dest": "skills/brain-viewer/widgets/minimap.js",
           "sha256": "8d623f60ea9b4dd4729fa03b38f889647b6da77f7dcede6a58571db7f8ee51da"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/moved.js",
+          "src": "files/brain-viewer-0.93.0/widgets/moved.js",
           "dest": "skills/brain-viewer/widgets/moved.js",
           "sha256": "cdd4f768457f8064df85d522f501b16ea3807a1c69b90a365fbdaf83e36986e0"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/next.js",
+          "src": "files/brain-viewer-0.93.0/widgets/next.js",
           "dest": "skills/brain-viewer/widgets/next.js",
           "sha256": "d90373233a0fb46b7458b65398ea83b10ce7d70b267bcf5c001d49f2bbbb86c0"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/notepad.js",
+          "src": "files/brain-viewer-0.93.0/widgets/notepad.js",
           "dest": "skills/brain-viewer/widgets/notepad.js",
           "sha256": "a1d06fdc3809d94581d59ce46221f7984e16c22974700ae6fc891d11f35f5556"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/opportunities.js",
+          "src": "files/brain-viewer-0.93.0/widgets/opportunities.js",
           "dest": "skills/brain-viewer/widgets/opportunities.js",
           "sha256": "732d5d802bc9d569cf63ec8974dc67e0311cbf2c520aec9644f977a662c9a98d"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/organize.js",
+          "src": "files/brain-viewer-0.93.0/widgets/organize.js",
           "dest": "skills/brain-viewer/widgets/organize.js",
           "sha256": "fb4dea34caf9779fef4b2c2ae2785cb3bde4503a7ef79127038ec9966ecebded"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/people.js",
+          "src": "files/brain-viewer-0.93.0/widgets/people.js",
           "dest": "skills/brain-viewer/widgets/people.js",
           "sha256": "b56c339b0dea255423bea26af0b00c92ac0e515b66ca0ec44074de8c3e531957"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/readme.md",
+          "src": "files/brain-viewer-0.93.0/widgets/readme.md",
           "dest": "skills/brain-viewer/widgets/readme.md",
           "sha256": "4e11e91ca2462f853ce2ab90c2dc1ccb73535eb3708b0354bb4ffe9d77bf8f69"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/review.js",
+          "src": "files/brain-viewer-0.93.0/widgets/review.js",
           "dest": "skills/brain-viewer/widgets/review.js",
           "sha256": "5f1d90fe82080b821adc817050707c69d1eb76b6d078710c42165d1c31d85fd0"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/running.js",
+          "src": "files/brain-viewer-0.93.0/widgets/running.js",
           "dest": "skills/brain-viewer/widgets/running.js",
           "sha256": "f227acca2843cb61a6f6a3e272aa6ded10d317480191ed9dd3320be7993fecbd"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/search.js",
+          "src": "files/brain-viewer-0.93.0/widgets/search.js",
           "dest": "skills/brain-viewer/widgets/search.js",
           "sha256": "566c21dda9c42a7dabce6632ffb64132f6067c3503459157da47405be9ef132d"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/space.js",
+          "src": "files/brain-viewer-0.93.0/widgets/space.js",
           "dest": "skills/brain-viewer/widgets/space.js",
           "sha256": "48e33ba9b90bc27fb6a15deb5337ca92d2b0c1e51dd1c4244b437985c4d99f38"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/stages.js",
+          "src": "files/brain-viewer-0.93.0/widgets/stages.js",
           "dest": "skills/brain-viewer/widgets/stages.js",
           "sha256": "6f96dd914b1d7e42efefc8f8a1d240815007eca3f546c178a4f0965ba3271733"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/status.js",
+          "src": "files/brain-viewer-0.93.0/widgets/status.js",
           "dest": "skills/brain-viewer/widgets/status.js",
           "sha256": "f365894573eb2f437c1c13ae855ee53e057425b4bbf01daa5dfc3bac54d4f15c"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/system.js",
+          "src": "files/brain-viewer-0.93.0/widgets/system.js",
           "dest": "skills/brain-viewer/widgets/system.js",
           "sha256": "faed9ec5e507267f10797a030d7d49b66696507f488882d978c6cc994a93b4b7"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/tally.js",
+          "src": "files/brain-viewer-0.93.0/widgets/tally.js",
           "dest": "skills/brain-viewer/widgets/tally.js",
           "sha256": "e687fe063f61eb7b8f9fc6524c399d05f4f974b04d75d4e7fe2b8937d5832cdd"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/threads.js",
+          "src": "files/brain-viewer-0.93.0/widgets/threads.js",
           "dest": "skills/brain-viewer/widgets/threads.js",
           "sha256": "16898a34bd50987bcd3985e6ef3bd4e823be8f6fbed2e9447c8029125e4f39dd"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/token-usage.js",
+          "src": "files/brain-viewer-0.93.0/widgets/token-usage.js",
           "dest": "skills/brain-viewer/widgets/token-usage.js",
           "sha256": "f4041add823fca76272143a2fbb54470419a1ef220d403d065165107268fb7eb"
         },
         {
-          "src": "files/brain-viewer-0.91.0/widgets/work-threads.js",
+          "src": "files/brain-viewer-0.93.0/widgets/work-threads.js",
           "dest": "skills/brain-viewer/widgets/work-threads.js",
           "sha256": "18ade76b59564abe68cb129d6a5f55300417ed505a469800153c154e8e97814b"
         },
         {
-          "src": "files/brain-viewer-0.91.0/workspace.js",
+          "src": "files/brain-viewer-0.93.0/workspace.js",
           "dest": "skills/brain-viewer/workspace.js",
-          "sha256": "41871da2d3e3a0e83514fca75e92d9b8884b03db4b2162b0638ead6154b25338"
+          "sha256": "e31b2944967e0d660b199afc1d118ba2373b132b5e3a4f9f6b8c0b4e6c955813"
         }
       ]
     },
     {
       "skill": "brain-tasks",
-      "version": "0.91.0",
-      "installedAs": "0.91.0",
-      "changelog": "Released as a folder component with brain-viewer 0.91.0, which requires it.",
+      "version": "0.93.0",
+      "installedAs": "0.93.0",
+      "changelog": "Released as a folder component with brain-viewer 0.93.0, which requires it.",
       "promptUrl": null,
       "blurb": "the project ledger tool: tasks and questions per project, written only through tasks.py (the viewer reads and writes every ledger through it)",
       "specPath": "skills/brain-tasks/readme.md",
@@ -653,42 +653,42 @@
       "installRoot": "skills/brain-tasks",
       "files": [
         {
-          "src": "files/brain-tasks-0.91.0/component.json",
+          "src": "files/brain-tasks-0.93.0/component.json",
           "dest": "skills/brain-tasks/component.json",
-          "sha256": "af845e8a1b41583a307f2d8606b5e02133e8f7bee13ca358916743b82a9e1c42"
+          "sha256": "dba0c7830fbfc00b98a01de34b7d0c3dbd67b7675ff6bf6090c958479d0a5307"
         },
         {
-          "src": "files/brain-tasks-0.91.0/readme.md",
+          "src": "files/brain-tasks-0.93.0/readme.md",
           "dest": "skills/brain-tasks/readme.md",
-          "sha256": "fad8b4063729b0b593c7a46baa0667111814c5c682360874b76f5182ddb5bcf8"
+          "sha256": "687b98544d613cd7ae01c3ee222cd9526d1569e1eb24ffe81f2b6746b3d239be"
         },
         {
-          "src": "files/brain-tasks-0.91.0/tasks-judge-text.test.py",
+          "src": "files/brain-tasks-0.93.0/tasks-judge-text.test.py",
           "dest": "skills/brain-tasks/tasks-judge-text.test.py",
           "sha256": "3a4ed562f07aef5517647742a6744f447d9db304e1fd60990e4089db3c76b4bf"
         },
         {
-          "src": "files/brain-tasks-0.91.0/tasks-link-adds.test.py",
+          "src": "files/brain-tasks-0.93.0/tasks-link-adds.test.py",
           "dest": "skills/brain-tasks/tasks-link-adds.test.py",
           "sha256": "5127fe2a58c99cdc6c78a82435d01692e6a9f121a6ec6110d27b2e11ba5f4798"
         },
         {
-          "src": "files/brain-tasks-0.91.0/tasks-link-progress.test.py",
+          "src": "files/brain-tasks-0.93.0/tasks-link-progress.test.py",
           "dest": "skills/brain-tasks/tasks-link-progress.test.py",
           "sha256": "2a17345201493e6feadbcb9909165ab9aac955723039ec1134f29f93e614eca9"
         },
         {
-          "src": "files/brain-tasks-0.91.0/tasks-rules.test.py",
+          "src": "files/brain-tasks-0.93.0/tasks-rules.test.py",
           "dest": "skills/brain-tasks/tasks-rules.test.py",
           "sha256": "67ee0747764f672ba26b19f2903292a0170316e5d691c355d834afa6083bc98c"
         },
         {
-          "src": "files/brain-tasks-0.91.0/tasks-steps.test.py",
+          "src": "files/brain-tasks-0.93.0/tasks-steps.test.py",
           "dest": "skills/brain-tasks/tasks-steps.test.py",
           "sha256": "d90a82e925338cba04864ddc54371b54773d92320ab39445fb1a5afbe40a4c29"
         },
         {
-          "src": "files/brain-tasks-0.91.0/tasks.py",
+          "src": "files/brain-tasks-0.93.0/tasks.py",
           "dest": "skills/brain-tasks/tasks.py",
           "sha256": "8dc0f3be89dc45a68f2a743a08dfbd14dd4062f1d66377d745e23a5db82a61c1"
         }
@@ -696,9 +696,9 @@
     },
     {
       "skill": "brain-log",
-      "version": "0.91.0",
-      "installedAs": "0.91.0",
-      "changelog": "Released as a folder component with brain-viewer 0.91.0, which requires it.",
+      "version": "0.93.0",
+      "installedAs": "0.93.0",
+      "changelog": "Released as a folder component with brain-viewer 0.93.0, which requires it.",
       "promptUrl": null,
       "blurb": "the append-only log tool: one clock-stamped line per action in context/log.md (the viewer logs every write through it)",
       "specPath": "skills/brain-log/readme.md",
@@ -706,27 +706,27 @@
       "installRoot": "skills/brain-log",
       "files": [
         {
-          "src": "files/brain-log-0.91.0/component.json",
+          "src": "files/brain-log-0.93.0/component.json",
           "dest": "skills/brain-log/component.json",
-          "sha256": "dc38a3d70dcc73c231432f060a7820bce9720a588ff0fa2d3c9e01315a4600ab"
+          "sha256": "47bb16e61a40b68df4ef23ec932aa5fff2ba47c3ea426548f01c81d3aed5ebb4"
         },
         {
-          "src": "files/brain-log-0.91.0/log.py",
+          "src": "files/brain-log-0.93.0/log.py",
           "dest": "skills/brain-log/log.py",
           "sha256": "2116d38940750705881916f3fd6bd1e7f523443c8f4e170c2aa7a6f9672a9d80"
         },
         {
-          "src": "files/brain-log-0.91.0/readme.md",
+          "src": "files/brain-log-0.93.0/readme.md",
           "dest": "skills/brain-log/readme.md",
           "sha256": "828df6c9c4926f82e74fd4014036c40cdb6a6b67d56a3aa3aad192093fdd6052"
         },
         {
-          "src": "files/brain-log-0.91.0/safety_commit.py",
+          "src": "files/brain-log-0.93.0/safety_commit.py",
           "dest": "skills/brain-log/safety_commit.py",
           "sha256": "7316ea613f822baef2d44264b006453089e1ab927124bc4e448e886cd98f28de"
         },
         {
-          "src": "files/brain-log-0.91.0/safety_commit.test.py",
+          "src": "files/brain-log-0.93.0/safety_commit.test.py",
           "dest": "skills/brain-log/safety_commit.test.py",
           "sha256": "f7f06edac53c6dd0d6776b4c2f1830d93085b29141f1d80fd7bdbe83db258d27"
         }

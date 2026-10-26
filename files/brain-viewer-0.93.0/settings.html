@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { min-height: 100vh; }
+  main { padding: 18px 34px 80px; max-width: 820px; }
+  .st-title { margin: 4px 0 6px; font-size: 28px; line-height: 1.2; color: var(--ink); }
+  .st-state { margin: 0 0 18px; font-size: 15px; color: var(--ink-soft); max-width: 72ch; overflow-wrap: anywhere; }
+  section.st-group { margin: 0 0 16px; padding: 14px 18px 16px; }
+  section.st-group h2 { margin: 0 0 10px; font-family: var(--font-display); font-size: 19px; font-weight: normal; color: var(--ink); }
+  .st-row { margin: 0 0 12px; }
+  .st-row:last-child { margin-bottom: 0; }
+  .st-row label { display: inline-flex; align-items: baseline; gap: 9px; cursor: pointer; font-size: 15.5px; color: var(--ink); }
+  .st-row label.off { color: var(--muted); cursor: default; }
+  .st-row input[type=checkbox] { flex: none; width: 18px; height: 18px; margin: 0; position: relative; top: 3px; accent-color: var(--accent); }
+  .st-row input[type=number] { width: 4.2em; padding: 3px 6px; font: inherit; font-size: 15px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); color: var(--ink); }
+  .st-row input[type=number]:focus { outline: none; border-color: var(--accent); }
+  .st-help { margin: 4px 0 0 27px; font-size: 13.5px; color: var(--ink-soft); max-width: 66ch; }
+  .st-say { margin: 10px 0 0; font-size: 13px; }
+  .st-say:empty { display: none; }
+  @media (max-width: 700px) {
+    main { padding: 14px 16px 60px; }
+    .st-title { font-size: 24px; }
+    section.st-group { padding: 12px 14px 14px; }
+    .st-help { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Settings</h1>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="settings"></nav>
+</header>
+<main id="main" class="no-gloss"><p class="meta">Reading your settings…</p></main>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /settings (0.92.0): the settings a person changes in the viewer, saved in viewer/settings.json through PUT
+// /api/settings, which writes only the keys this page shows and keeps every other key as it was. The first group is
+// how answers reach the main session (brain-viewer T-0359): held until the Send answers press, leaving the viewer or
+// the quiet minutes, or sent at each press. A change holds at once; nothing to restart.
+const esc = BV.esc;
+const $ = s => document.querySelector(s);
+let S = null;
+
+function paint() {
+  const a = S.answers;
+  if (a.teamCopy) {
+    $("#main").innerHTML = `<h2 class="st-title">Settings</h2>
+      <p class="st-state">This copy sends no answers to a main session, so there is nothing here to set yet.</p>`;
+    return;
+  }
+  $("#main").innerHTML = `<h2 class="st-title">Settings</h2>
+    <p class="st-state">A change here is saved at once, in <code>${esc(S.path)}</code>.</p>
+    <section class="st-group card" aria-labelledby="st-answers">
+      <h2 id="st-answers">Sending your answers</h2>
+      <div class="st-row">
+        <label><input type="checkbox" id="hold"${a.hold ? " checked" : ""}> <span>Hold my answers until I send them</span></label>
+        <p class="st-help">${a.hold
+          ? "On: an answer, done, hold or note is saved the moment you press it, and goes to the main agent when you press <b>Send</b> at the bottom right, when you leave the viewer, or after the minutes below with no new press."
+          : "Off: each answer, done, hold or note goes to the main agent the moment you press it."}</p>
+      </div>
+      <div class="st-row">
+        <label class="${a.hold ? "" : "off"}"><span>Send on their own after</span>
+          <input type="number" id="mins" min="1" max="60" step="1" value="${a.quietMinutes}"${a.hold ? "" : " disabled"} aria-label="minutes with no new press">
+          <span>minute${a.quietMinutes === 1 ? "" : "s"} with no new press</span></label>
+      </div>
+      <p class="st-say meta" id="say" aria-live="polite"></p>
+    </section>`;
+}
+
+async function save(change, said) {
+  const say = $("#say"); say.textContent = "saving…";
+  let r, j;
+  try { r = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(change) }); j = await r.json(); }
+  catch (e) { say.textContent = "Not saved: " + e.message; return; }
+  if (!r.ok) { say.textContent = "Not saved: " + (j.error || "the server answered " + r.status); return; }
+  S = j.settings; paint(); $("#say").textContent = said;
+  if (BV.outbox && BV.outbox.refresh) BV.outbox.refresh();
+}
+
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.id === "hold") return save({ answers_hold: t.checked }, t.checked
+    ? "Saved: your answers wait for you to send them."
+    : "Saved: each press goes to the main agent at once, and anything that was waiting goes now.");
+  if (t.id === "mins") {
+    const n = Math.round(+t.value);
+    if (!(n >= 1 && n <= 60)) { $("#say").textContent = "Pick a number of minutes from 1 to 60."; t.value = S.answers.quietMinutes; return; }
+    return save({ answers_quiet_minutes: n }, `Saved: held answers go after ${n} minute${n === 1 ? "" : "s"} with no new press.`);
+  }
+});
+
+async function load() {
+  let r, j;
+  try { r = await fetch("/api/settings"); j = await r.json(); }
+  catch (e) { $("#main").innerHTML = `<p class="note">Could not read your settings: ${esc(e.message)}</p>`; return; }
+  if (!r.ok) { $("#main").innerHTML = `<p class="note">${esc(j.error || ("The server answered " + r.status))}</p>`; return; }
+  S = j; paint();
+}
+load();
+</script>
+</body>
+</html>

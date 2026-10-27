@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { min-height: 100vh; }
+  main { padding: 18px 34px 80px; max-width: 820px; }
+  .st-title { margin: 4px 0 6px; font-size: 28px; line-height: 1.2; color: var(--ink); }
+  .st-state { margin: 0 0 18px; font-size: 15px; color: var(--ink-soft); max-width: 72ch; overflow-wrap: anywhere; }
+  section.st-group { margin: 0 0 16px; padding: 14px 18px 16px; }
+  section.st-group h2 { margin: 0 0 10px; font-family: var(--font-display); font-size: 19px; font-weight: normal; color: var(--ink); }
+  .st-row { margin: 0 0 12px; }
+  .st-row:last-child { margin-bottom: 0; }
+  .st-row label { display: inline-flex; align-items: baseline; gap: 9px; cursor: pointer; font-size: 15.5px; color: var(--ink); }
+  .st-row label.off { color: var(--muted); cursor: default; }
+  .st-row input[type=checkbox] { flex: none; width: 18px; height: 18px; margin: 0; position: relative; top: 3px; accent-color: var(--accent); }
+  .st-row input[type=number] { width: 4.2em; padding: 3px 6px; font: inherit; font-size: 15px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); color: var(--ink); }
+  .st-row input[type=number]:focus { outline: none; border-color: var(--accent); }
+  .st-help { margin: 4px 0 0 27px; font-size: 13.5px; color: var(--ink-soft); max-width: 66ch; }
+  .st-say { margin: 10px 0 0; font-size: 13px; }
+  .st-say:empty { display: none; }
+  /* 0.95.0: the Studio's connections, read only */
+  .st-conn { display: grid; grid-template-columns: minmax(130px, max-content) 1fr; gap: 5px 14px; margin: 0; font-size: 14.5px; }
+  .st-conn dt { color: var(--ink-soft); }
+  .st-conn dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; min-width: 0; }
+  .st-conn dd .meta { font-size: 12.5px; }
+  .st-conn .on { color: var(--done, var(--ink)); }
+  .st-conn .off { color: var(--muted); }
+  .st-conn code { font-size: 13px; }
+  @media (max-width: 700px) {
+    main { padding: 14px 16px 60px; }
+    .st-title { font-size: 24px; }
+    section.st-group { padding: 12px 14px 14px; }
+    .st-help { margin-left: 0; }
+    .st-conn { grid-template-columns: 1fr; gap: 1px 0; }
+    .st-conn dd { margin-bottom: 7px; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Settings</h1>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="settings"></nav>
+</header>
+<main id="main" class="no-gloss"><p class="meta">Reading your settings…</p></main>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /settings (0.92.0): the settings a person changes in the viewer, saved in viewer/settings.json through PUT
+// /api/settings, which writes only the keys this page shows and keeps every other key as it was. The first group is
+// how answers reach the main session (brain-viewer T-0359): held until the Send answers press, leaving the viewer or
+// the quiet minutes, or sent at each press. A change holds at once; nothing to restart.
+const esc = BV.esc;
+const $ = s => document.querySelector(s);
+let S = null;
+let P = null;             // 0.95.0: GET /api/studio/providers, for the Studio's connections (read only)
+let P_ERR = "";
+
+// 0.95.0: the Studio's connections: which providers are ready, and where the local one connects (the ComfyUI address,
+// its folder, the four model files and the time a picture may take, each with the setting that changes it). Read only;
+// the settings live in the person's own settings file and the Studio reads them at each picture.
+function studioGroup() {
+  if (!P && !P_ERR) return `<section class="st-group card" id="studio" aria-labelledby="st-studio"><h2 id="st-studio">The Studio's connections</h2><p class="st-help" style="margin-left:0">Asking which providers are ready…</p></section>`;
+  if (P_ERR) return `<section class="st-group card" id="studio" aria-labelledby="st-studio"><h2 id="st-studio">The Studio's connections</h2><p class="st-help" style="margin-left:0">${esc(P_ERR)}</p></section>`;
+  const rows = (P.providers || []).map(p => `<dt>${esc(p.name || p.id)}</dt><dd>${p.ready ? `<span class="on">ready</span>`
+    : p.checking ? `<span class="off">checking…</span>` : `<span class="off">off:</span> <span class="meta">${esc(p.reason || p.howTo || "")}</span>`}</dd>`);
+  const c = (P.providers || []).map(p => p.connection).find(Boolean);
+  if (c) {
+    rows.push(`<dt>${esc(c.label || "Address")}</dt><dd><code>${esc(c.value || "")}</code> <span class="meta">${esc(c.from || "")}</span></dd>`);
+    if (c.folder) rows.push(`<dt>ComfyUI folder</dt><dd><code>${esc(c.folder)}</code> <span class="meta">(<code>comfy_dir</code>)</span></dd>`);
+    if ((c.models || []).length) rows.push(`<dt>Model files</dt><dd>${c.models.map(m => `${esc(m.role)} <code>${esc(m.file)}</code>${m.set ? ` <span class="meta">yours</span>` : ""}`).join("<br>")}<br><span class="meta">(<code>${esc(c.modelsSetting || "comfy_models")}</code>; the ones not set are the defaults)</span></dd>`);
+    if (c.timeout) rows.push(`<dt>Time a picture may take</dt><dd>${esc(String(c.timeout))} seconds at ${esc(String(c.steps || 20))} steps <span class="meta">(<code>${esc(c.timeoutSetting || "comfy_timeout_seconds")}</code>; ${c.timeoutSet ? "yours" : "the default, which grows with the steps"})</span></dd>`);
+  }
+  const where = c && c.settingsFile ? `<p class="st-help" style="margin-left:0">The settings named in brackets are kept in <code>${esc(c.settingsFile)}</code> at your brain root, and the Studio reads them at each picture.</p>` : "";
+  return `<section class="st-group card" id="studio" aria-labelledby="st-studio">
+      <h2 id="st-studio">The Studio's connections</h2>
+      <dl class="st-conn">${rows.join("")}</dl>
+      ${where}
+      <p class="st-help" style="margin-left:0">Pictures land in <code>${esc(P.root || "")}</code>. <a href="/studio">Open the Studio</a></p>
+    </section>`;
+}
+
+function paint() {
+  const a = S.answers;
+  if (a.teamCopy) {
+    $("#main").innerHTML = `<h2 class="st-title">Settings</h2>
+      <p class="st-state">This copy sends no answers to a main session, so the answers have nothing to set here.</p>${studioGroup()}`;
+    return;
+  }
+  $("#main").innerHTML = `<h2 class="st-title">Settings</h2>
+    <p class="st-state">A change here is saved at once, in <code>${esc(S.path)}</code>.</p>
+    <section class="st-group card" aria-labelledby="st-answers">
+      <h2 id="st-answers">Sending your answers</h2>
+      <div class="st-row">
+        <label><input type="checkbox" id="hold"${a.hold ? " checked" : ""}> <span>Hold my answers until I send them</span></label>
+        <p class="st-help">${a.hold
+          ? "On: an answer, done, hold or note is saved the moment you press it, and goes to the main agent when you press <b>Send</b> at the bottom right, when you leave the viewer, or after the minutes below with no new press."
+          : "Off: each answer, done, hold or note goes to the main agent the moment you press it."}</p>
+      </div>
+      <div class="st-row">
+        <label class="${a.hold ? "" : "off"}"><span>Send on their own after</span>
+          <input type="number" id="mins" min="1" max="60" step="1" value="${a.quietMinutes}"${a.hold ? "" : " disabled"} aria-label="minutes with no new press">
+          <span>minute${a.quietMinutes === 1 ? "" : "s"} with no new press</span></label>
+      </div>
+      <p class="st-say meta" id="say" aria-live="polite"></p>
+    </section>${studioGroup()}`;
+}
+
+async function save(change, said) {
+  const say = $("#say"); say.textContent = "saving…";
+  let r, j;
+  try { r = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(change) }); j = await r.json(); }
+  catch (e) { say.textContent = "Not saved: " + e.message; return; }
+  if (!r.ok) { say.textContent = "Not saved: " + (j.error || "the server answered " + r.status); return; }
+  S = j.settings; paint(); $("#say").textContent = said;
+  if (BV.outbox && BV.outbox.refresh) BV.outbox.refresh();
+}
+
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.id === "hold") return save({ answers_hold: t.checked }, t.checked
+    ? "Saved: your answers wait for you to send them."
+    : "Saved: each press goes to the main agent at once, and anything that was waiting goes now.");
+  if (t.id === "mins") {
+    const n = Math.round(+t.value);
+    if (!(n >= 1 && n <= 60)) { $("#say").textContent = "Pick a number of minutes from 1 to 60."; t.value = S.answers.quietMinutes; return; }
+    return save({ answers_quiet_minutes: n }, `Saved: held answers go after ${n} minute${n === 1 ? "" : "s"} with no new press.`);
+  }
+});
+
+async function load() {
+  let r, j;
+  try { r = await fetch("/api/settings"); j = await r.json(); }
+  catch (e) { $("#main").innerHTML = `<p class="note">Could not read your settings: ${esc(e.message)}</p>`; return; }
+  if (!r.ok) { $("#main").innerHTML = `<p class="note">${esc(j.error || ("The server answered " + r.status))}</p>`; return; }
+  S = j; paint();
+  loadStudio();
+}
+// the providers paint at once from ?probe=0, then the probed list fills in the one that has to be asked (the local ComfyUI)
+async function loadStudio() {
+  for (const qs of ["?probe=0", ""]) {
+    try {
+      const r = await fetch("/api/studio/providers" + qs), j = await r.json();
+      if (!r.ok) { P = null; P_ERR = j.error || ("The Studio answered " + r.status); }
+      else { P = j; P_ERR = ""; }
+    } catch (e) { P = null; P_ERR = "Could not ask the Studio: " + e.message; }
+    const old = document.getElementById("studio");
+    if (old) old.outerHTML = studioGroup();
+    if (P_ERR || !(P.providers || []).some(p => p.checking)) break;
+  }
+  if (location.hash === "#studio") { const el = document.getElementById("studio"); if (el) el.scrollIntoView({ block: "start" }); }
+}
+load();
+</script>
+</body>
+</html>

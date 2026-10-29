@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manual</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { min-height: 100vh; }
+  main { display: grid; grid-template-columns: 236px minmax(0, 860px); gap: 30px; padding: 18px 34px 90px; align-items: start; }
+  /* the contents: a sticky column at desktop, one fold at the top on a phone */
+  details.toc { position: sticky; top: 74px; max-height: calc(100vh - 92px); overflow: auto; font-size: 13.5px; }
+  details.toc > summary { display: none; }
+  details.toc ol { list-style: none; margin: 0; padding: 0; }
+  details.toc li a { display: flex; gap: 8px; padding: 3px 6px; border-radius: var(--radius); text-decoration: none; color: var(--ink-soft); }
+  details.toc li a:hover { background: var(--hover); color: var(--ink); }
+  details.toc li a.on { background: var(--selected); color: var(--ink); }
+  details.toc li .n { flex: none; width: 1.6em; text-align: right; color: var(--muted); }
+  details.toc li .t { flex: 1; min-width: 0; }
+  details.toc li .mk { flex: none; color: var(--open); }
+  details.toc .tocfoot { margin: 10px 6px 0; font-size: 12px; color: var(--muted); }
+  .book { min-width: 0; }
+  .book h1.mt { margin: 2px 0 10px; font-size: 30px; line-height: 1.15; }
+  /* what you changed: one line, then the list */
+  .yours { margin: 0 0 22px; padding: 9px 14px; }
+  .yours > button.yl { all: unset; cursor: pointer; display: flex; gap: 10px; align-items: baseline; width: 100%; font-size: 14.5px; color: var(--ink); }
+  .yours > button.yl:focus-visible { outline: 1px solid var(--accent); }
+  .yours > button.yl .go { margin-left: auto; color: var(--accent); font-size: 13px; white-space: nowrap; }
+  .yours .ylist { margin-top: 8px; border-top: 1px solid var(--rule-soft); padding-top: 6px; }
+  .yours .ylist h3 { margin: 10px 0 3px; font-family: var(--font-display); font-size: 15px; font-weight: 400; }
+  .yours .ylist h3 a { color: var(--accent); text-decoration: none; }
+  .yours .ylist ul { margin: 0; padding: 0 0 0 1.1em; }
+  .yours .ylist li { margin: 2px 0; color: var(--ink-soft); }
+  .yours .ylist li b { color: var(--ink); font-weight: 700; }
+  .yours .ylist .ex { display: block; font-size: 12.5px; color: var(--muted); }
+  /* a chapter */
+  section.ch { margin: 0 0 40px; scroll-margin-top: 70px; }
+  section.ch > h2 { margin: 0 0 6px; font-size: 25px; line-height: 1.2; color: var(--accent); }
+  section.ch > h2 .n { color: var(--muted); font-size: 18px; margin-right: 6px; }
+  section.ch > p.fits { margin: 0 0 12px; font-size: 15px; color: var(--ink-soft); max-width: 70ch; }
+  .reg { display: block; margin: 16px 0 6px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  /* for you: a card per page, instrument or section of the definition */
+  .sec { margin: 0 0 10px; padding: 11px 15px 10px; scroll-margin-top: 70px; }
+  .sec.here { border-color: var(--accent); box-shadow: inset 0 0 0 3px var(--surface), inset 0 0 0 4px var(--accent); }
+  .sec h3 { margin: 0 0 4px; font-family: var(--font-display); font-size: 17px; font-weight: 400; }
+  .sec h3 a { color: var(--accent); text-decoration: none; }
+  .sec h3 a:hover { text-decoration: underline; }
+  .sec p.what { margin: 0 0 6px; max-width: 72ch; }
+  .sec ol.wf { margin: 6px 0 6px; padding-left: 1.5em; }
+  .sec ol.wf li { margin: 2px 0; }
+  .sec .wfh { font-size: 12.5px; color: var(--muted); }
+  .sec details.parts { margin: 4px 0 2px; }
+  .sec details.parts > summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+  .sec details.parts ul { list-style: none; margin: 4px 0 0; padding: 0; }
+  .sec details.parts li { padding: 4px 0; border-top: 1px solid var(--rule-soft); color: var(--ink-soft); font-size: 13.5px; }
+  .sec details.parts li b { color: var(--ink); font-weight: 700; }
+  .sec .doc { max-width: 72ch; }
+  .sec .doc > :first-child { margin-top: 0; }
+  .sec .doc p { margin: .45em 0; }
+  .sec .doc ul, .sec .doc ol { padding-left: 1.3em; }
+  .sec .nocard { color: var(--open); }
+  /* a readme's long command or path wraps, and a wide table or block of code scrolls inside its own box, so the page never
+     scrolls sideways on a phone with every fold open (found by the librarian's reading pass, 10/26) */
+  .book code { overflow-wrap: anywhere; word-break: break-word; }
+  .book pre { overflow-x: auto; max-width: 100%; }
+  .sec .doc table { display: block; overflow-x: auto; max-width: 100%; }
+  .sec .doc, details.hood .body { overflow-wrap: anywhere; min-width: 0; }
+  .sec .doc table th, .sec .doc table td { overflow-wrap: normal; word-break: normal; }   /* 0.96.0: a table's words never break mid-word on the phone */
+  .sec .doc table td:first-child { white-space: nowrap; }
+  .stamp { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+  .stamp .old { color: var(--open); }
+  /* under the hood: one fold per readme */
+  details.hood { border-top: 1px solid var(--rule-soft); scroll-margin-top: 70px; }
+  details.hood:last-of-type { border-bottom: 1px solid var(--rule-soft); }
+  details.hood > summary { cursor: pointer; list-style: none; padding: 7px 2px; display: grid; grid-template-columns: 14px 1fr; gap: 6px; }
+  details.hood > summary::-webkit-details-marker { display: none; }
+  details.hood > summary::before { content: "\25B8"; color: var(--muted); }
+  details.hood[open] > summary::before { content: "\25BE"; }
+  details.hood > summary .ht { font-family: var(--font-display); font-size: 15.5px; color: var(--ink); }
+  details.hood > summary .stamp { grid-column: 2; margin: 1px 0 0; }
+  details.hood.here > summary .ht { color: var(--accent); }
+  details.hood .body { padding: 4px 4px 14px 22px; }
+  details.hood .body article.md { padding: 14px 18px; box-shadow: none; border-color: var(--rule-soft); }
+  details.hood .reg-entry { margin: 0 0 10px; padding: 8px 12px; border-left: 2px solid var(--rule); color: var(--ink-soft); font-size: 13.5px; }
+  details.hood .reg-entry > b { display: block; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 400; margin-bottom: 2px; }
+  /* your note, under a chapter or a section */
+  .note-slot { margin: 6px 0 0; font-size: 13px; }
+  .note-slot button.add { all: unset; cursor: pointer; color: var(--muted); font-size: 12.5px; border-bottom: 1px dotted var(--rule); }
+  .note-slot button.add:hover, .note-slot button.add:focus-visible { color: var(--accent); }
+  .yournote { padding: 6px 10px; border-left: 2px solid var(--accent); background: var(--bg); }
+  .yournote .who { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+  .yournote .who button { all: unset; cursor: pointer; margin-left: 8px; text-transform: none; letter-spacing: 0; font-size: 12px; color: var(--muted); border-bottom: 1px dotted var(--rule); }
+  .yournote .txt { white-space: pre-wrap; color: var(--ink); overflow-wrap: anywhere; }
+  .note-edit textarea { width: 100%; min-height: 84px; padding: 7px 9px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); font: inherit; font-size: 14px; resize: vertical; }
+  .note-edit .row { display: flex; gap: 8px; align-items: center; margin-top: 5px; flex-wrap: wrap; }
+  .note-edit .say { font-size: 12.5px; color: var(--muted); }
+  .ch-yours { margin: 10px 0 0; font-size: 13px; color: var(--ink-soft); }
+  .ch-yours b { color: var(--ink); }
+  .unplaced p.fits { color: var(--open); }
+  #say { position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 30; padding: 6px 14px; font-size: 13.5px; }
+  #say:empty { display: none; }
+  @media (max-width: 900px) {
+    main { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 12px 16px 70px; }
+    details.toc { position: static; max-height: none; padding: 6px 10px; }
+    details.toc > summary { display: block; cursor: pointer; font-size: 14px; color: var(--accent); }
+    details.toc[open] > summary { margin-bottom: 6px; }
+    .book h1.mt { font-size: 25px; }
+    section.ch > h2 { font-size: 22px; }
+    .sec { padding: 10px 12px 9px; }
+    details.hood .body { padding-left: 4px; }
+    details.hood .body article.md { padding: 10px 10px; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Manual</h1>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="manual"></nav>
+</header>
+<main id="main" class="no-gloss">
+  <details class="toc card" id="toc"><summary>Contents</summary><ol id="tocl"></ol><p class="tocfoot" id="tocfoot"></p></details>
+  <div class="book" id="book"><p class="meta">Putting the manual together…</p></div>
+</main>
+<div id="say" class="card" role="status" aria-live="polite"></div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /manual (0.94.0, 2026-10-26): the manual of the brain and the viewer, put together by GET /api/manual at each load
+// from the chapter order (brain-viewer-holon/brain-viewer-manual.md), the help cards, the folder and skill readmes and
+// the definition page (skills/brain-viewer/part_manual.py). It draws; it computes nothing. A readme under the hood is
+// read when its fold opens, through GET /api/file, so it is the file as it is now. The two writes are the person's own:
+// a note on a chapter or a section (PUT /api/manual/note) and the readme of a widget they wrote (PUT /api/manual/module),
+// both into viewer/manual/, which no update touches. ?at=<route> opens the book at that page's card (the "?" card's
+// press); #ch-<chapter> at a chapter.
+const esc = BV.esc;
+const $ = s => document.querySelector(s);
+let D = null;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function dayWords(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-").map(Number);
+  const then = Date.UTC(y, m - 1, d), now = Date.UTC(...D.today.split("-").map((v, i) => i === 1 ? v - 1 : +v));
+  const days = Math.round((now - then) / 86400000);
+  const ago = days <= 0 ? "today" : days === 1 ? "yesterday" : days < 14 ? `${days} days ago`
+    : days < 60 ? `${Math.round(days / 7)} weeks ago` : `${Math.round(days / 30)} months ago`;
+  const date = `${d} ${MONTHS[m - 1]}${y !== +D.today.slice(0, 4) ? " " + y : ""}`;
+  return { text: days <= 0 ? `changed today` : `changed ${date}, ${ago}`, old: days > 60 };
+}
+
+// the line under a section: the file it came from, by its title (a press opens it beside the page), and its day
+function stamp(s, extra) {
+  const dw = dayWords(s.changed);
+  const from = s.source ? `from <span class="filelink" data-open="${esc(s.source)}" title="${esc(s.source)}">${esc(s.sourceTitle || "its file")}</span>` : "";
+  const day = dw ? ` · <span class="${dw.old ? "old" : ""}">${esc(dw.text)}</span>` : "";
+  const grown = s.outgrown ? ` · <span class="old" title="this readme was last changed before ${esc(s.outgrown.name)} was added to its folder, and does not name it">behind its folder: ${esc(s.outgrown.name)}, added ${esc(dayWords(s.outgrown.added).text.replace(/^changed /, ""))}</span>` : "";
+  return `<p class="stamp">${from}${day}${grown}${extra || ""}</p>`;
+}
+
+const noteOf = sid => (D.yours.notes || []).find(n => n.section === sid);
+
+function noteSlot(sid, label) {
+  const n = noteOf(sid);
+  const inner = n
+    ? `<div class="yournote"><div class="who">your note<button type="button" data-note-edit="${esc(sid)}">change</button></div><div class="txt">${esc(n.text)}</div></div>`
+    : `<button type="button" class="add" data-note-edit="${esc(sid)}" aria-label="add a note to ${esc(label || "this")}">add a note</button>`;
+  return `<div class="note-slot" data-note-for="${esc(sid)}">${inner}</div>`;
+}
+
+function cardHTML(s) {
+  const here = s.route ? ` data-route="${esc(s.route)}"` : (s.wid ? ` data-widget="${esc(s.wid)}"` : "");
+  if (s.kind === "page") {
+    const parts = (s.parts || []).length
+      ? `<details class="parts"><summary>its parts, one by one (${s.parts.length})</summary><ul>${s.parts.map(p => `<li><b>${esc(p.name)}</b> ${esc(p.line)}</li>`).join("")}</ul></details>` : "";
+    const wf = (s.workflow || []).length ? `<p class="wfh">A typical workflow</p><ol class="wf">${s.workflow.map(w => `<li>${esc(w)}</li>`).join("")}</ol>` : "";
+    return `<div class="sec card" id="${esc(s.id)}"${here}><h3><a href="${esc(s.href)}">${esc(s.title)}</a></h3>`
+      + (s.missing ? `<p class="what nocard">No card is written for this page yet.</p>` : `<p class="what">${esc(s.what)}</p>`)
+      + wf + parts + stamp(s) + noteSlot(s.id, s.title) + `</div>`;
+  }
+  if (s.kind === "part") {
+    return `<div class="sec card" id="${esc(s.id)}"${here}><h3>${esc(s.name)}, <a href="${esc(s.href)}">on ${esc(s.title)}</a></h3><p class="what">${esc(s.line)}</p>${stamp(s)}${noteSlot(s.id, s.name)}</div>`;
+  }
+  if (s.kind === "widget") {
+    return `<div class="sec card" id="${esc(s.id)}"${here}><h3><a href="/home" title="the board, where it is turned on and arranged">${esc(s.title)}</a></h3>`
+      + (s.missing ? `<p class="what nocard">No card is written for this instrument yet.</p>` : `<p class="what">${esc(s.what)}</p>`)
+      + stamp(s) + noteSlot(s.id, s.title) + `</div>`;
+  }
+  if (s.kind === "doc" && s.text != null) {
+    const base = (s.path || "").split("/").slice(0, -1).join("/");
+    return `<div class="sec card" id="${esc(s.id)}"><h3>${esc(s.title)}</h3><div class="doc">${BV.md(s.text, { base })}</div>${stamp(s)}${noteSlot(s.id, s.title)}</div>`;
+  }
+  return hoodHTML(s);
+}
+
+function hoodHTML(s) {
+  const missing = s.missing ? ` <span class="stamp old">no readme yet</span>` : "";
+  return `<details class="hood" id="${esc(s.id)}" data-path="${esc(s.path || "")}" data-kind="${esc(s.kind)}">`
+    + `<summary><span class="ht">${esc(s.title)}${missing}</span>${s.missing ? "" : stamp(s)}</summary>`
+    + `<div class="body"><p class="meta">Reading the file…</p></div></details>`;
+}
+
+function chapterYours(ch) {
+  const y = D.yours, bits = [];
+  for (const st of y.settings || []) if (st.chapter === ch.id) bits.push(`<b>${esc(st.key.replace(/_/g, " "))}</b> set to ${esc(valueWords(st.value))}`);
+  if (y.board && y.board.chapter === ch.id && (y.board.added.length || y.board.removed.length || y.board.look)) bits.push(`<b>your board</b>, arranged by you`);
+  for (const l of y.looks || []) if (l.chapter === ch.id) bits.push(`<b>${esc(l.name)}</b>, a look of yours`);
+  for (const w of y.widgets || []) if (w.chapter === ch.id) bits.push(`<b>${esc(w.title)}</b>, a widget of yours`);
+  return bits.length ? `<p class="ch-yours">Yours here: ${bits.join(" · ")}</p>` : "";
+}
+
+function valueWords(v) {
+  if (v === true) return "on"; if (v === false) return "off";
+  if (Array.isArray(v)) return v.length ? v.map(x => typeof x === "object" ? (x.name || JSON.stringify(x)) : x).join(", ") : "nothing";
+  if (v && typeof v === "object") { const k = Object.keys(v); return k.length + (k.length === 1 ? " entry" : " entries"); }
+  return String(v);
+}
+
+function chapterHTML(ch) {
+  const fy = ch.forYou || [], uh = ch.underHood || [];
+  return `<section class="ch${ch.unplaced ? " unplaced" : ""}" id="ch-${esc(ch.id)}"><h2><span class="n">${ch.n}</span>${esc(ch.title)}</h2>`
+    + (ch.unplaced ? `<p class="fits">These have no chapter yet. The rounds fail until each is given one in the chapter order.</p>` : (ch.fits ? `<p class="fits">${BV.inline(ch.fits)}</p>` : ""))
+    + (fy.length ? `<span class="reg">For you</span>` + fy.map(cardHTML).join("") : "")
+    + (uh.length ? `<span class="reg">Under the hood</span>` + uh.map(hoodHTML).join("") : "")
+    + chapterYours(ch) + (ch.unplaced ? "" : noteSlot("chapter-" + ch.id, ch.title)) + `</section>`;
+}
+
+function yoursHTML() {
+  const y = D.yours, titleOf = {}, widgetTitle = {};
+  for (const ch of D.chapters) { titleOf[ch.id] = ch.title; for (const s of ch.forYou) if (s.wid) widgetTitle[s.wid] = s.title; }
+  const groups = new Map(), add = (ch, html) => { const k = ch || ""; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(html); };
+  for (const n of y.notes || []) add(n.chapter, `<li><b>your note</b> on ${n.title ? `<a href="#${esc(n.section)}">${esc(n.title)}</a>` : "a section the manual no longer has"}: ${esc(n.text.split("\n")[0].slice(0, 140))}</li>`);
+  for (const st of y.settings || []) add(st.chapter, `<li><b>${esc(st.key.replace(/_/g, " "))}</b>: ${esc(valueWords(st.value))}${st.shipped != null && st.shipped !== "" ? ` <span class="ex">a new brain has ${esc(valueWords(st.shipped))}</span>` : ""}${st.explain ? `<span class="ex">${esc(plainLine(st.explain))}</span>` : ""}</li>`);
+  if (y.board) {
+    const on = y.board.added.map(w => widgetTitle[w] || w), off = y.board.removed.map(w => widgetTitle[w] || w);
+    const bits = [];
+    if (on.length) bits.push("on, beyond what ships: " + on.join(", "));
+    if (off.length) bits.push("off, of what ships: " + off.join(", "));
+    if (y.board.look) bits.push("the look " + y.board.look);
+    if (bits.length) add(y.board.chapter, `<li><b>your board</b>, last arranged ${esc(dayWords(y.board.changed).text.replace(/^changed /, ""))}: ${esc(bits.join("; "))}</li>`);
+  }
+  for (const l of y.looks || []) add(l.chapter, `<li><b>${esc(l.name)}</b>, a look you wrote or imported</li>`);
+  for (const w of y.widgets || []) add(w.chapter, `<li><b>${esc(w.title)}</b>, a widget you wrote: ${w.readme ? `its readme, <span class="filelink" data-open="${esc(w.readme)}">open</span>` : `no readme yet, <button type="button" class="btn" data-module-edit="${esc(w.id)}">write its readme</button>`}<div data-module-for="${esc(w.id)}"></div></li>`);
+  for (const m of y.modules || []) add(m.chapter, `<li><b>${esc(m.name)}</b>, a readme of yours: <span class="filelink" data-open="${esc(m.path)}">open</span></li>`);
+  const count = y.count;
+  const line = count ? `What you changed: ${esc(summaryWords(y))}` : "What you changed: nothing yet. Your settings are the ones a new brain gets, and you have written no notes.";
+  const order = ch => { const c = D.chapters.find(x => x.id === ch); return c ? c.n : 999; };
+  const list = [...groups.entries()].sort((a, b) => order(a[0]) - order(b[0])).map(([ch, items]) => `<h3>${ch && titleOf[ch] ? `<a href="#ch-${esc(ch)}">${esc(titleOf[ch])}</a>` : "Not in a chapter"}</h3><ul>${items.join("")}</ul>`).join("");
+  return `<div class="yours card" id="yours"><button type="button" class="yl" aria-expanded="false" aria-controls="ylist">${line}${count ? `<span class="go">open the list</span>` : ""}</button>`
+    + (count ? `<div class="ylist" id="ylist" hidden>${list}</div>` : "") + `</div>`;
+}
+
+// a setting's explanation as written in the settings file, cut to its first sentence and stripped of the machinery in
+// it (a path, a {shape}, a parenthesis), so the list says what the setting does in plain words
+function plainLine(t) {
+  let s = String(t).split(/(?<=[.;])\s/)[0];
+  s = s.replace(/\{[^}]*\}|\[[^\]]*\]|\([^)]*\)/g, "").replace(/\S*\/\S*\.(py|md|json|js)\S*/g, "");
+  s = s.replace(/\s+([,.;:])/g, "$1").replace(/[,;:]+\./g, ".").replace(/\s{2,}/g, " ").trim();
+  return s.replace(/[,;:]+$/, "");
+}
+
+function summaryWords(y) {
+  const p = (n, w) => n ? `${n} ${w}${n === 1 ? "" : "s"}` : "";
+  const boardChanged = y.board && (y.board.added.length || y.board.removed.length || y.board.look);
+  return [p((y.notes || []).length, "note"), p((y.settings || []).length, "setting"), boardChanged ? "your board" : "",
+          p((y.looks || []).length, "look"), p((y.widgets || []).length, "widget") + ((y.widgets || []).length ? " of your own" : ""),
+          p((y.modules || []).length, "readme")].filter(Boolean).join(", ");
+}
+
+function tocHTML() {
+  const notesIn = new Set((D.yours.notes || []).map(n => n.chapter));
+  return D.chapters.map(ch => {
+    const behind = [...ch.forYou, ...ch.underHood].some(s => s.outgrown || s.missing);
+    const mk = notesIn.has(ch.id) ? `<span class="mk" title="you wrote a note in this chapter">✎</span>`
+      : behind ? `<span class="mk" title="a readme or a card here is missing, or behind its folder">·</span>` : "";
+    return `<li><a href="#ch-${esc(ch.id)}" data-ch="${esc(ch.id)}"><span class="n">${ch.n}</span><span class="t">${esc(ch.title)}</span>${mk}</a></li>`;
+  }).join("");
+}
+
+function paint() {
+  $("#tocl").innerHTML = tocHTML();
+  const cf = D.chapterFile;
+  $("#tocfoot").innerHTML = cf.found
+    ? stamp({ source: cf.path, sourceTitle: "the chapter order", changed: cf.changed })
+    : `No chapter order in this brain: every page, instrument, folder and module in a chapter of its own kind.`;
+  $("#book").innerHTML = `<h1 class="mt">The brain and the viewer</h1>` + yoursHTML() + D.chapters.map(chapterHTML).join("");
+  const toc = $("#toc");
+  toc.open = window.matchMedia("(min-width: 901px)").matches;
+}
+
+function say(text) { const el = $("#say"); el.textContent = text; clearTimeout(say.t); say.t = setTimeout(() => { el.textContent = ""; }, 4000); }
+
+// a fold opened under the hood reads its file now
+document.addEventListener("toggle", async e => {
+  const d = e.target;
+  if (!(d instanceof HTMLDetailsElement) || !d.classList.contains("hood") || !d.open || d.dataset.loaded) return;
+  d.dataset.loaded = "1";
+  const body = d.querySelector(".body"), sec = findSection(d.id);
+  if (sec && sec.text != null) { body.innerHTML = `<article class="md">${BV.md(sec.text, { base: (sec.path || "").split("/").slice(0, -1).join("/") })}</article>`; return; }
+  if (!d.dataset.path || (sec && sec.missing)) { body.innerHTML = `<p class="meta">This one has no readme yet.</p>`; return; }
+  try {
+    const r = await fetch("/api/file?path=" + encodeURIComponent(d.dataset.path)), j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    const reg = sec && sec.registry ? `<div class="reg-entry"><b>In the skill registry</b>${BV.md(sec.registry)}</div>` : "";
+    body.innerHTML = reg + `<article class="md">${BV.md(j.text, { base: d.dataset.path.split("/").slice(0, -1).join("/") })}</article>`;
+  } catch (err) {
+    d.dataset.loaded = "";
+    body.innerHTML = `<p class="note">Could not read it: ${esc(err.message)}</p>`;
+  }
+}, true);
+
+function findSection(id) {
+  for (const ch of D.chapters) for (const s of [...ch.forYou, ...ch.underHood]) if (s.id === id) return s;
+  return null;
+}
+
+function editBox(slot, text, onKeep, label) {
+  slot.innerHTML = `<div class="note-edit"><textarea aria-label="${esc(label)}">${esc(text || "")}</textarea>`
+    + `<div class="row"><button type="button" class="btn primary" data-keep>keep</button><button type="button" class="btn" data-cancel>cancel</button>`
+    + `<span class="say">kept in your own folder, which an update never touches${text ? "; empty it to take it away" : ""}</span></div></div>`;
+  const ta = slot.querySelector("textarea"); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+  slot.querySelector("[data-keep]").onclick = () => onKeep(ta.value);
+  return slot;
+}
+
+async function putJSON(url, body) {
+  const r = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ("the server answered " + r.status));
+  return j;
+}
+
+async function reload() {
+  const r = await fetch("/api/manual"), j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.status);
+  D = j;
+}
+
+function repaintYours(sid) {
+  const slot = document.querySelector(`[data-note-for="${CSS.escape(sid)}"]`);
+  const sec = findSection(sid);
+  if (slot) slot.outerHTML = noteSlot(sid, sec ? sec.title : "");
+  const was = $("#ylist") && !$("#ylist").hidden;
+  $("#yours").outerHTML = yoursHTML();
+  if (was && $("#ylist")) { $("#ylist").hidden = false; $("#yours .yl").setAttribute("aria-expanded", "true"); }
+  $("#tocl").innerHTML = tocHTML();
+}
+
+document.addEventListener("click", async e => {
+  const t = e.target;
+  const yl = t.closest("#yours > button.yl");
+  if (yl) { const l = $("#ylist"); if (l) { l.hidden = !l.hidden; yl.setAttribute("aria-expanded", String(!l.hidden)); } return; }
+  const ed = t.closest("[data-note-edit]");
+  if (ed) {
+    const sid = ed.dataset.noteEdit, slot = document.querySelector(`[data-note-for="${CSS.escape(sid)}"]`), n = noteOf(sid);
+    const sec = findSection(sid), label = "your note on " + (sec ? sec.title : (sid.startsWith("chapter-") ? "this chapter" : "this section"));
+    editBox(slot, n ? n.text : "", async text => {
+      try {
+        const j = await putJSON("/api/manual/note", { section: sid, text });
+        await reload(); repaintYours(sid);
+        say(j.state === "removed" ? "Your note was taken away." : j.state === "none" ? "Nothing kept: the note was empty." : "Your note is kept in your own folder.");
+      } catch (err) { say("Not kept: " + err.message); }
+    }, label);
+    slot.querySelector("[data-cancel]").onclick = () => repaintYours(sid);
+    return;
+  }
+  const me = t.closest("[data-module-edit]");
+  if (me) {
+    const wid = me.dataset.moduleEdit, slot = document.querySelector(`[data-module-for="${CSS.escape(wid)}"]`);
+    editBox(slot, "", async text => {
+      try {
+        await putJSON("/api/manual/module", { id: wid, text });
+        await reload(); repaintYours("");
+        say("The readme is kept in your own folder.");
+      } catch (err) { say("Not kept: " + err.message); }
+    }, "the readme of your widget");
+    slot.querySelector("[data-cancel]").onclick = () => { slot.innerHTML = ""; };
+    return;
+  }
+  const tl = t.closest("#tocl a[data-ch]");
+  if (tl && !window.matchMedia("(min-width: 901px)").matches) $("#toc").open = false;
+});
+
+// the "?" card's press lands here: ?at=<route> opens the book at that page's card; #ch-<id> or #<section> at that place
+function arrive() {
+  const at = new URLSearchParams(location.search).get("at");
+  let el = null;
+  if (at) {
+    const route = at === "/" || at === "/index.html" ? "/today" : at;
+    el = document.querySelector(`.sec[data-route="${CSS.escape(route)}"]`);
+    if (!el && route === "/threads") el = document.querySelector(`.sec[data-route="/thread"]`);
+  }
+  if (!el && location.hash) el = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+  // 0.96.0: the old /glossary address redirects here with ?words=; with no word named in the hash, the vocabulary chapter
+  if (!el && new URLSearchParams(location.search).get("words") !== null) el = document.getElementById("ch-the-words-the-viewer-uses");
+  if (!el) return;
+  el.classList.add("here");
+  if (el.tagName === "DETAILS") el.open = true;
+  el.scrollIntoView({ block: "start" });
+  const ch = el.closest("section.ch");
+  if (ch) { const a = document.querySelector(`#tocl a[data-ch="${CSS.escape(ch.id.slice(3))}"]`); if (a) a.classList.add("on"); }
+}
+
+async function load() {
+  try { await reload(); }
+  catch (e) { $("#book").innerHTML = `<p class="note">Could not put the manual together: ${esc(e.message)}</p>`; return; }
+  paint();
+  arrive();
+}
+load();
+</script>
+</body>
+</html>

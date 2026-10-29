@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Artifacts</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { min-height: 100vh; }
+  main { padding: 18px 34px 60px; max-width: 980px; }
+  @media (max-width: 700px) { main { padding: 14px 16px 50px; } }
+  .ahead { margin: 0 0 14px; font-size: 13.5px; color: var(--ink-soft); }
+  ul.arts { list-style: none; padding: 0; margin: 0; }
+  li.art { padding: 16px 0 14px; border-top: 1px solid var(--rule-soft); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 18px; align-items: start; }
+  li.art:first-child { border-top: 0; padding-top: 4px; }
+  .art .nm { margin: 0; font-family: var(--font-display); font-size: 24px; font-weight: 400; line-height: 1.2; color: var(--ink); overflow-wrap: anywhere; }
+  .art .nm a { color: inherit; text-decoration: none; }
+  .art .nm a:hover { color: var(--accent); text-decoration: underline; }
+  .art .ln { margin: 4px 0 0; font-size: 14px; color: var(--ink-soft); max-width: 72ch; }
+  .art .when { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); }
+  .art .where { margin: 2px 0 0; font-family: var(--font-mono); font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+  .art .acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .art a.press { display: inline-block; font-size: 13px; padding: 5px 14px; border-radius: var(--radius); border: 1px solid var(--rule); background: var(--surface); color: var(--ink); text-decoration: none; white-space: nowrap; }
+  .art a.press:hover { background: var(--hover); }
+  .art a.press.open { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+  .art a.press.open:hover { background: var(--accent-deep); }
+  .art a.press.small { font-size: 12px; padding: 3px 10px; }
+  .art .pages { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; align-items: baseline; font-size: 12.5px; }
+  .art .pages .meta { margin-right: 2px; }
+  .art .pages a { font-size: 12px; padding: 2px 9px; border-radius: var(--radius); border: 1px solid var(--rule-soft); color: var(--ink-soft); text-decoration: none; }
+  .art .pages a:hover { background: var(--hover); color: var(--ink); }
+  @media (max-width: 700px) { li.art { grid-template-columns: minmax(0, 1fr); } .art .acts { justify-content: flex-start; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Artifacts</h1>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="artifacts"></nav>
+</header>
+<main id="main"><p class="meta">Finding what has been built…</p></main>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /artifacts (0.76.0, 2026-10-09): every built thing in the brain by its name, newest first, from GET /api/artifacts.
+// A built thing is opened from here, never hunted for through its documents. OPEN is the page
+// itself in a new tab (/raw/<path>), PREVIEW is the same page inside the viewer at the width presets, ABOUT is the folder's
+// readme in the Reader. A site's other pages sit under it as small presses that open each in a new tab.
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const raw = p => "/raw/" + p.split("/").map(encodeURIComponent).join("/");
+const when = iso => {
+  const d = new Date(iso); if (isNaN(d)) return "";
+  const days = Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
+  const t = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  if (days <= 0) return `changed today at ${t}`;
+  if (days === 1) return `changed yesterday at ${t}`;
+  return `changed ${d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}`;
+};
+
+function row(a) {
+  const pages = (a.pages || []).length
+    ? `<div class="pages"><span class="meta">its other pages:</span>${a.pages.map(p => `<a href="${esc(raw(p.path))}" target="_blank" rel="noopener" title="open this page in a new tab">${esc(p.name)}</a>`).join("")}</div>` : "";
+  return `<li class="art">
+    <div>
+      <h2 class="nm"><a href="${esc(raw(a.path))}" target="_blank" rel="noopener" title="open it in a new tab">${esc(a.name)}</a></h2>
+      ${a.line ? `<p class="ln">${esc(a.line)}</p>` : ""}
+      <p class="when">${esc(when(a.at))}${a.site ? ` · a site of ${a.pages.length + 1} pages` : ""}</p>
+      <p class="where">${esc(a.path)}</p>
+    </div>
+    <div class="acts">
+      <a class="press open" href="${esc(raw(a.path))}" target="_blank" rel="noopener" title="the page itself, full window, in a new tab">open</a>
+      <a class="press" href="/preview?path=${encodeURIComponent(a.path)}" title="the page inside the viewer, at phone, tablet and laptop widths">preview</a>
+      ${a.about ? `<a class="press small" href="${esc(BV.readerHref(a.about))}" title="what this is and how it was made, in the Reader">about</a>` : ""}
+    </div>
+    ${pages}
+  </li>`;
+}
+
+async function load() {
+  const m = document.getElementById("main");
+  let d;
+  try { d = await (await fetch("/api/artifacts")).json(); }
+  catch (e) { m.innerHTML = `<p class="note">Could not read the list: ${esc(e.message)}</p>`; return; }
+  const list = d.artifacts || [];
+  if (!list.length) { m.innerHTML = `<p class="meta">Nothing built yet. A web page saved anywhere in the brain (a site in deliverables/, a mockup) shows here once it exists.</p>`; return; }
+  m.innerHTML = `<p class="ahead">${list.length === 1 ? "One thing" : `${list.length} things`} built in this brain, the newest first. <b>open</b> shows the page itself in a new tab; <b>preview</b> shows it here at phone and laptop widths.</p>
+    <ul class="arts">${list.map(row).join("")}</ul>`;
+}
+load();
+</script>
+</body>
+</html>

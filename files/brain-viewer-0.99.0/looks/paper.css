@@ -1,0 +1,49 @@
+/* Paper. A warm linen page set in Fraunces and Literata, a terracotta accent, soft rounded cards with a faint lift instead of the double frame. */
+/* The second look (2026-09-22, T-0208), made to prove the swap: every one of the 33 tokens is set, so nothing falls back to default.
+   The one @import a look may carry is a Google Fonts line for its own faces; everything else is a custom property inside :root. */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,700;1,7..72,400&display=swap");
+
+:root {
+  /* type: a soft, wide display serif for titles and headings, a book serif made for screens for the text */
+  --font-title: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-ui: "Literata", "Iowan Old Style", Georgia, serif;
+  --font-mono: "Cascadia Mono", ui-monospace, Consolas, Menlo, monospace;
+  --size-ui: 14.5px;
+  --lh-ui: 1.55;
+
+  /* ground + text: linen and warm brown ink, no pure black or white anywhere */
+  --bg: #f4ece1;
+  --surface: #fffaf2;
+  --ink: #33291f;
+  --ink-soft: #4d4034;
+  --muted: #7b6a5a;
+  --rule: #cbb9a3;
+  --rule-soft: #e7dccc;
+  --code: #efe4d4;
+
+  /* the one active thing: terracotta */
+  --accent: #b24a2c;
+  --accent-deep: #8c3520;
+  --selected: #f2e2cf;
+  --hover: #f8eee2;
+
+  /* meaning: sage, honey, brick, with a clay orange for outputs and a dusk violet for minds */
+  --done: #5d8764;
+  --done-tint: #e2ecdd;
+  --open: #c68a2e;
+  --open-tint: #f6e7cb;
+  --blocked: #a53f2d;
+  --blocked-tint: #f4dcd3;
+  --mouth: #c26a2b;
+  --mouth-tint: #f6e0cc;
+  --mind: #8a73c6;
+  --danger: #a53f2d;
+  --danger-tint: #f4dcd3;
+
+  /* shape: rounded, and a card lifts off the page with a faint warm shadow instead of carrying a drawn frame */
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow: 0 1px 2px rgba(92, 64, 40, .08), 0 6px 18px rgba(92, 64, 40, .08);
+  --frame: 0 1px 2px rgba(92, 64, 40, .06), 0 4px 14px rgba(92, 64, 40, .06);
+}

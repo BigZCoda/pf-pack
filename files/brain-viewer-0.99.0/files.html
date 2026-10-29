@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Files</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from the look's tokens */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .layout { flex: 1; display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 0; }
+  nav.side { border-right: 1px solid var(--rule); background: var(--surface); overflow: auto; padding: 12px 0 24px; }
+  nav.side .find { padding: 0 14px 10px; }
+  nav.side .find input { width: 100%; box-sizing: border-box; padding: 6px 9px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--bg); }
+  nav.side .find input:focus { outline: none; border-color: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 14px 12px; border-bottom: 1px solid var(--rule-soft); margin-bottom: 8px; }
+  .chips button { font-size: 12px; padding: 1px 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--bg); color: var(--ink-soft); cursor: pointer; font-family: var(--font-mono); }
+  .chips button:hover { background: var(--hover); color: var(--ink); }
+  .chips button.on { background: var(--selected); border-color: var(--accent); color: var(--accent); }
+  .tree .f { display: flex; align-items: baseline; gap: 6px; width: 100%; text-align: left; border: 0; background: transparent; padding: 4px 14px 4px 10px; cursor: pointer; font-family: var(--font-display); font-size: 13px; color: var(--ink); }
+  .tree .f:hover { background: var(--hover); }
+  .tree .f.on { background: var(--selected); box-shadow: inset 3px 0 0 var(--accent); }
+  .tree .f .tw { width: 12px; color: var(--muted); font-size: 10px; flex: none; text-align: center; }
+  .tree .f .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tree .f .n { color: var(--muted); font-size: 11.5px; font-family: var(--font-mono); }
+  .tree .sub .f { padding-left: 28px; font-size: 12.5px; }
+  main { overflow: auto; min-height: 0; }
+  .tablewrap { overflow-x: auto; }
+  table.files { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.files th { position: sticky; top: 0; z-index: 1; background: var(--surface); text-align: left; font-weight: 700; font-size: 12px; color: var(--ink-soft); padding: 8px 10px; border-bottom: 1px solid var(--rule); cursor: pointer; user-select: none; white-space: nowrap; }
+  table.files th:hover { color: var(--ink); background: var(--hover); }
+  table.files th.on { color: var(--accent); }
+  table.files th .ar { font-size: 10px; margin-left: 3px; }
+  table.files td { padding: 5px 10px; border-bottom: 1px solid var(--rule-soft); vertical-align: baseline; white-space: nowrap; }
+  table.files tbody tr { cursor: pointer; }
+  table.files tbody tr:hover { background: var(--hover); }
+  table.files td.name a { color: var(--ink); text-decoration: none; font-family: var(--font-display); }
+  table.files td.name { max-width: 42ch; overflow: hidden; text-overflow: ellipsis; }
+  table.files td.folder { color: var(--muted); max-width: 34ch; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; }
+  table.files td.type, table.files td.size { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+  table.files td.size { text-align: right; }
+  table.files th.size { text-align: right; }
+  table.files td.when { color: var(--ink-soft); }
+  table.files td.who { color: var(--muted); font-size: 12.5px; }
+  table.files td.who b { color: var(--ink-soft); font-weight: 400; font-family: var(--font-mono); font-size: 12px; }
+  /* modified today: the accent; this week: the soft rule; older: plain */
+  table.files tr.today td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  table.files tr.today td.name a, table.files tr.today td.when { color: var(--accent); }
+  table.files tr.week td:first-child { box-shadow: inset 3px 0 0 var(--rule); }
+  table.files tr.week td.when { color: var(--ink); }
+  .empty { margin: 30px; }
+  /* 0.57.0 (T-0290): the preview pane beside the table drags wider at its left edge and expands to fill the page */
+  aside.drawer.auto:not(.full) { max-width: calc(100vw - 280px); }
+  aside.drawer.full { left: 0 !important; width: auto !important; max-width: none; }
+  body.drawerfull .resizer.on-left { display: none; }
+  aside.drawer .dh .expand { margin-left: auto; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+    nav.side { max-height: 26vh; border-right: 0; border-bottom: 1px solid var(--rule); }
+    table.files td.folder { max-width: 18ch; }
+    table.files td.name { max-width: 24ch; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Files</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="files"></nav>
+</header>
+<div class="layout">
+  <nav class="side" id="rail">
+    <div class="find"><input type="search" id="q" placeholder="filter by path…" autocomplete="off" spellcheck="false" title="keeps the files whose path holds these letters, as you type"></div>
+    <div class="chips" id="chips"></div>
+    <div class="tree" id="tree"></div>
+  </nav>
+  <main id="main"><div class="empty">reading the brain…</div></main>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// The Files page (2026-09-28, T-0259, viewer 0.52.0). The owner asked for a file viewer that shows
+// every file in the brain and sorts them, since a double-click on disk opens a file in a native application instead.
+// One table, newest first; the rail filters it. A row opens
+// the file inside the app: text in the Reader, a picture in the lightbox, a canvas in the canvas viewer, the rest as a
+// download from /api/file-raw. The sort, the filters and the scroll ride in the URL and in this tab's sessionStorage, so
+// the back button out of the Reader lands on the table exactly as it was left.
+const { esc, lightbox, readerHref, forgeHref } = BV;
+const $ = s => document.querySelector(s);
+const STATE_KEY = "bv.files.state", SCROLL_KEY = "bv.files.scroll";
+const TEXT = /\.(md|txt|json|py|js|html|csv|css)$/i, IMG = /\.(png|jpe?g|gif|webp|svg)$/i;
+const COLS = [
+  { key: "name", label: "name" }, { key: "folder", label: "folder" }, { key: "type", label: "type" },
+  { key: "size", label: "size" }, { key: "modified", label: "modified" }, { key: "last", label: "last touched by" },
+];
+// the same keys files_sort uses in serve.py; newest and largest first on the first press, the rest A to Z
+const low = s => String(s || "").toLowerCase();
+const cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+const KEYS = {
+  name: r => [low(r.name), low(r.path)], folder: r => [low(r.folder), low(r.name)],
+  type: r => [r.type, r.extension, low(r.name)], size: r => [r.size, low(r.name)],
+  modified: r => [r.modified, low(r.path)], last: r => [(r.last && r.last.agent) || "~", (r.last && r.last.at) || ""],
+};
+const firstDesc = k => k === "modified" || k === "size";
+let ALL = [], DATA = null, OPEN = new Set();
+let S = { sort: "modified", desc: true, folder: "", type: "", q: "" };
+
+const ssGet = k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } };
+const ssSet = (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) {} };
+
+function readState() {
+  const p = new URLSearchParams(location.search);
+  const has = ["sort", "order", "folder", "type", "q"].some(k => p.has(k));
+  let src = null;
+  if (has) src = { sort: p.get("sort"), desc: p.get("order") ? p.get("order") === "desc" : null, folder: p.get("folder"), type: p.get("type"), q: p.get("q") };
+  else { try { src = JSON.parse(ssGet(STATE_KEY) || "null"); } catch (e) { src = null; } }
+  if (!src) return;
+  if (src.sort && KEYS[src.sort]) S.sort = src.sort;
+  S.desc = typeof src.desc === "boolean" ? src.desc : firstDesc(S.sort);
+  S.folder = src.folder || ""; S.type = src.type || ""; S.q = src.q || "";
+}
+function writeState() {
+  ssSet(STATE_KEY, JSON.stringify(S));
+  const p = new URLSearchParams();
+  if (S.sort !== "modified" || !S.desc) { p.set("sort", S.sort); p.set("order", S.desc ? "desc" : "asc"); }
+  if (S.folder) p.set("folder", S.folder);
+  if (S.type) p.set("type", S.type);
+  if (S.q) p.set("q", S.q);
+  const qs = p.toString();
+  history.replaceState(null, "", "/files" + (qs ? "?" + qs : ""));
+}
+
+function size(n) {
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return (n / 1024).toFixed(n < 10240 ? 1 : 0) + " KB";
+  return (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + " MB";
+}
+function ago(iso, now) {
+  const s = Math.max(0, (now - new Date(iso)) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.floor(s / 60) + " min ago";
+  if (s < 86400) return Math.floor(s / 3600) + " h ago";
+  if (s < 86400 * 30) return Math.floor(s / 86400) + " d ago";
+  if (s < 86400 * 365) return Math.floor(s / (86400 * 30)) + " mo ago";
+  return new Date(iso).toISOString().slice(0, 10);
+}
+const exact = iso => { const d = new Date(iso); return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }); };
+function age(iso, now) {
+  const d = new Date(iso), t = new Date(now); t.setHours(0, 0, 0, 0);
+  if (d >= t) return "today";
+  return (now - d) < 7 * 86400000 ? "week" : "";
+}
+
+// where a row goes when pressed: the drawer beside the table for text (0.53.0; the href stays the Reader for a
+// middle-click or a new tab), the lightbox for a picture, the canvas viewer (or the Forge for a canvas outside its
+// root) for a drawing, a download for everything else
+function target(r) {
+  if (/\.canvas$/i.test(r.path)) {
+    const root = (DATA && DATA.canvasRoot) || "";
+    return { kind: "canvas", href: root && r.path.startsWith(root + "/") ? BV.mapHref(r.path, "read") : forgeHref(r.path) };
+  }
+  if (IMG.test(r.path)) return { kind: "image", href: `/api/image?path=${encodeURIComponent(r.path)}` };
+  if (TEXT.test(r.path)) return { kind: "text", href: readerHref(r.path) };
+  return { kind: "download", href: `/api/file-raw?path=${encodeURIComponent(r.path)}` };
+}
+
+function filtered() {
+  const needle = low(S.q.trim());
+  const rows = ALL.filter(r => {
+    if (S.folder === ".") { if (r.folder) return false; }
+    else if (S.folder && !(r.folder === S.folder || r.folder.startsWith(S.folder + "/"))) return false;
+    if (S.type && r.type !== S.type) return false;
+    if (needle && !low(r.path).includes(needle)) return false;
+    return true;
+  });
+  const k = KEYS[S.sort], sign = S.desc ? -1 : 1;
+  rows.sort((a, b) => { const x = k(a), y = k(b); for (let i = 0; i < x.length; i++) { const c = cmp(x[i], y[i]); if (c) return c * sign; } return 0; });
+  return rows;
+}
+
+function paintRail() {
+  const types = (DATA && DATA.types) || [];
+  const byType = {}; ALL.forEach(r => { byType[r.type] = (byType[r.type] || 0) + 1; });
+  $("#chips").innerHTML = types.map(t => `<button type="button" data-type="${esc(t)}" class="${S.type === t ? "on" : ""}" title="${byType[t] || 0} ${esc(t)} file${byType[t] === 1 ? "" : "s"}">${esc(t)}</button>`).join("");
+  // top-level folders with counts, each unfolding one level
+  const top = new Map(), sub = new Map(); let rootN = 0;
+  for (const r of ALL) {
+    if (!r.folder) { rootN++; continue; }
+    const parts = r.folder.split("/"), t = parts[0];
+    top.set(t, (top.get(t) || 0) + 1);
+    if (parts.length > 1) {
+      const s = t + "/" + parts[1];
+      if (!sub.has(t)) sub.set(t, new Map());
+      sub.get(t).set(s, (sub.get(t).get(s) || 0) + 1);
+    }
+  }
+  const btn = (path, label, n, tw, cls) => `<button type="button" class="f${S.folder === path ? " on" : ""}${cls || ""}" data-folder="${esc(path)}" title="${esc(path || "every file")}"><span class="tw"${tw ? ` data-tw="${esc(path)}"` : ""}>${tw || ""}</span><span class="nm">${esc(label)}</span><span class="n">${n}</span></button>`;
+  let h = btn("", "everything", ALL.length, "") + btn(".", "(root files)", rootN, "");
+  for (const t of [...top.keys()].sort((a, b) => cmp(low(a), low(b)))) {
+    const kids = sub.get(t), open = OPEN.has(t) || (S.folder && S.folder.startsWith(t + "/"));
+    h += btn(t, t, top.get(t), kids ? (open ? "▾" : "▸") : "");
+    if (kids && open) h += `<div class="sub">` + [...kids.keys()].sort((a, b) => cmp(low(a), low(b))).map(s => btn(s, s.split("/")[1], kids.get(s), "")).join("") + `</div>`;
+  }
+  $("#tree").innerHTML = h;
+}
+
+function paintTable() {
+  const rows = filtered(), now = DATA ? new Date(DATA.now) : new Date();
+  $("#crumb").textContent = rows.length === ALL.length ? `${ALL.length} files` : `${rows.length} of ${ALL.length} files`;
+  if (!rows.length) { $("#main").innerHTML = `<div class="empty">No file matches.</div>`; return; }
+  const head = COLS.map(c => `<th data-sort="${c.key}" class="${c.key}${S.sort === c.key ? " on" : ""}" title="sort by ${c.label}; press again to reverse">${c.label}${S.sort === c.key ? `<span class="ar">${S.desc ? "▼" : "▲"}</span>` : ""}</th>`).join("");
+  const body = rows.map(r => {
+    const t = target(r), l = r.last;
+    const a = t.kind === "download" ? ` download="${esc(r.name)}"` : "";
+    return `<tr class="${age(r.modified, now)}" data-path="${esc(r.path)}" data-kind="${t.kind}">`
+      + `<td class="name"><a href="${esc(t.href)}"${a} title="${esc(r.path)}">${esc(r.name)}</a></td>`
+      + `<td class="folder" title="${esc(r.folder || "the brain folder itself")}">${esc(r.folder || "·")}</td>`
+      + `<td class="type">${esc(r.extension || "—")}</td>`
+      + `<td class="size" title="${r.size} bytes">${size(r.size)}</td>`
+      + `<td class="when" title="${esc(exact(r.modified))}">${ago(r.modified, now)}</td>`
+      + `<td class="who"${l ? ` title="${esc(l.at)}"` : ""}>${l ? `<b>${esc(l.agent)}</b> ${esc(l.action.toLowerCase())}` : ""}</td></tr>`;
+  }).join("");
+  $("#main").innerHTML = `<div class="tablewrap"><table class="files"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+function paint() { writeState(); paintRail(); paintTable(); }
+
+document.addEventListener("click", e => {
+  const th = e.target.closest("th[data-sort]");
+  if (th) { const k = th.dataset.sort; if (S.sort === k) S.desc = !S.desc; else { S.sort = k; S.desc = firstDesc(k); } paint(); return; }
+  const tw = e.target.closest("[data-tw]");
+  if (tw) { const f = tw.dataset.tw; OPEN.has(f) ? OPEN.delete(f) : OPEN.add(f); paintRail(); return; }
+  const f = e.target.closest("button[data-folder]");
+  if (f) { S.folder = f.dataset.folder; if (S.folder && S.folder !== ".") OPEN.add(S.folder.split("/")[0]); $("#main").scrollTop = 0; paint(); return; }
+  const c = e.target.closest("button[data-type]");
+  if (c) { S.type = S.type === c.dataset.type ? "" : c.dataset.type; $("#main").scrollTop = 0; paint(); return; }
+  const tr = e.target.closest("tbody tr[data-path]");
+  if (tr) {
+    const a = tr.querySelector("td.name a");
+    ssSet(SCROLL_KEY, String($("#main").scrollTop));
+    if (tr.dataset.kind === "image") { e.preventDefault(); lightbox(tr.dataset.path); return; }
+    if (tr.dataset.kind === "text") { e.preventDefault(); BV.openFile(tr.dataset.path); return; }   // 0.53.0: beside the table, not away from it; "open in Reader" is in the drawer
+    if (e.target.closest("td.name a")) return;        // the link does it itself (a download keeps its download name)
+    e.preventDefault(); a.click();
+  }
+});
+// ---- the preview pane: drag its left edge, or expand it to the whole page (0.57.0, T-0290) ----------------------
+// The pane is the shared read drawer. It is made here, before any file opens, so it can be given its drag handle at
+// load; viewer-common only gives one to a drawer that exists when the page starts. The width is the drawer width every
+// page shares; the expanded state is this page's own. Every storage read and write is in try/catch.
+const FULL_KEY = "bv.files.drawerfull";
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+let FULL = lsGet(FULL_KEY) === "1";
+const DR = (() => {
+  let d = document.getElementById("drawer");
+  if (!d) { d = document.createElement("aside"); d.className = "drawer auto"; d.id = "drawer"; d.hidden = true; document.body.appendChild(d); }
+  return d;
+})();
+// the list keeps at least 280px beside the pane, so it never vanishes behind it
+BV.resizable(DR, "drawer", { edge: "left", min: 320, max: 4000,   // the cap that keeps the list in view is the CSS max-width, which follows the window
+  title: "drag to make the preview wider or narrower · double-click to put it back" });
+function paintFull() {
+  DR.classList.toggle("full", FULL);
+  document.body.classList.toggle("drawerfull", FULL && !DR.hidden);
+  const b = DR.querySelector(".dh .expand");
+  if (b) { b.textContent = FULL ? "back to side" : "expand"; b.title = FULL ? "put the preview back beside the list" : "make the preview fill the page"; b.setAttribute("aria-pressed", String(FULL)); }
+}
+// the drawer repaints its header on every open, so the press is put back each time
+new MutationObserver(() => {
+  const dh = DR.querySelector(".dh");
+  if (dh && !dh.querySelector(".expand")) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn expand";
+    dh.appendChild(b);
+  }
+  paintFull();
+}).observe(DR, { childList: true, attributes: true, attributeFilter: ["hidden"] });
+DR.addEventListener("click", e => {
+  if (!e.target.closest(".dh .expand")) return;
+  FULL = !FULL; lsSet(FULL_KEY, FULL ? "1" : "0"); paintFull();
+});
+paintFull();
+
+let qTimer = 0;
+$("#q").addEventListener("input", () => { clearTimeout(qTimer); qTimer = setTimeout(() => { S.q = $("#q").value; $("#main").scrollTop = 0; paint(); }, 80); });
+
+async function load() {
+  readState();
+  $("#q").value = S.q;
+  const r = await fetch("/api/files");
+  DATA = await r.json();
+  if (DATA.error) throw new Error(DATA.error);
+  ALL = DATA.items || [];
+  if (S.folder && S.folder !== ".") OPEN.add(S.folder.split("/")[0]);
+  paint();
+  const y = parseInt(ssGet(SCROLL_KEY) || "0", 10);
+  if (y > 0) requestAnimationFrame(() => { $("#main").scrollTop = y; });
+}
+load().catch(e => { $("#main").innerHTML = `<div class="note">Could not list the files: ${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thread</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from the look's tokens */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { flex: 1; position: relative; min-height: 0; overflow: hidden; display: flex; }
+  main { flex: 1; overflow: auto; padding: 24px 32px 90px; }
+  .sheet { max-width: 1180px; margin: 0 auto; }
+  .thead { margin: 0 0 18px; }
+  .thead .back { font-size: 12.5px; }
+  .thead h2 { margin: 6px 0 8px; font-family: var(--font-display); font-weight: 400; font-size: 28px; line-height: 1.2; }
+  .thead .meta { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; font-size: 13px; color: var(--muted); }
+  .thead .who { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 22px; align-items: start; }
+  section.card { padding: 14px 18px 16px; margin: 0 0 18px; }
+  section.card > h3 { margin: 0 0 10px; font-family: var(--font-display); font-size: 19px; font-weight: 400; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  section.card > h3 .meta { font-family: var(--font-ui); font-size: 12.5px; }
+  .stands article.md { font-size: 14.5px; }
+  .stands .foot { margin: 8px 0 0; font-size: 12.5px; }
+  /* what needs to get done: the Today queue's row, its presses under its words */
+  .glabel { margin: 14px 0 6px; font-family: var(--font-ui); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .glabel:first-of-type { margin-top: 0; }
+  ol.todo { list-style: none; margin: 0; padding: 0; }
+  .trow { position: relative; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding: 11px 30px 11px 8px; margin: 0 0 8px; background: var(--surface);
+          border: 1px solid var(--rule-soft); border-left: 3px solid var(--rule); border-radius: var(--radius); }
+  .trow.holding { border-left-color: var(--blocked); background: var(--blocked-tint); }
+  .trow.late { border-left-color: var(--accent); }
+  .trow > .n { font-family: var(--font-display); font-size: 15px; color: var(--muted); text-align: right; line-height: 1.45; }
+  .trow .t { font-size: 14.5px; overflow-wrap: anywhere; }
+  .trow .body, .side, .cols > div { min-width: 0; }
+  .stands article.md, .trow .rel, .trow .keep, .trow .steps { overflow-wrap: anywhere; }
+  .trow .m { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 3px; }
+  .trow .rel { margin: 5px 0 0; padding: 4px 8px; border-left: 2px solid var(--rule); font-size: 12.5px; color: var(--ink-soft); }
+  .trow .rel.frees { border-left-color: var(--blocked); background: var(--blocked-tint); }
+  .trow .rel .kicker { margin-right: 6px; font-size: 10px; }
+  .trow .keep { margin-top: 4px; }
+  .trow .stepsbox { margin-top: 6px; }
+  .trow .press { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+  .trow .press .btn { padding: 2px 10px; font-size: 12px; }
+  .trow .press .btn.done:hover, .trow .press .btn.choice:hover { border-color: var(--done); color: var(--done); }
+  .trow form.qbox { display: flex; gap: 8px; align-items: flex-start; margin-top: 7px; }
+  .trow form.qbox textarea { flex: 1; }
+  .trow .qnote { margin-top: 6px; }
+  .trow.going { opacity: .45; }
+  details.fold { margin-top: 10px; }
+  details.fold > summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  /* the side column: next call, depends on, files, timeline */
+  .side .line { font-size: 13.5px; margin: 0; }
+  .side .call .when { font-family: var(--font-display); font-size: 16px; }
+  .side .call .what { margin: 2px 0 6px; }
+  .side .call .links { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12.5px; }
+  .doc { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; border-top: 1px solid var(--rule-soft); font-size: 13px; min-width: 0; }
+  .doc:first-child { border-top: 0; }
+  .doc { flex-wrap: wrap; }
+  .doc a.name { flex: 1 1 100%; min-width: 0; white-space: normal; overflow: visible; font-size: 14px; }
+  .doc.page a.name { font-weight: 600; }
+  .doc .dir a { font-size: 11px; }
+  .doc .dir, .doc .t { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .doc .t { margin-left: auto; font-family: var(--font-mono); font-size: 10.5px; }
+  .doc.gone a { color: var(--muted); text-decoration: line-through; }
+  .tl { display: grid; grid-template-columns: 44px 1fr; gap: 8px; padding: 5px 0; border-top: 1px solid var(--rule-soft); font-size: 13px; }
+  .tl:first-child { border-top: 0; }
+  .tl .d { font-family: var(--font-mono); font-size: 11px; color: var(--muted); padding-top: 2px; }
+  /* the index */
+  /* 0.64.0: the focused item: its workspace leads the main column, the row it came from is marked in the list */
+  .focus { margin: 0 0 6px; }
+  .focusbar { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin: 0 0 10px; }
+  .focus section.card > h2 { margin: 0 0 10px; font-family: var(--font-display); font-size: 19px; font-weight: 400; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .focus section.card > h2 .meta { font-family: var(--font-ui); font-size: 12.5px; }
+  .focus section.card.ws-item { border-left: 3px solid var(--accent); }
+  .trow.focused { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .todo-card li.trow .t { cursor: pointer; }
+  .tix { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; padding: 12px 6px; border-top: 1px solid var(--rule-soft); text-decoration: none; color: var(--ink); }
+  .tix:first-child { border-top: 0; }
+  .tix:hover { background: var(--hover); }
+  .tix .nm { font-family: var(--font-display); font-size: 17px; }
+  .tix .ppl { grid-column: 1; font-size: 12.5px; color: var(--muted); }
+  .tix .num { grid-row: 1 / 3; grid-column: 2; text-align: right; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  .tix .num b { font-family: var(--font-display); font-size: 18px; font-weight: 400; color: var(--accent); }
+  .none { color: var(--muted); font-size: 13.5px; margin: 0; }
+  .sheet-bare { max-width: 980px; }
+  .sheet-bare section.card > h2 { margin: 0 0 10px; font-family: var(--font-display); font-size: 20px; font-weight: 400; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .sheet-bare section.card > h2 .meta { font-family: var(--font-ui); font-size: 12.5px; }
+  @media (max-width: 980px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 700px) { main { padding: 16px 16px 80px; } .thead h2 { font-size: 23px; } .trow { padding-right: 24px; } }
+  /* 0.69.0: the first thread of a fresh brain */
+  .first { max-width:72ch; } .first p { margin:6px 0 10px; }
+  .first .field { margin:8px 0 0; } .first .field label { display:block; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:3px; }
+  .first .field input { width:100%; padding:6px 8px; border:1px solid var(--rule-soft); border-radius:var(--radius); background:var(--surface); box-sizing:border-box; }
+  .first .irow { display:flex; gap:10px; align-items:center; margin:10px 0 4px; }
+  /* 0.77.0, the workspace page (the workspaces direction W1): each band is visibly its own thing */
+  a.btn { display: inline-block; font-size: 13px; padding: 5px 12px; border-radius: var(--radius); border: 1px solid var(--rule); background: var(--surface); color: var(--ink); text-decoration: none; cursor: pointer; }
+  a.btn:hover { background: var(--hover); }
+  a.btn.primary { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+  a.btn.primary:hover { background: var(--accent-deep); }
+  .crumbs { font-size: 12.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+  .crumbs .sep { color: var(--rule); }
+  .thead .aside { font-size: 14px; color: var(--muted); margin: -4px 0 8px; }
+  /* the thing in progress: framed in the accent, first under the title */
+  section.nowband { border: 2px solid var(--accent); background: var(--surface); padding: 16px 20px 16px; }
+  .nowband .kicker { color: var(--accent); }
+  .nowband .nowname { margin: 4px 0 4px; font-family: var(--font-display); font-weight: 500; font-size: 25px; line-height: 1.2; }
+  .nowband .nowline { margin: 0 0 12px; font-size: 15px; color: var(--ink-soft); max-width: 70ch; }
+  .nowband .nowpress { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nowband .nowpress .btn { padding: 5px 16px; font-size: 14px; text-decoration: none; }
+  .nowband .nownext { margin: 12px 0 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); font-size: 14.5px; }
+  .nowband .nownext .kicker { margin-right: 8px; }
+  .nowband .gone { color: var(--muted); font-size: 13px; }
+  /* a ledger item named in prose: a small press with its words, never its code */
+  a.idpress { display: inline; padding: 0 6px; border: 1px solid var(--rule); border-radius: 999px; background: var(--surface); color: var(--accent); font-size: .9em; text-decoration: none; white-space: normal; }
+  a.idpress:hover { border-color: var(--accent); }
+  a.idpress.closed { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--rule); }
+  a.wslink { color: var(--accent); font-weight: 600; text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+  /* how it connects: drawn on the ground color */
+  section.mapcard { background: var(--bg); box-shadow: none; border: 1px dashed var(--rule); }
+  .map { overflow-x: auto; }
+  .map svg { display: block; width: 100%; min-width: 560px; height: auto; margin: 0 auto; }
+  .map .mp-line { stroke: var(--rule); stroke-width: 1.5; }
+  .map .mp-box { fill: var(--surface); stroke: var(--rule); stroke-width: 1; }
+  .map a:hover .mp-box { stroke: var(--accent); }
+  .map .mp-box.here { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+  .map .mp-box.gone { stroke-dasharray: 4 3; fill: none; }
+  .map .mp-kind { font-family: var(--font-ui); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; fill: var(--muted); }
+  .map .mp-name { font-family: var(--font-display); font-size: 15px; fill: var(--ink); }
+  .map a .mp-name { fill: var(--accent); }
+  .map .mp-here { font-family: var(--font-display); font-size: 16px; font-weight: 600; fill: var(--ink); }
+  .map .mp-say { font-family: var(--font-ui); font-size: 11px; fill: var(--ink-soft); paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+  /* pieces of this: a list of the children, each with its count */
+  .piece { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 14px; padding: 9px 4px; border-top: 1px solid var(--rule-soft); }
+  .piece:first-of-type { border-top: 0; }
+  .piece .pn { font-family: var(--font-display); font-size: 17px; }
+  .piece .pc { grid-row: 1 / 3; grid-column: 2; text-align: right; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  .piece .pc b { font-family: var(--font-display); font-size: 18px; font-weight: 400; color: var(--accent); }
+  .piece .ps { font-size: 13px; color: var(--ink-soft); }
+  /* built here: the things themselves, each opening itself */
+  .thing { padding: 10px 0; border-top: 1px solid var(--rule-soft); }
+  .thing:first-of-type { border-top: 0; padding-top: 2px; }
+  .thing .tn { font-family: var(--font-display); font-size: 19px; margin: 0; }
+  .thing .tl2 { font-size: 13.5px; color: var(--ink-soft); margin: 2px 0 7px; max-width: 72ch; }
+  .thing .tp { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .thing .tp .btn { padding: 3px 12px; font-size: 13px; text-decoration: none; }
+  .thing .tp .when { font-size: 11.5px; color: var(--muted); }
+  /* documents: a plain list, by name, a small muted date */
+  ul.docs { list-style: none; margin: 0; padding: 0; }
+  ul.docs li { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; border-top: 1px solid var(--rule-soft); font-size: 14px; }
+  ul.docs li:first-child { border-top: 0; }
+  ul.docs li a { flex: 1; min-width: 0; text-decoration: none; }
+  ul.docs li .d { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+  ul.docs li.gone a { color: var(--muted); text-decoration: line-through; }
+  /* progress: a fold in the side column that opens to a scrollable column, resized from the handle at its foot */
+  section.progress { padding: 0; overflow: hidden; }
+  section.progress > details > summary { list-style: none; cursor: pointer; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding: 12px 18px; }
+  section.progress > details > summary::-webkit-details-marker { display: none; }
+  section.progress > details > summary h3 { margin: 0; font-family: var(--font-display); font-size: 19px; font-weight: 400; }
+  section.progress > details > summary::before { content: "\25B8"; color: var(--muted); font-size: 12px; }
+  section.progress > details[open] > summary::before { content: "\25BE"; }
+  section.progress > details[open] > summary { border-bottom: 1px solid var(--rule-soft); }
+  .progbody { overflow: auto; height: 420px; min-height: 140px; padding: 4px 18px 10px; }
+  .pgrip { height: 12px; cursor: ns-resize; touch-action: none; border-top: 1px solid var(--rule-soft); background: repeating-linear-gradient(90deg, transparent 0 46%, var(--rule) 46% 54%, transparent 54% 100%) center / 40px 3px no-repeat; }
+  .pgrip:hover, .pgrip.on { background-color: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .phead { margin: 12px 0 4px; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .prow { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-top: 1px solid var(--rule-soft); font-size: 13px; }
+  .phead + .prow { border-top: 0; }
+  .prow .d { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); padding-top: 2px; overflow-wrap: anywhere; }
+  .prow.next .d { font-family: var(--font-ui); font-size: 11px; color: var(--accent); }
+  .prow.next { cursor: pointer; } .prow.next:hover { background: var(--hover); }
+  .prow.done .t { color: var(--ink-soft); }
+  .prow .fs { display: block; margin-top: 2px; font-size: 12px; }
+  .prow .fs a { margin-right: 8px; }
+  .prow .say { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
+  .tix.sub { padding-left: 28px; border-top-style: dashed; }
+  .tix.sub .nm { font-size: 15.5px; }
+  /* 0.79.0, the comparison: a pick item's first band, one column per option, side by side on a wide window, stacked on
+     a narrow one. The band may run wider than the page; everything else on the page keeps its width. */
+  .sheet.wide { max-width: 1840px; }
+  .sheet.wide > .thead, .sheet.wide > .cols, .sheet.wide > .pk-rest { max-width: 1180px; margin-left: auto; margin-right: auto; }
+  section.pk-band { border: 2px solid var(--accent); }
+  .pk-band > h2 { margin: 0 0 6px; font-family: var(--font-display); font-size: 21px; font-weight: 400; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .pk-band > h2 .meta { font-family: var(--font-ui); font-size: 12.5px; }
+  .pk-q { margin: 0 0 12px; font-size: 15px; color: var(--ink-soft); max-width: 90ch; overflow-wrap: anywhere; }
+  .pk-said { margin: 0 0 12px; font-size: 14px; }
+  .pk-cols { display: grid; grid-template-columns: var(--pk-cols, repeat(auto-fit, minmax(260px, 1fr))); gap: 14px; align-items: stretch; }
+  .pk-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 10px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--bg); }
+  .pk-col.chosen { border: 2px solid var(--done); }
+  .pk-name { margin: 0; font-family: var(--font-display); font-size: 20px; font-weight: 400; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .pk-mark { color: var(--done); }
+  .pk-view { border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+  .pk-frame { display: block; width: 100%; height: clamp(420px, 68vh, 920px); border: 0; background: var(--surface); }
+  .pk-pic { overflow: auto; max-height: clamp(420px, 68vh, 920px); }
+  .pk-pic img { display: block; width: 100%; height: auto; }
+  .pk-none { padding: 18px 4px; }
+  .pk-tools { display: flex; flex-direction: column; gap: 6px; }
+  .pk-tools .pk-full { align-self: flex-start; font-size: 12.5px; padding: 3px 10px; }
+  .pk-switch { display: flex; flex-wrap: wrap; gap: 5px; }
+  .pk-switch .btn { padding: 2px 9px; font-size: 12px; }
+  .pk-switch .btn.on { border-color: var(--accent); color: var(--accent); }
+  .pk-press { margin-top: auto; padding-top: 4px; }
+  .pk-press .btn { width: 100%; }
+  form.pk-box { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; }
+  form.pk-box textarea { flex: 1; }
+  .pk-say:empty { display: none; }
+  @media (max-width: 900px) { .pk-cols { grid-template-columns: minmax(0, 1fr); } .pk-frame { height: 72vh; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1 id="title">Thread</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="threads"></nav>
+</header>
+<div class="stage">
+  <main id="main"><div class="sheet" id="sheet"><p class="none">Reading the thread…</p></div></main>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script src="/static/workspace.js"></script>
+<script>
+// ---- the thread page (0.62.0, 2026-10-05) ----
+// One piece of work across the ledgers: a placement, a partnership, a launch. Its subject file says who it is about and
+// the words that name it, and GET /api/thread joins everything else to that at read time: the file's own summary, every
+// open ledger item on it in one order with the Today queue's presses, the files it depends on, the files being made for
+// it, its next call and its dated lines. /threads lists every subject file. Every write is the same one the rest of the
+// app makes (PUT /api/tasks, POST /api/reply), and the page reads itself back after each.
+const { esc } = BV;
+const $ = s => document.querySelector(s);
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const md = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || "")); return m ? `${+m[2]}/${+m[3]}` : ""; };
+const SUBJECT = new URLSearchParams(location.search).get("subject") || "";
+let T = null;
+// 0.64.0: the page can focus one item in place (?item=<ledger>/<id>): its workspace (workspace.js, read from
+// GET /api/work?scope=item) takes the main column, and the thread stays around it
+let FOCUS = new URLSearchParams(location.search).get("item") || "", FW = null;
+// 0.66.0 (Round 2 of the 10/06 review, the menu folds): the bare Workspace page folded in here. /thread?item=<ledger>/<id>
+// with no subject is the "no thread yet" case: the item's whole workspace (GET /api/work, every block), with no thread
+// around it. /work?item= redirects here (or to the item's thread when it has one); work.html is gone.
+const BARE = !SUBJECT && !!FOCUS && location.pathname !== "/threads";
+const INDEX = !BARE && (location.pathname === "/threads" || !SUBJECT);
+const focusHref = i => `/thread?subject=${encodeURIComponent(SUBJECT)}&item=${encodeURIComponent(i.project || "")}/${encodeURIComponent(i.id)}`;
+const B = BVWork.brief({ ref: () => FOCUS, item: () => FW && FW.item, done: async () => { await loadFocus(); paint(); } });
+const whoWord = w => w === BV.owner ? "you" : w === "@claude" ? "Claude" : String(w || "").replace(/^@/, "");
+const ago = iso => { const t = new Date(iso); if (isNaN(t)) return ""; const m = Math.round((Date.now() - t) / 60000);
+  return m < 60 ? `${Math.max(m, 0)}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : t.toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
+// the weekday is computed from the date, never written from memory
+const dayWord = iso => { const t = new Date(iso); return isNaN(t) ? "" : t.toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" }); };
+const timeWord = iso => { const t = new Date(iso); return isNaN(t) ? "" : t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase().replace(" ", ""); };
+
+// ---- one item of the thread: the Today queue's row ----
+function row(i, n) {
+  const p = i.project, isQ = i.kind === "question";
+  const meta = [`<span class="badge">${esc(i.label)}</span>`, `<span>${esc(isQ ? "asked of " + whoWord(i.who) : whoWord(i.who))}</span>`];
+  const late = i.due && i.due < localDay();
+  if (i.due) meta.push(`<span class="badge${late || i.due === localDay() ? " overdue" : ""}">${i.due === localDay() ? "due today" : "due " + esc(md(i.due))}</span>`);
+  if (i.until) meta.push(`<span class="badge held">on hold until ${esc(md(i.until))}</span>`);
+  meta.push(`<span title="written ${esc(i.created)}">${esc(md(i.created))}</span>`);
+  meta.push(BV.personChips(i));
+  for (const l of BV.linksBelow(i)) meta.push(linkChip(l));   // 0.89.0: not what the text already links
+  meta.push(`<a class="worklink" href="${esc(focusHref(i))}" data-focus="${esc(p + "/" + i.id)}" title="work on this item here: its brief, files, history and notes, with the thread around it">workspace</a>`);
+  const rel = (cls, kick, list) => list.length ? `<div class="rel ${cls}"><span class="kicker">${kick}</span>${list.map(x => BV.ledgerText(x.text, x.project)).join("; ")}</div>` : "";
+  let press = "", below = "";
+  if (isQ && (i.who || BV.owner) === BV.owner && BV.survey.href(i, p)) {
+    press = BV.survey.press(i, p);      // 0.78.0: a survey opens its own page, in place of the choices and the box
+  } else if (isQ && (i.who || BV.owner) === BV.owner && BV.pick.href(i, p)) {
+    // 0.79.0: a pick leads with Compare, which focuses it here on its options side by side, its presses under each
+    press = BV.pick.press(i, p, { href: focusHref(i), focus: p + "/" + i.id });
+  } else if (isQ && (i.who || BV.owner) === BV.owner) {
+    const ch = BV.choices(i);
+    press = ch ? BV.choiceButtons(i, p, "qchoice")      // 0.71.0: picture choices as thumbnails (T-0308 item 3)
+                 : "";
+    below = `<form class="qbox" data-q="${esc(i.id)}" data-project="${esc(p)}"><textarea class="grow" rows="1" placeholder="${ch ? "or answer in your own words" : "answer"}" title="Enter for a new line, Ctrl+Enter sends" required></textarea><button class="btn primary" type="submit">Answer</button></form>`;
+  } else if (!isQ) {
+    const allTicked = BV.steps.complete(i);     // 0.86.0: once every step is ticked, done is the lead press
+    press = `<button type="button" class="btn done${allTicked ? " primary" : ""}" data-qdone="${esc(i.id)}" data-project="${esc(p)}" title="${allTicked ? "every step is ticked: close it on its own ledger" : "close it on its own ledger"}">done</button>`
+          + (i.mark === " " && !i.until ? `<button type="button" class="btn" data-hold="${esc(i.id)}" data-project="${esc(p)}" title="put it down for three days; it comes back on its own, still open">hold</button>` : "")
+          + `<button type="button" class="btn" data-qnote="1" title="reply; the item stays open">reply</button>`   // 0.94.0: reply, not note
+          + BV.shareItem.press(i, p);   // 0.98.0: share with the member, when her copy holds this task's list
+    below = `<div class="qnote" hidden>${BV.replies.box(Object.assign({}, i, { ledger: i.ledger }), p)}</div>`;
+  }
+  return `<li class="trow${i.holdsUp.length ? " holding" : ""}${late ? " late" : ""}${FOCUS === p + "/" + i.id ? " focused" : ""}${JUMP === p + "/" + i.id ? " refhit landed" + (Date.now() < JUMP_UNTIL ? " landing" : "") : ""}" data-key="${esc(p + "/" + i.id)}" title="press its words to work on it here">${BV.idTag(i.id, i.ledger)}
+    <span class="n">${n}</span>
+    <div class="body">
+      <div class="t">${itemText(i.text, p)}</div>
+      ${BV.kind.line(i, p)}
+      ${rel("frees", "frees:", i.holdsUp)}${rel("", "waiting on:", i.waitsOn)}
+      ${BV.steps.html(i, p)}
+      <div class="m">${meta.join("")}</div>
+      ${BV.noteBlock(i.note, p, { text: itemText })}
+      ${BV.exchange.html(i, p)}
+      ${press ? `<div class="press">${press}</div>` : ""}${below}
+    </div></li>`;
+}
+// 0.77.0: a brain path written in an item's words reads as the name of what it is (the ledger's own door then draws it
+// as a link with that name); a path to a subject file reads as that workspace's name
+const PATH_IN_TEXT = /(?<![\w\/.\-\[|])((?:deliverables|people|profiles|projects|transcripts|context|thoughts|procedures|[a-z][a-z0-9-]*-holon)\/[\w.\-\/]*\.(?:md|html?|png|jpe?g|pdf|json|txt|canvas|csv))(?![\w\/\-])/g;
+// an item's words through the ledger's own door, then any code that door could not resolve (an item on a ledger this
+// page has not read) becomes the press the thread's refs give it, or leaves the sentence (0.77.0, rule 1)
+function itemText(s, p) {
+  const refs = (T && T.refs) || {};
+  return BV.ledgerText(namedPaths(s), p).replace(/<span class="idref" data-ref="([TQ]-\d{4})" data-refpj="([^"]*)"[^>]*>[^<]*<\/span>/g, (m, id, pj) => {
+    const r = refs[pj + " " + id] || refs[id];
+    if (r && !r.missing && (!pj || r.project === pj)) return pressFor(r);
+    console.info(`[thread] dropped ${id} from an item's words: no such item on a ledger`);
+    return "";
+  });
+}
+function namedPaths(s) {
+  return String(s || "").replace(PATH_IN_TEXT, p => {
+    const sub = subjLink(p), known = (T && (T.built || []).concat(T.documents || []).find(x => x.path === p)) || null;
+    return `[[${p}|${sub ? sub.name : known ? known.name : leafWords(p)}]]`;
+  });
+}
+const localDay = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const GROUPS = ["Other work waits on these", "Yours", "Claude's", "Everyone else's"];
+
+// ---- 10/28: the open questions lead the thread, Where it stands under them ----
+// The owner, 10/28: the most relevant questions should be up first and the where it stands should be a little lower in
+// the series. The thread's own open questions (they link it, or sit on its own ledger; not one on hold) are drawn in the
+// Questions card at the top of the main column, and What needs you keeps the rest. Later the same day, after the card led
+// the Mentee data thread with a mentee's questions and the people-card ones, which the thread takes in only because they
+// name its people: those stay in What needs you, under the thread's own. Both cards rank with BV.rank, the one order
+// Today's In progress strip uses too (viewer-common.js says it: the owner's first, one other work waits on, the soonest
+// due, the newest, then ledger and id, so a set asked together reads in its own order).
+const askedOfOwner = i => (i.who || BV.owner) === BV.owner;
+const qRank = BV.rank;
+const openQuestions = t => (t.items || []).filter(i => i.kind === "question" && i.mark === "?" && BV.rankOwn(i)).sort(qRank);
+function questionsHTML(t) {
+  // while a question is the focused item, it and the owner's other open questions stand under Working on already
+  const shown = new Set(FOCUS && FW && !FW.error && FW.item.kind === "question" ? [FOCUS].concat(workingSiblings(FOCUS, "question").map(i => i.project + "/" + i.id)) : []);
+  const qs = openQuestions(t).filter(i => !shown.has(i.project + "/" + i.id));
+  if (!qs.length) return "";
+  const yours = qs.filter(askedOfOwner), others = qs.filter(i => !askedOfOwner(i));
+  const list = (rows, from) => `<ol class="todo">${rows.map((i, k) => row(i, from + k + 1)).join("")}</ol>`;
+  const body = yours.length && others.length
+    ? `<p class="glabel">For you</p>${list(yours, 0)}<p class="glabel">Asked of others</p>${list(others, yours.length)}`
+    : list(qs, 0);
+  const say = [yours.length ? `${yours.length} for you` : "", others.length ? `${others.length} asked of others` : ""].filter(Boolean).join(" · ");
+  return `<section class="card todo-card qcard" id="questions"><h3>Questions <span class="meta">${say} · ${yours.length ? "yours first, then " : ""}the soonest due, then the newest</span></h3>${body}</section>`;
+}
+
+function todoHTML(t) {
+  const c = t.counts;
+  let n = 0, html = "", last = -1;
+  // 10/28: the open questions are drawn at the top of the page (questionsHTML), so this card keeps the rest
+  const lifted = new Set(openQuestions(t).map(i => i.project + "/" + i.id));
+  // the server's groups stand (what other work waits on, yours, Claude's, everyone else's); inside each, the thread's own first, by BV.rank
+  const items = t.items.filter(i => !lifted.has(i.project + "/" + i.id)).sort((a, b) => a.group - b.group || BV.rank(a, b));
+  // 0.90.0 (T-0343): a thread whose header says gather: own takes in its own ledger and what links it, and says so
+  if (!items.length) html = lifted.size ? `<p class="none">Nothing else is open on this thread; its questions are at the top of the page.</p>`
+    : t.gather === "own" ? `<p class="none">Nothing open on this thread's own ledger, and no item links it.</p>`
+    : `<p class="none">Nothing open on any ledger names this thread's people or words.</p>`;
+  else {
+    let open = false;
+    for (const i of items) {
+      if (i.group !== last) {
+        if (open) html += `</ol>`;
+        html += `<p class="glabel">${esc(GROUPS[i.group] || "")}</p><ol class="todo">`;
+        open = true; last = i.group;
+      }
+      html += row(i, ++n);
+    }
+    if (open) html += `</ol>`;
+  }
+  if (t.held.length) html += `<details class="fold"><summary>${plural(t.held.length, "item")} on hold</summary><ol class="todo">${t.held.map(i => row(i, "")).join("")}</ol></details>`;
+  // the count says what this card draws; the questions at the top are named, not counted twice
+  const yours = items.filter(i => i.who === BV.owner).length, holding = items.filter(i => i.group === 0).length;
+  const count = items.length ? `${plural(items.length, lifted.size ? "other open item" : "open item")} · ${yours} yours${holding ? ` · ${holding} holding other work` : ""}` : lifted.size ? "nothing else open" : "nothing open";
+  return `<section class="card todo-card"><h3>What needs you <span class="meta">${count}${lifted.size ? ` · ${plural(lifted.size, "question")} at the top` : ""}${c.held ? ` · ${c.held} on hold` : ""}</span></h3>${html}</section>`;
+}
+
+// ---- 0.77.0: the subject's prose, with no ledger code shown and every link a press ----
+// The owner's reading of the workspace proposal (2026-10-09): a ledger code in prose should never be visible; it should
+// be something to press that opens what it names. The API resolves every id the
+// subject's prose names (T.refs: "<ledger> <id>" or the bare id -> the item's first six words and where it opens); here
+// each becomes a small press carrying those words, and one that resolves to nothing is dropped from the sentence and
+// said in the console. A [[subject]] or a link to a subject file is a press to that workspace; any other [[file]] with
+// no label of its own reads as its name. Applies to Where it stands, the in-progress line, the map's lines, the pieces'
+// lines and every row of Progress.
+const ID_MENTION = /(?:`?\b([a-z][a-z0-9-]*)`?\s+)?\b([TQ]-\d{4})\b/g;     // a ledger word may sit in a code span
+const subjLink = target => {
+  const L = (T && T.subjectLinks) || {}, k = String(target || "").trim().replace(/^\/+/, "").split("#")[0];
+  if (L[k]) return L[k];
+  return !k.includes("/") ? L[k.replace(/\.md$/, "")] || null : null;
+};
+// 0.77.0: an item's link by what it names, never a file name: another workspace by its name, a page or a document by
+// the name this thread already resolved for it (Built here, Documents), else its leaf as words; a route as before
+function linkChip(l) {
+  const raw = String(l || "").trim(); if (!raw || raw.startsWith("/") || /^https?:/.test(raw)) return BV.fileLink(l);
+  const p = raw.replace(/^\[\[|\]\]$/g, "").split("|")[0].split("#")[0].trim();
+  const sub = subjLink(p); if (sub) return `<a class="wslink" href="${esc(sub.href)}" title="the workspace">${esc(sub.name)}</a>`;
+  const known = (T && (T.built || []).concat(T.documents || []).find(x => x.path === p)) || null;
+  const name = known ? known.name : leafWords(p);
+  if (/\.html?$/i.test(p)) return `<a href="/raw/${esc(p)}" target="_blank" rel="noopener" title="open the page itself">${esc(name)}</a>`;
+  return `<span class="filelink" data-open="${esc(p)}" title="open it">${esc(name)}</span>`;
+}
+const leafWords = p => { if (/^people\//.test(String(p || ""))) return String(p).replace(/^.*\//, "").replace(/\.md$/, "").split(/[-_]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(" ");
+  const s = String(p || "").replace(/^.*\//, "").replace(/\.(md|html?|json|csv|txt|canvas|png|jpe?g)$/i, "").replace(/-?\d{4}-\d{2}-\d{2}/g, "").replace(/[-_]+/g, " ").trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : String(p || ""); };
+const inThread = (pj, id) => T && (T.items || []).concat(T.held || []).some(i => i.project === pj && i.id === id);
+function pressFor(r) {
+  const words = esc(r.words || "the item");
+  if (inThread(r.project, r.id)) return `<a class="idpress" href="${esc(focusHref(r))}" data-focus="${esc(r.project + "/" + r.id)}" title="work on it here">${words}</a>`;
+  return `<a class="idpress${r.closed ? " closed" : ""}" href="${esc(r.href)}" title="${r.closed ? "closed; " : ""}open it">${words}</a>`;
+}
+function subjText(src, opts) {
+  const refs = (T && T.refs) || {}, keep = [], press = [];
+  const hold = x => `\u0002${keep.push(x) - 1}\u0002`;
+  let s = String(src || "").replace(/<!--[\s\S]*?-->/g, "");
+  s = s.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (m, t, label) => {
+    const hit = subjLink(t);
+    if (hit) return hold(`[${label || hit.name}](${hit.href})`);
+    return hold(label ? m : `[[${t}|${leafWords(t.split("#")[0])}]]`);
+  });
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, label, href) => {
+    const hit = !/^(\/|https?:)/.test(href) && /\.md$/i.test(href.split("#")[0]) ? subjLink(href) : null;
+    if (hit) return hold(`[${label}](${hit.href})`);
+    // 0.94.0 (the owner, 10/26: "Why aren't the artifact options for the manual linked in here?"): a markdown link to a
+    // brain file that is not a subject opens the way the viewer opens that kind of file, the way the words of an item do:
+    // a page in the preview, a document in the drawer, a picture in the image viewer, anything else as a download. The
+    // markdown renderer keeps only a web address or a route, so without this the words drew as plain text.
+    const t = href.replace(/^\.\//, ""), path = t.split("#")[0];
+    if (!/^(\/|https?:|#)/.test(t) && /^[\w.\-][\w.\-\/~+@]*\.[a-z0-9]+$/i.test(path)) {
+      if (/\.(html?|htm)$/i.test(path)) return hold(`[${label}](/preview?path=${encodeURIComponent(path)})`);
+      if (/\.(png|jpe?g|gif|webp|svg)$/i.test(path)) return hold(`[${label}](/api/image?path=${encodeURIComponent(path)})`);
+      if (/\.md$/i.test(path)) return hold(`[[${t}|${label}]]`);
+      return hold(`[${label}](/api/file-raw?path=${encodeURIComponent(path)})`);
+    }
+    return hold(m);
+  });
+  // a bare brain path in the prose: a file reads as its name and opens in the drawer; a folder reads as its name
+  s = s.replace(/(?<![\w\/.\-\[])((?:deliverables|people|profiles|projects|transcripts|context|thoughts|procedures|[a-z][a-z0-9-]*-holon)\/[\w.\-\/]*[\w\/])/g, (m, p) => {
+    const sub = subjLink(p); if (sub) return hold(`[${sub.name}](${sub.href})`);
+    return /\.[a-z0-9]{2,6}$/i.test(p) ? hold(`[[${p}|${leafWords(p)}]]`) : leafWords(p.replace(/\/+$/, ""));
+  });
+  s = s.replace(ID_MENTION, (m, w, id) => {
+    const own = opts && opts.project && !(w && refs[w + " " + id]) ? refs[opts.project + " " + id] : null;   // an item's words: its own ledger first
+    const r = (w && refs[w + " " + id]) || own || refs[id];
+    const lead = w && !refs[w + " " + id] ? m.slice(0, m.length - id.length) : "";
+    if (!r || r.missing) { console.info(`[thread] dropped ${m.trim()} from the subject text: no such item on a ledger`); return lead; }
+    return lead + `\u0001${press.push(pressFor(r)) - 1}\u0001`;
+  });
+  // what dropping a code leaves behind: an empty bracket, a dangling separator
+  s = s.replace(/\(\s*[,;]?\s*\)/g, "").replace(/\(\s*[,;]\s*/g, "(").replace(/\s*[,;]\s*\)/g, ")").replace(/(\S)[ \t]{2,}/g, "$1 ").replace(/ +([,;.)])/g, "$1");
+  s = s.replace(/\u0002(\d+)\u0002/g, (m, n) => keep[+n]);
+  let html = opts && opts.block ? BV.md(s) : BV.inline(s);
+  html = html.replace(/\u0001(\d+)\u0001/g, (m, n) => press[+n]);
+  // a press to another workspace reads as one, not as a plain link
+  return html.replace(/<a href="(\/thread\?subject=[^"]*)">/g, `<a class="wslink" href="$1">`);
+}
+
+// 0.94.0 (the owner, 10/26, on the manual's thread: "why can I not send a note about the project anywhere?"): a reply box
+// for the whole project, under Where it stands. The reply is a notepad note about this subject (POST /api/notepad with
+// about), it rides the send like a press, and the session's answer comes back under it as a pair, the way a card's do.
+function threadReplyHTML(t) {
+  if (!SUBJECT || !t.slug) return "";
+  return `<section class="card threadreply"><h3>Reply about this project</h3>${BV.exchange.html({ id: t.slug }, "thread")}
+    <form class="replyrow" data-thread-reply="1"><textarea class="grow" rows="2" placeholder="reply about the whole project, or paste a picture; it reaches the session with your next send" title="Ctrl+Enter (Cmd+Enter) sends it"></textarea><button class="btn" type="submit">reply</button></form>
+    <p class="none" id="treplySay"></p></section>`;
+}
+async function sendThreadReply(f) {
+  const ta = f.querySelector("textarea"), text = ta.value.trim(); if (!text) return;
+  const b = f.querySelector("button"); b.disabled = true;
+  let j = {};
+  try {
+    const r = await fetch("/api/notepad", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, page: "threads", about: SUBJECT }) });
+    j = await r.json().catch(() => ({})); if (!r.ok) j.ok = false;
+  } catch (e) { j = { ok: false, error: e.message }; }
+  b.disabled = false;
+  const say = $("#treplySay");
+  if (j.ok || j.proposed) { ta.value = ""; if (say) say.textContent = j.proposed ? "Kept as a request on this computer until you send it." : "Your reply is kept; it reaches the session with your next send."; if (BV.outbox && BV.outbox.refresh) BV.outbox.refresh(); }
+  else if (say) say.textContent = `not kept: ${j.error || "no reason given"}`;
+}
+
+// ---- the thing in progress, first under the title ----
+function nowHTML(t) {
+  const n = t.now; if (!n) return "";
+  const open = n.open ? (n.page ? `<a class="btn primary" href="${esc(n.open)}" target="_blank" rel="noopener" title="open it full window, in a new tab">Open</a>`
+                                : `<a class="btn primary" href="${esc(n.open)}" title="open it in the Reader">Open</a>`) : "";
+  const prev = n.preview ? `<a class="btn" href="${esc(n.preview)}" title="see it inside the viewer at phone, tablet and laptop widths">Preview</a>` : "";
+  return `<section class="card nowband" id="nowband"><p class="kicker">In progress</p><h3 class="nowname">${esc(n.name)}</h3>
+    ${n.line ? `<p class="nowline">${subjText(n.line)}</p>` : ""}
+    ${n.exists ? `<div class="nowpress">${open}${prev}</div>` : `<p class="gone">The file it names is not there yet.</p>`}
+    ${n.next ? `<p class="nownext"><span class="kicker">Next on it</span>${subjText(n.next)}</p>` : ""}</section>`;
+}
+
+// ---- how it connects, drawn: this thread in the middle, the parent above, the pieces below, feeds left, beside right ----
+const KIND_WORD = { "part-of": "part of", "piece": "a piece of this", "feeds": "this feeds it", "fed-by": "feeds this", "beside": "beside it", "builds-on": "builds on" };
+function wrapWords(text, n, max) {
+  const out = []; let cur = "";
+  for (const w of String(text || "").split(/\s+/).filter(Boolean)) {
+    if ((cur + " " + w).trim().length > n && cur) { out.push(cur); cur = w; } else cur = (cur + " " + w).trim();
+  }
+  if (cur) out.push(cur);
+  if (out.length > max) { out.length = max; out[max - 1] = out[max - 1].replace(/\s*\S*$/, "") + "…"; }
+  return out;
+}
+function mapHTML(t) {
+  const nodes = t.connects || []; if (!nodes.length) return "";
+  const BW = 210, GAP = 44, W = 3 * BW + 2 * GAP, LH = 17, SH = 13.5;
+  const plain = s => String(s || "").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  const sayText = x => plain(subjText(x.line || "") );
+  const block = x => { const nm = wrapWords(x.name, 25, 3), say = wrapWords(sayText(x), 34, 3), bh = 24 + nm.length * LH + 8;
+    return Object.assign({}, x, { nm, say, bh, h: bh + (say.length ? say.length * SH + 10 : 0) }); };
+  const slot = k => nodes.filter(n => k.includes(n.kind)).map(block);
+  const top = slot(["part-of"]), bottom = slot(["piece"]), left = slot(["feeds", "fed-by"]), right = slot(["beside", "builds-on"]);
+  const here = { nm: wrapWords(t.short || t.name, 23, 3) }; here.bh = 16 + here.nm.length * 19 + 12; here.h = here.bh;
+  const rowsOf = list => { const r = []; for (let i = 0; i < list.length; i += 3) r.push(list.slice(i, i + 3)); return r; };
+  const place = [], lines = [];
+  let y = 0;
+  const putRow = row => { const n = row.length, w = n * BW + (n - 1) * GAP, x0 = (W - w) / 2, h = Math.max(...row.map(b => b.h));
+    row.forEach((b, i) => place.push(Object.assign(b, { x: x0 + i * (BW + GAP), y }))); y += h + 26; };
+  rowsOf(top).forEach(putRow);
+  const midTop = y, stackH = l => l.reduce((a, b) => a + b.h + 16, 0) - (l.length ? 16 : 0);
+  const midH = Math.max(stackH(left), stackH(right), here.h);
+  let ly = midTop + (midH - stackH(left)) / 2; for (const b of left) { place.push(Object.assign(b, { x: 0, y: ly })); ly += b.h + 16; }
+  let ry = midTop + (midH - stackH(right)) / 2; for (const b of right) { place.push(Object.assign(b, { x: 2 * (BW + GAP), y: ry })); ry += b.h + 16; }
+  Object.assign(here, { x: BW + GAP, y: midTop + (midH - here.h) / 2 });
+  y = midTop + midH + 26;
+  rowsOf(bottom).forEach(putRow);
+  const H = y - 26 + 4, cx = here.x + BW / 2, cy = here.y + here.bh / 2;
+  for (const b of place) {
+    const bx = b.x + BW / 2, by = b.y + b.bh / 2;
+    lines.push(`<line class="mp-line" x1="${cx}" y1="${cy}" x2="${bx}" y2="${by}"/>`);
+  }
+  const tspans = (arr, x, y0, lh, cls) => arr.map((l, i) => `<text class="${cls}" x="${x}" y="${y0 + i * lh}">${esc(l)}</text>`).join("");
+  const box = b => {
+    const kind = (KIND_WORD[b.kind] || b.kind) + (b.open != null ? ` · ${b.open} open` : "");
+    const inner = `<rect class="mp-box${b.missing ? " gone" : ""}" x="${b.x}" y="${b.y}" width="${BW}" height="${b.bh}" rx="4"/>`
+      + `<text class="mp-kind" x="${b.x + 10}" y="${b.y + 15}">${esc(kind)}</text>` + tspans(b.nm, b.x + 10, b.y + 33, LH, "mp-name");
+    const linked = b.href ? `<a href="${esc(b.href)}"${b.page ? ` target="_blank" rel="noopener"` : ""}><title>${esc(b.title || b.name)}</title>${inner}</a>` : `<g><title>not found in the brain</title>${inner}</g>`;
+    return linked + tspans(b.say, b.x + 4, b.y + b.bh + 14, SH, "mp-say");
+  };
+  const svg = `<svg viewBox="-2 -2 ${W + 4} ${H + 4}" style="max-width:${W + 4}px" role="img" aria-label="how this thread connects to other work">
+    ${lines.join("")}<rect class="mp-box here" x="${here.x}" y="${here.y}" width="${BW}" height="${here.bh}" rx="4"/>
+    ${tspans(here.nm, here.x + 12, here.y + 26, 19, "mp-here")}${place.map(box).join("")}</svg>`;
+  return `<section class="card mapcard"><h3>How it connects</h3><div class="map">${svg}</div></section>`;
+}
+
+// ---- the pieces of this thread, each with its open count (counts roll up into this thread's) ----
+function piecesHTML(t) {
+  const k = t.children || []; if (!k.length) return "";
+  return `<section class="card"><h3>Pieces of this <span class="meta">${plural((t.rollup || {}).inPieces || 0, "open item")} in them</span></h3>
+    ${k.map(c => `<div class="piece"><a class="pn" href="${esc(c.href)}" title="${esc(c.name)}">${esc(c.short)}</a>
+      <span class="pc"><b>${c.forOwner}</b> for you<br>${plural(c.open, "open item")}</span>
+      ${c.stands ? `<span class="ps">${subjText(c.stands)}</span>` : ""}</div>`).join("")}</section>`;
+}
+
+// ---- what was built here (each opens itself), then the documents by name ----
+function builtHTML(t) {
+  const b = t.built || [], d = t.documents || [];
+  let html = "";
+  if (b.length) html += `<section class="card"><h3>Built here <span class="meta">${plural(b.length, "thing")}</span></h3>
+    ${b.map(x => `<div class="thing"><p class="tn">${esc(x.name)}</p>${x.line ? `<p class="tl2">${subjText(x.line)}</p>` : ""}
+      <div class="tp"><a class="btn primary" href="${esc(x.open)}" target="_blank" rel="noopener" title="open it full window, in a new tab">Open</a>
+        <a class="btn" href="${esc(x.preview)}" title="see it inside the viewer at phone, tablet and laptop widths">Preview</a>
+        ${x.about ? `<a class="btn" href="${esc(x.about)}" title="the note kept beside it">About</a>` : ""}
+        ${x.at ? `<span class="when">changed ${esc(ago(x.at))}</span>` : ""}</div></div>`).join("")}</section>`;
+  if (d.length) html += `<section class="card"><h3>Documents <span class="meta">${plural(d.length, "document")}, the newest first</span></h3><ul class="docs">
+    ${d.map(x => `<li${x.exists ? "" : ` class="gone"`}><a href="${esc(x.href)}" title="${x.exists ? "open it in the Reader" : "not found in the brain"}">${esc(x.name)}</a><span class="d">${esc(x.exists ? md(x.at) : "missing")}</span></li>`).join("")}</ul></section>`;
+  return html;
+}
+
+// ---- progress: done, next, later, in a fold in the side column ----
+const PROG_H = "bv.thread.progress.h", progOpenKey = () => "bv.thread.progress.open:" + SUBJECT;
+const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+function progressHTML(t) {
+  const SAY = { decisions: "decided", learned: "learned", timeline: "noted" };
+  const done = (t.done || []).map(d => ({ date: d.date, html: subjText(BVWork.clipWords(d.text, 200), { project: d.project }), files: d.files || [], say: d.kind === "question" ? "answered" : "" }))
+    .concat((t.timeline || []).map(x => ({ date: x.date, html: subjText(x.text), files: [], say: SAY[String(x.section || "").toLowerCase().split(/\s/)[0]] || "noted" })))
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const next = t.items || [], later = t.held || [];
+  const fileLinks = fs => fs.length ? `<span class="fs">${fs.map(f => `<a href="${esc(f.href)}"${f.page ? ` target="_blank" rel="noopener"` : ""}>${esc(f.name)}</a>`).join("")}</span>` : "";
+  const open = store.get(progOpenKey()) === "1", h = parseInt(store.get(PROG_H) || "", 10);
+  const body = `<p class="phead">Done</p>${done.map(x => `<div class="prow done"><span class="d">${esc(md(x.date))}</span><div class="t">${x.say ? `<span class="say">${esc(x.say)}</span>` : ""}${x.html}${fileLinks(x.files)}</div></div>`).join("") || `<p class="none">Nothing done on it yet.</p>`}
+    <p class="phead">Next</p>${next.map(i => `<div class="prow next" data-key="${esc(i.project + "/" + i.id)}" title="press it to work on it here"><span class="d">${esc(whoWord(i.who))}</span><div class="t">${subjText(i.text, { project: i.project })}</div></div>`).join("") || `<p class="none">Nothing open.</p>`}
+    ${later.length ? `<p class="phead">Later</p>${later.map(i => `<div class="prow"><span class="d">${esc(whoWord(i.who))}</span><div class="t">${subjText(i.text, { project: i.project })}${i.until ? ` <span class="meta">back ${esc(md(i.until))}</span>` : ""}</div></div>`).join("")}` : ""}`;
+  return `<section class="card progress"><details id="progfold"${open ? " open" : ""}><summary><h3>Progress</h3><span class="meta">${done.length} done · ${next.length} next${later.length ? ` · ${later.length} later` : ""}</span></summary>
+    <div class="progbody" id="progbody"${h > 0 ? ` style="height:${h}px"` : ""}>${body}</div><div class="pgrip" id="pgrip" title="drag to make the column taller or shorter; double-click puts it back"></div></details></section>`;
+}
+function wireProgress() {
+  const f = $("#progfold"), body = $("#progbody"), grip = $("#pgrip"); if (!f || !body || !grip) return;
+  f.addEventListener("toggle", () => store.set(progOpenKey(), f.open ? "1" : "0"));
+  grip.addEventListener("dblclick", () => { body.style.height = ""; store.set(PROG_H, ""); });
+  grip.addEventListener("pointerdown", e => {
+    e.preventDefault(); const y0 = e.clientY, h0 = body.getBoundingClientRect().height; grip.classList.add("on");
+    const move = ev => { body.style.height = Math.max(140, Math.min(window.innerHeight * 2, h0 + ev.clientY - y0)) + "px"; };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); grip.classList.remove("on");
+      store.set(PROG_H, String(Math.round(body.getBoundingClientRect().height))); };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+  });
+}
+
+function sideHTML(t) {
+  const nc = t.nextCall;
+  const call = nc
+    ? `<div class="call"><div class="when">${esc(dayWord(nc.start))} · ${esc(timeWord(nc.start))}</div><div class="what">${esc(nc.title)} <span class="meta">with ${esc(nc.people.join(", "))}</span></div>
+        <div class="links">${nc.prep ? `<a href="${esc(nc.prep.href)}">open the prep</a><a href="${esc(nc.prep.reader)}">read it</a>` : `<span class="meta">no prep yet</span>`}${nc.join ? `<a href="${esc(nc.join)}" target="_blank" rel="noreferrer">join</a>` : ""}</div></div>`
+    : `<p class="line meta">no call with ${esc(listWords(t.nextCallPeople))} on the calendar</p>`;
+  return `<section class="card"><h3>Next call</h3>${call}</section>
+    ${progressHTML(t)}
+    <section class="card"><h3>People</h3>${(t.people || []).map(p => `<div class="ws-pp"><a href="${esc(p.href)}">${esc(p.name)}</a>${p.stands ? `<p class="st"><span class="d">${esc(md(p.standsDate))}</span>${subjText(p.stands)}</p>` : ""}</div>`).join("") || `<p class="none">The subject file names no one.</p>`}</section>`;
+}
+const listWords = a => !a.length ? "its people" : a.length === 1 ? a[0] : a.slice(0, -1).join(", ") + " or " + a[a.length - 1];
+
+function paint() {
+  const t = T;
+  document.title = (t.short || t.name) + " · Thread";
+  $("#crumb").textContent = t.status ? t.status : "";
+  const ppl = t.people.map(p => `<a class="badge person" href="${esc(p.href)}" title="open ${esc(p.name)} on the People page">${esc(p.name)}</a>`).join("");
+  const anc = t.ancestors || [];
+  const crumbs = `<nav class="crumbs"><a class="back" href="/threads">every thread</a>${anc.map(a => `<span class="sep">›</span><a href="${esc(a.href)}" title="${esc(a.title)}">${esc(a.name)}</a>`).join("")}${anc.length ? `<span class="sep">›</span><span>this piece</span>` : ""}</nav>`;
+  const rest = t.short && t.name !== t.short ? t.name.slice(t.short.length).trim().replace(/^\(|\)$/g, "") : "";
+  const ru = t.rollup || {};
+  // 0.79.0: a focused pick opens on the comparison, the first band of its workspace, as wide as the window allows
+  const pick = FOCUS && FW && !FW.error ? BVWork.pickBlock(FW) : "";
+  $("#sheet").classList.toggle("wide", !!pick);
+  $("#sheet").innerHTML = `<div class="thead">${crumbs}<h2>${esc(t.short || t.name)}</h2>${rest ? `<p class="aside">${esc(rest)}</p>` : ""}
+      <div class="meta"><span class="who">${ppl}</span>${t.ledgers.length ? `<span>on ${esc(t.ledgers.join(", "))}</span>` : ""}${t.gather === "own" ? `<span class="gather" title="This thread's header says gather: own, so it takes in only its own ledger's items and the items that link it, not every item that names its people or words.">takes in only its own items and what links it</span>` : ""}${t.updated ? `<span>updated ${esc(md(t.updated))}</span>` : ""}${ru.inPieces ? `<span>${plural(ru.open, "open item")} counting its pieces</span>` : ""}</div>
+      <p class="share-thread" id="sharethread"></p></div>
+    ${pick}
+    <div class="cols"><div>
+      ${focusHTML()}
+      ${questionsHTML(t)}
+      ${nowHTML(t)}
+      <section class="card stands"><h3>Where it stands <span class="meta">${esc((t.stands.head || "").replace(/^where it stands\s*/i, ""))}</span></h3>
+        <article class="md">${t.stands.text ? subjText(t.stands.text, { block: true }) : `<p class="none">The subject file has no summary yet.</p>`}</article>
+        <p class="foot"><a href="${esc(t.stands.reader)}">open the subject file in the Reader</a></p></section>
+      ${threadReplyHTML(t)}
+      ${mapHTML(t)}
+      ${piecesHTML(t)}
+      ${builtHTML(t)}
+      ${todoHTML(t)}
+    </div><div class="side">${sideHTML(t)}</div></div>`;
+  BV.shareItem.thread(t.subject, $("#sharethread"));   // 0.98.0: share this thread with the member, when her copy holds its file
+  wireProgress();
+  BV.glossary.scan($("#main"));
+  if (BV.ledger && BV.ledger.prime) BV.ledger.prime();   // the item rows' codes become their words once the ledgers are read (after the paint)
+}
+
+// the focused item: its workspace, in this order: the item, its brief, its own files, its history, its note
+function focusHTML() {
+  if (!FOCUS) return "";
+  if (!FW || FW.error) return `<div class="focusbar"><button type="button" class="btn" id="unfocus">back to the thread</button><span class="meta">${esc((FW && FW.error) || "reading the item…")}</span></div>`;
+  const w = FW;
+  return `<div class="focus" id="focus"><div class="focusbar"><button type="button" class="btn" id="unfocus" title="show the whole thread again">back to the thread</button>
+      <a class="worklink" href="${esc(w.item.projectHref)}">on the ${esc(w.item.label)} list</a></div>
+    ${BVWork.itemBlock(w, { title: "Working on", focusHref })}${workingSiblingsHTML(w)}${BVWork.briefBlock(w, B.say)}
+    ${BVWork.filesBlock(w, { title: "Its files", empty: "The item links no files; the thread's are beside it." })}
+    ${BVWork.historyBlock(w)}${BVWork.notesBlock(w)}</div>`;
+}
+// 0.93.0 (the easy-to-use rules 7 and 16): while a question is answered here, the other open questions to the owner on
+// this thread stand right under Working on, each with its presses, so the next one is never found by scrolling the
+// thread; once the focused question is answered, the next one takes its place (focusNext). The owner, 10/26: since I am
+// working on answering those questions, shouldn't they appear in the working on section?
+function workingSiblings(focusRef, kind) {
+  if (!T || kind !== "question") return [];
+  // 10/28: in the Questions card's order, so the one that takes an answered question's place is the most relevant one
+  return (T.items || []).filter(i => i.kind === "question" && i.mark === "?" && i.who === BV.owner && (i.project + "/" + i.id) !== focusRef).sort(qRank);
+}
+function workingSiblingsHTML(w) {
+  const s = workingSiblings(w.item.project + "/" + w.item.id, w.item.kind);
+  // the last question answered: say so, with the way back to Today, where the task that sent him here sits (the walk of 10/26)
+  if (!s.length) return w.item.kind === "question" && w.item.mark !== "?" ? `<section class="card ws-siblings"><p class="none">Every question on this thread is answered. <a href="/">Back to Today</a></p></section>` : "";
+  return `<section class="card todo-card ws-siblings"><h3>Also to answer here <span class="meta">${plural(s.length, "open question")} · the next one takes this place when you answer</span></h3><ol class="todo">${s.map((i, k) => row(i, k + 1)).join("")}</ol></section>`;
+}
+async function focusNext(project, payload) {
+  if (!FOCUS || !payload || payload.action !== "answer" || FOCUS !== project + "/" + payload.id) return;
+  const nxt = workingSiblings(FOCUS, "question")[0];
+  if (nxt) await setFocus(nxt.project + "/" + nxt.id);
+}
+async function loadFocus() {
+  if (!FOCUS) { FW = null; return; }
+  try {
+    const r = await fetch("/api/work?scope=item&item=" + encodeURIComponent(FOCUS));
+    const j = await r.json();
+    FW = r.ok ? j : { error: j.error || "could not read the item" };
+  } catch (e) { FW = { error: e.message }; }
+}
+// focus an item, or clear the focus, without leaving the page; the address follows so back and forward work
+async function setFocus(ref, push = true) {
+  B.stop();
+  FOCUS = ref || "";
+  if (push) history.pushState({ item: FOCUS }, "", FOCUS ? focusHref({ project: FOCUS.split("/")[0], id: FOCUS.split("/")[1] }) : `/thread?subject=${encodeURIComponent(SUBJECT)}`);
+  FW = null; if (FOCUS) paint();
+  await loadFocus(); paint();
+  const m = $("#main"); if (m) m.scrollTop = 0;
+  if (FOCUS) B.status();
+}
+window.addEventListener("popstate", () => setFocus(new URLSearchParams(location.search).get("item") || "", false));
+
+function paintIndex(d) {
+  document.title = "Threads";
+  $("#title").textContent = "Threads";
+  $("#crumb").textContent = d.count ? plural(d.count, "thread") : "";
+  // 0.77.0: a piece sits under the thread it is a piece of, indented; a parent's counts include its pieces'
+  const all = d.threads || [], have = new Set(all.map(r => r.subject)), kids = {};
+  for (const r of all) if (r.parent && have.has(r.parent)) (kids[r.parent] = kids[r.parent] || []).push(r);
+  const order = [], walk = (r, depth, seen) => { if (seen.has(r.subject)) return; seen.add(r.subject); order.push([r, depth]); for (const k of kids[r.subject] || []) walk(k, depth + 1, seen); };
+  const seen = new Set(); for (const r of all) if (!(r.parent && have.has(r.parent))) walk(r, 0, seen);
+  for (const r of all) walk(r, 0, seen);
+  $("#sheet").innerHTML = `<section class="card"><h3>Every thread <span class="meta">one per subject file, the newest dated line first; a piece of a thread sits under it</span></h3>
+    ${order.map(([r, depth]) => `<a class="tix${depth ? " sub" : ""}" href="${esc(r.href)}"${depth > 1 ? ` style="padding-left:${28 * depth}px"` : ""}><span class="nm">${esc(r.name)}</span>
+        <span class="num"><b>${r.forOwner}</b> for you<br>${plural(r.open, "open item")}${r.own != null && r.own !== r.open ? `, ${r.open - r.own} in its pieces` : ""}${r.last ? ` · ${esc(md(r.last))}` : ""}</span>
+        <span class="ppl">${depth ? "a piece of the thread above · " : ""}${esc(r.people.map(p => p.name).join(", "))}${r.status && r.status !== "live" ? ` · ${esc(r.status)}` : ""}</span></a>`).join("")
+      || firstThreadBox(d.first || {})}</section>`;
+  const f = $("#firstThread");
+  if (f) f.addEventListener("submit", async e => {
+    e.preventDefault(); const fd = new FormData(f), st = $("#firstStatus"); st.textContent = "starting…";
+    const r = await fetch("/api/threads/new", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: fd.get("name"), about: fd.get("about") }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { st.textContent = "refused: " + (j.error || r.status); return; }
+    if (j.proposed) { st.textContent = BV.proposedText ? BV.proposedText(j) : "sent as a request"; return; }
+    location.href = j.href;
+  });
+}
+
+// 0.69.0 (the navigation direction, rule 5): a fresh brain has no threads yet; the page says what a thread is and what to
+// do next, and starts the first one, named from what setup wrote about the work (context/current-focus.md) when it can
+function firstThreadBox(s) {
+  return `<div class="first">
+    <p>No threads yet. A thread is one page per piece of work: where it stands, who it is with, what is open on it, and its next call. Calls you drop into the brain add to them on their own; the first one you start here.</p>
+    <form id="firstThread"><div class="field"><label>the work, in a few words</label><input name="name" required value="${esc(s.name || "")}" placeholder="what you are working on"></div>
+      <div class="field"><label>one line on where it stands</label><input name="about" value="${esc(s.about && s.about !== s.name ? s.about : "")}" placeholder="what it is for, who it is with, what comes next"></div>
+      <div class="irow"><button class="btn primary" type="submit">Start this thread</button><span class="status-line" id="firstStatus" style="margin:0"></span></div></form>
+    <p class="meta">${s.name ? `Named from what your setup wrote about your work. ` : ""}Or ask your Claude: <i>start a thread about what I am working on</i>.</p></div>`;
+}
+
+// the "no thread yet" case: what work.html drew, the item and every block around it, in that order
+function paintBare() {
+  const w = FW;
+  document.title = BVWork.clipWords(w.item.text, 60) + " · Thread";
+  $("#title").textContent = "No thread yet";
+  $("#crumb").textContent = `${w.item.label} · ${w.item.kind}`;
+  // 0.79.0: a pick opens on the comparison, its first band, as wide as the window allows; the rest keeps its width
+  const pick = BVWork.pickBlock(w);
+  $("#sheet").classList.toggle("wide", !!pick);
+  $("#sheet").innerHTML = `<div class="thead"><a class="back" href="/threads">every thread</a>
+      <p class="meta">${w.thread ? `It belongs to <a href="${esc(w.thread.href)}">${esc(w.thread.name)}</a>, and is worked here on its own.` : "This item names no thread's people or words, so it is worked here on its own."} <a href="${esc(w.item.projectHref)}">on the ${esc(w.item.label)} list</a></p></div>
+    ${pick}<div class="pk-rest"><div class="sheet-bare">` + BVWork.itemBlock(w) + BVWork.briefBlock(w, B.say) + BVWork.filesBlock(w) + BVWork.peopleBlock(w.people)
+    + BVWork.siblingsBlock(w) + BVWork.callBlock(w.nextCall, w.nextCallPeople) + BVWork.historyBlock(w) + BVWork.notesBlock(w) + `</div></div>`;
+  BV.glossary.scan($("#main"));
+}
+
+async function load() {
+  if (BARE) {
+    const r = await fetch("/api/work?item=" + encodeURIComponent(FOCUS));
+    const j = await r.json();
+    if (!r.ok) { FW = null; $("#sheet").innerHTML = `<p class="none">${esc(j.error || "could not read the item")} · <a href="/threads">every thread</a></p>`; return; }
+    FW = j; paintBare();
+    if (!JUMPED) { JUMPED = true; BV.land($(".sheet-bare .ws-item")); }   // 10/28: the item a press opened here flashes, as on a thread
+    return;
+  }
+  if (INDEX) {
+    const r = await fetch("/api/threads"); paintIndex(await r.json()); return;
+  }
+  const r = await fetch("/api/thread?subject=" + encodeURIComponent(SUBJECT));
+  const j = await r.json();
+  if (!r.ok) { $("#sheet").innerHTML = `<p class="none">${esc(j.error || "could not read the thread")} · <a href="/threads">every thread</a></p>`; return; }
+  T = j;
+  await loadFocus();
+  paint();
+  await jumpToItem();
+}
+// 10/28: an item named in the address (#q-<ledger>-<id> or #t-, the way Today's In progress strip opens the item it
+// previews) is landed on once the thread is drawn (BV.land: its fold opened when it is on hold, its box brought under the
+// header, flashed and outlined); one the thread does not take in opens here as the focused item instead, and an item
+// opened as the focused item (?item=, the workspace press) has its Working on card landed on the same way. Once a page
+// load: a repaint after a press does not jump again, and the mark stays on the row through every repaint (row() draws
+// it from JUMP, the flash too while it runs).
+let JUMPED = false, JUMP = "", JUMP_UNTIL = 0;
+async function jumpToItem() {
+  if (JUMPED) return; JUMPED = true;
+  let h = ""; try { h = decodeURIComponent(location.hash.replace(/^#/, "")); } catch (e) { return; }
+  const m = /^[qt]-(.+)-([TQ]-\d{4})$/.exec(h);
+  if (!m) { if (FOCUS) BV.land($("#focus .ws-item")); return; }
+  const ref = m[1] + "/" + m[2];
+  const el = [...document.querySelectorAll("#sheet li.trow[data-key]")].find(li => li.dataset.key === ref);
+  if (!el) {
+    if (FOCUS !== ref) {
+      history.replaceState({ item: ref }, "", focusHref({ project: m[1], id: m[2] }));
+      await setFocus(ref, false);
+    }
+    BV.land($("#focus .ws-item")); return;
+  }
+  JUMP = ref; JUMP_UNTIL = Date.now() + 1800;
+  BV.land(el);
+}
+
+// ---- the presses: the same writes the Today queue makes, then the page reads itself back ----
+async function act(project, payload) {
+  const res = await BV.ledgerAct(project, payload);
+  if (res.ok) { await load(); BV.refreshBadges(); await focusNext(project, payload); }   // 0.93.0: the next open question takes the answered one's place
+  return res;
+}
+document.addEventListener("click", async e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  const fo = e.target.closest("a[data-focus]"); if (fo && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); await setFocus(fo.dataset.focus); return; }
+  if (e.target.closest("#unfocus")) { e.preventDefault(); await setFocus(""); return; }
+  const bg = e.target.closest("#briefGo"); if (bg) { e.preventDefault(); if (!bg.disabled) await B.go(bg); return; }
+  const im = e.target.closest("img.thumb[data-img]"); if (im) { e.preventDefault(); BV.lightbox(im.dataset.img); return; }
+  // 0.79.0, the comparison: a screen switch moves its column's frame; an answer press answers, then goes back
+  const pg = e.target.closest("[data-pk-go]"); if (pg) { e.preventDefault(); BVWork.pickGo(pg); return; }
+  const pa = e.target.closest("button[data-pick]"); if (pa) { e.preventDefault(); if (!pa.disabled) await BVWork.pickAnswer(pa); return; }
+  const qc = e.target.closest("[data-qchoice]");
+  if (qc) { e.preventDefault(); qc.closest("li").classList.add("going"); await act(qc.dataset.project, { action: "answer", id: qc.dataset.q, text: qc.dataset.qchoice, by: BV.owner }); return; }
+  const qw = e.target.closest("[data-qwrite]");
+  if (qw) { e.preventDefault(); const f = qw.closest("li").querySelector("form.qbox"); if (f) { f.hidden = !f.hidden; if (!f.hidden) f.querySelector("textarea").focus(); } return; }
+  const qd = e.target.closest("[data-qdone]");
+  if (qd) {
+    e.preventDefault(); qd.closest("li").classList.add("going");
+    const pend = BV.replies.pending(qd);
+    if (pend) await BV.replies.act(pend.project, pend.id, pend.text, pend.ledger);
+    await act(qd.dataset.project, { action: "done", id: qd.dataset.qdone }); return;
+  }
+  const qn = e.target.closest("[data-qnote]");
+  if (qn) { e.preventDefault(); const b = qn.closest("li").querySelector(".qnote"); if (b) { b.hidden = !b.hidden; if (!b.hidden) b.querySelector("textarea").focus(); } return; }
+  const pc = e.target.closest(".badge.person[data-person]"); if (pc) { location.href = `/people?open=${encodeURIComponent(pc.dataset.person)}`; return; }
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); BV.drawer.open(w.dataset.wikilink.split("#")[0].trim(), w.dataset.wikilink.split("#")[1]); return; }
+  const o = e.target.closest(".filelink[data-open]"); if (o) { BV.drawer.open(o.dataset.open, o.dataset.frag); return; }
+  // 0.77.0: a Next row in Progress focuses its item here, unless the press was on a link inside it
+  const pn = e.target.closest(".prow.next[data-key]");
+  if (pn && !e.target.closest("a, button")) { await setFocus(pn.dataset.key); return; }
+  // pressing an item's words in What needs you focuses it here
+  const tw = e.target.closest(".todo-card li.trow");
+  if (tw && !e.target.closest("a, button, form, textarea, input, .idtag, details summary")) { await setFocus(tw.dataset.key); }
+});
+document.addEventListener("submit", async e => {
+  const f = e.target;
+  if (f.dataset.threadReply) { e.preventDefault(); await sendThreadReply(f); return; }   // 0.94.0: a reply about the whole project
+  if (f.dataset.notebox) { e.preventDefault(); await BVWork.saveNote(f, FW.item, async () => { await load(); }); return; }
+  if (f.dataset.reply || !f.dataset.q) return;
+  e.preventDefault();
+  await act(f.dataset.project, { action: "answer", id: f.dataset.q, text: f.querySelector("textarea").value, by: BV.owner });
+});
+document.addEventListener("keydown", e => {
+  // 0.94.0: Ctrl+Enter in the project's reply box sends it
+  const ta = e.target && e.target.closest && e.target.closest("form[data-thread-reply] textarea");
+  if (ta && e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); ta.form.requestSubmit(); return; }
+  if (BV.typing(e)) return; if (e.key === "Escape") $("#drawer").hidden = true; });
+BV.replies.wire(document, { onDone: async () => { await load(); BV.refreshBadges(); } });
+BV.holds.wire(document, { onDone: async () => { await load(); } });
+BV.steps.wire(document, { onDone: async () => { await load(); BV.refreshBadges(); } });   // 0.86.0: a tick on a step, here and in the workspace rows
+BV.undo.onChange(async () => { await load(); });          // 0.71.0: an undo from the bar or the day's list reads the thread back
+// 0.71.0, the Now band: the thread open here is the one Today leads with for the rest of the day (this browser only)
+if (SUBJECT) { try { const d = new Date(); localStorage.setItem("bv.now", JSON.stringify({ kind: "thread", subject: SUBJECT,
+  day: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` })); } catch (e) {} }
+load().then(() => { if (FOCUS) B.status(); }).catch(e => { $("#sheet").innerHTML = `<p class="none">Could not read the thread: ${esc(e.message)}</p>`; });
+</script>
+</body>
+</html>

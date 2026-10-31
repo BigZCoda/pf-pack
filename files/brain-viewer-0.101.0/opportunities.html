@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opportunities</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { min-height: 100vh; }
+  main { padding: 18px 34px 60px; max-width: 980px; }
+  @media (max-width: 700px) { main { padding: 14px 16px 50px; } }
+  .ohead { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; margin: 0 0 4px; }
+  .ohead .counts { font-family: var(--font-ui); font-size: 13.5px; color: var(--ink-soft); }
+  .ohead .counts b { font-weight: 600; color: var(--ink); }
+  .ofilter { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 10px 0 6px; font-size: 13px; }
+  .ofilter select { padding: 3px 6px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); color: var(--ink); }
+  section.stage, details.stage { margin: 18px 0 0; }
+  .stage h2, details.stage > summary { font-family: var(--font-display); font-size: 18px; font-weight: 500; margin: 0 0 4px; color: var(--ink); }
+  details.stage > summary { cursor: pointer; }
+  .stage h2 .meta, details.stage > summary .meta { font-size: 13px; margin-left: 8px; font-family: var(--font-ui); }
+  ul.opps { list-style: none; padding: 0; margin: 0; }
+  li.opp { padding: 9px 0; border-top: 1px dotted var(--rule-soft); }
+  li.opp:first-child { border-top: 0; }
+  .opp .l1 { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .opp .t { font-weight: 600; }
+  .opp .ago { margin-left: auto; font-size: 12px; }
+  .opp .l2, .opp .l3 { font-size: 13px; color: var(--ink-soft); margin: 2px 0 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .opp .l2 a { color: var(--ink-soft); }
+  .opp .moves { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+  .opp .moves button.on { border-color: var(--accent); color: var(--accent); cursor: default; }
+  .opp form.nx { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; width: 100%; }
+  .opp form.nx input { flex: 1; min-width: 200px; padding: 4px 8px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); color: var(--ink); }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Opportunities</h1>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="opportunities"></nav>
+</header>
+<main id="main"><p class="meta">loading the opportunities…</p></main>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /opportunities (0.74.0, the extended circle's third round): every opportunity by stage, from the one read
+// GET /api/circle?view=opportunities (the opportunities file, dressed with names and day counts). A stage press and the
+// next-move press write through POST /api/circle/edit, which writes the file and one log line; the page then reads again.
+// The holder and kind filters are in the page (nothing to type). With no circle files it says so in one line.
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const STAGE_WORD = { "heard-of": "heard of", "in-conversation": "in conversation", offered: "offered", live: "live", dead: "dead" };
+const STAGE_BADGE = { "heard-of": "open", "in-conversation": "draft", offered: "draft", live: "ok", dead: "held" };
+const KIND_WORD = { client: ["client", "clients"], mentor: ["mentor", "mentors"], seat: ["seat", "seats"], partnership: ["partnership", "partnerships"], event: ["event", "events"] };
+const kindWord = (k, n) => (KIND_WORD[k] || [k, k])[n === 1 ? 0 : 1];
+const days = n => n == null ? "" : n <= 0 ? "today" : n === 1 ? "a day ago" : `${n} days ago`;
+const params = new URLSearchParams(location.search);
+let DATA = null, F = { holder: params.get("holder") || "", kind: params.get("kind") || "" }, STATUS = "";
+
+const personLink = p => p.card ? `<a href="/people?open=${encodeURIComponent(p.card)}" title="open their card">${esc(p.name)}</a>`
+  : p.via ? `<a href="/people?open=${encodeURIComponent(p.via)}" title="no card of their own: they show in this holder's circle">${esc(p.name)}</a>`
+  : esc(p.name);
+const holderLink = h => h.card ? personLink(h) : `<span>${esc(h.name)}</span>`;
+
+function row(o) {
+  const moves = DATA.stages.map(s => `<button type="button" class="btn tiny${s === o.stage ? " on" : ""}" data-move="${esc(s)}" data-id="${esc(o.id)}"${s === o.stage ? " disabled" : ""} title="${s === o.stage ? "its stage now" : "move it to " + esc(STAGE_WORD[s])}">${esc(STAGE_WORD[s])}</button>`).join("");
+  const nx = o.next
+    ? `<span>next: ${esc(o.next)}</span><button type="button" class="btn tiny" data-next="${esc(o.id)}" title="change the next move">change</button><button type="button" class="btn tiny" data-clear="${esc(o.id)}" title="clear the next move">clear</button>`
+    : `<span class="meta">no next move</span><button type="button" class="btn tiny" data-next="${esc(o.id)}" title="set the next move, and whose">set next move</button>`;
+  return `<li class="opp" data-opp="${esc(o.id)}">
+    <div class="l1"><span class="t">${esc(o.title)}</span><span class="badge ${STAGE_BADGE[o.stage] || "open"}">${esc(STAGE_WORD[o.stage] || o.stage)}</span><span class="meta">${esc(kindWord(o.kind, 1))}</span>
+      <span class="meta ago" title="when it was first named, and when its stage last moved">named ${esc(days(o.sinceDays))} · moved ${esc(days(o.movedDays))}</span></div>
+    <div class="l2"><span class="meta">through</span>${holderLink(o.holder)}${o.people.length ? `<span class="meta">· with</span>${o.people.map(personLink).join(", ")}` : ""}</div>
+    ${o.what_pf_could_do ? `<div class="l3">${esc(o.what_pf_could_do)}</div>` : ""}
+    <div class="l3 nxline">${nx}</div>
+    <div class="l3"><span class="meta">move to</span><span class="moves">${moves}</span></div></li>`;
+}
+
+function render() {
+  const m = document.getElementById("main");
+  if (!DATA || !DATA.present) {
+    m.innerHTML = `<p class="meta">No opportunities in this brain yet: the circle files are not there. People who hold a reach show on <a href="/people">People</a>.</p>`;
+    return;
+  }
+  const all = DATA.opportunities;
+  const c = DATA.counts;
+  const stageLine = DATA.stages.map(s => `<b>${c.stage[s] || 0}</b> ${esc(STAGE_WORD[s])}`).join(" · ");
+  const kindLine = Object.keys(c.kind).sort((a, b) => c.kind[b] - c.kind[a]).map(k => `<b>${c.kind[k]}</b> ${esc(kindWord(k, c.kind[k]))}`).join(" · ");
+  const holders = {};
+  all.forEach(o => { const k = o.holder.slug || "direct"; holders[k] = holders[k] || { name: o.holder.name, n: 0 }; holders[k].n++; });
+  const kinds = Object.keys(c.kind);
+  const opt = (v, label, on) => `<option value="${esc(v)}"${v === on ? " selected" : ""}>${esc(label)}</option>`;
+  const shown = all.filter(o => (!F.holder || (o.holder.slug || "direct") === F.holder) && (!F.kind || o.kind === F.kind));
+  const blocks = DATA.stages.map(s => {
+    const list = shown.filter(o => o.stage === s);
+    const inner = list.length ? `<ul class="opps">${list.map(row).join("")}</ul>` : `<p class="meta">none</p>`;
+    const n = `<span class="meta">${list.length}</span>`;
+    return s === "dead"
+      ? `<details class="stage" data-stage="dead"${OPEN_DEAD ? " open" : ""}><summary>${esc(STAGE_WORD[s])} ${n}</summary>${inner}</details>`
+      : `<section class="stage" data-stage="${esc(s)}"><h2>${esc(STAGE_WORD[s])} ${n}</h2>${inner}</section>`;
+  }).join("");
+  m.innerHTML = `<div class="ohead"><span class="counts"><b>${c.all}</b> ${c.all === 1 ? "opportunity" : "opportunities"} · ${stageLine}</span></div>
+    <div class="ohead"><span class="counts">${kindLine || "no kinds"}</span></div>
+    <div class="ofilter"><label>through <select id="fh">${opt("", "anyone", F.holder)}${Object.keys(holders).sort((a, b) => holders[a].name.localeCompare(holders[b].name)).map(k => opt(k, `${holders[k].name} (${holders[k].n})`, F.holder)).join("")}</select></label>
+      <label>kind <select id="fk">${opt("", "any kind", F.kind)}${kinds.map(k => opt(k, kindWord(k, 2), F.kind)).join("")}</select></label>
+      ${F.holder || F.kind ? `<span class="meta">${shown.length} shown</span>` : ""}</div>
+    <p class="status-line" id="ost">${esc(STATUS)}</p>${blocks}`;
+}
+let OPEN_DEAD = false;
+document.addEventListener("toggle", e => { if (e.target.matches && e.target.matches("details.stage[data-stage=dead]")) OPEN_DEAD = e.target.open; }, true);
+
+// A server still on the previous version answers the plain circle read (no counts, holder and people as slugs): dress
+// it here so the page draws the same rows until that server restarts.
+function dress(j) {
+  const STAGES = j.stages || Object.keys(STAGE_WORD), rows = {};
+  (j.rows || []).forEach(r => { rows[r.slug] = r; });
+  const name = s => (rows[s] && rows[s].name) || String(s || "").replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  const ago = d => { const t = Date.parse(String(d || "").slice(0, 10)); return isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 864e5)); };
+  const counts = { stage: {}, kind: {}, all: 0 };
+  STAGES.forEach(s => { counts.stage[s] = 0; });
+  const ops = (j.opportunities || []).map(o => {
+    const st = STAGES.includes(o.stage) ? o.stage : "heard-of";
+    counts.stage[st]++; counts.kind[o.kind] = (counts.kind[o.kind] || 0) + 1; counts.all++;
+    const h = o.holder || "";
+    const per = s => { const r = rows[s]; const card = r ? (r.card || "") : s; return { slug: s, name: name(s), card, via: !card && r ? ((r.through || [])[0] || "") : "" }; };
+    return Object.assign({}, o, { stage: st, holder: !h || h === "direct" ? { slug: h, name: "came directly", card: "" } : per(h),
+      people: (o.people || []).map(per), sinceDays: ago(o.since), movedDays: ago(o.last_moved || o.since) });
+  });
+  return { present: j.present, stages: STAGES, counts, opportunities: ops };
+}
+
+async function load() {
+  try {
+    const r = await fetch("/api/circle?view=opportunities");
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || `the read answered ${r.status}`);
+    DATA = j.counts ? j : dress(j);
+  } catch (e) {
+    document.getElementById("main").innerHTML = `<p class="meta">The opportunities would not load: ${esc(e.message)}</p>`;
+    return;
+  }
+  render();
+}
+
+async function edit(body, said) {
+  STATUS = "saving…"; const st = document.getElementById("ost"); if (st) st.textContent = STATUS;
+  try {
+    const r = await fetch("/api/circle/edit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ kind: "opportunity" }, body)) });
+    const j = await r.json();
+    STATUS = r.ok ? (j.unchanged ? "nothing changed" : said) : "refused: " + (j.error || r.status);
+  } catch (e) { STATUS = "could not save: " + e.message; }
+  await load();
+}
+
+document.addEventListener("change", e => {
+  if (e.target.id === "fh") { F.holder = e.target.value; render(); }
+  if (e.target.id === "fk") { F.kind = e.target.value; render(); }
+});
+document.addEventListener("click", e => {
+  const mv = e.target.closest("[data-move]");
+  if (mv && !mv.disabled) { const o = DATA.opportunities.find(x => x.id === mv.dataset.id); return edit({ id: mv.dataset.id, stage: mv.dataset.move }, `moved ${o ? o.title : ""} to ${STAGE_WORD[mv.dataset.move]}`); }
+  const cl = e.target.closest("[data-clear]");
+  if (cl) return edit({ id: cl.dataset.clear, next: "" }, "next move cleared");
+  const nx = e.target.closest("[data-next]");
+  if (nx) {
+    const line = nx.closest(".nxline"), o = DATA.opportunities.find(x => x.id === nx.dataset.next) || {};
+    line.innerHTML = `<form class="nx" data-id="${esc(nx.dataset.next)}"><input name="next" value="${esc(o.next || "")}" maxlength="200" placeholder="the next move, and whose" required>
+      <button class="btn primary" type="submit">save</button><button class="btn" type="button" data-cancel>cancel</button></form>`;
+    line.querySelector("input").focus();
+    return;
+  }
+  if (e.target.closest("[data-cancel]")) render();
+});
+document.addEventListener("submit", e => {
+  const f = e.target.closest("form.nx"); if (!f) return;
+  e.preventDefault();
+  edit({ id: f.dataset.id, next: f.next.value }, "next move set");
+});
+
+load();
+</script>
+</body>
+</html>

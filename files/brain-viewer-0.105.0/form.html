@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Form</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { min-height: 100vh; }
+  main { padding: 18px 34px 80px; max-width: 820px; }
+  .fm-crumb { margin: 2px 0 14px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
+  .fm-crumb a { color: var(--accent); }
+  .fm-card { padding: 26px 30px 24px; }
+  .fm-title { margin: 0 0 10px; font-size: 27px; line-height: 1.2; color: var(--ink); overflow-wrap: anywhere; }
+  .fm-text { font-size: 15px; color: var(--ink-soft); max-width: 68ch; overflow-wrap: anywhere; }
+  .fm-text p { margin: .45em 0; }
+  .fm-section { margin: 24px 0 2px; font-family: var(--font-display); font-size: 16px; color: var(--ink); }
+  .fm-q { margin: 14px 0 0; padding: 14px 16px 15px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); }
+  .fm-q > label.fm-l, .fm-q > .fm-l { display: block; font-size: 15.5px; font-weight: 600; color: var(--ink); line-height: 1.35; overflow-wrap: anywhere; }
+  .fm-q .fm-n { color: var(--muted); font-weight: 400; margin-right: 4px; }
+  .fm-q .fm-req { color: var(--open); margin-left: 3px; }
+  .fm-q .fm-opt { color: var(--muted); font-weight: 400; font-size: 12.5px; margin-left: 8px; letter-spacing: .04em; }
+  .fm-q .fm-help { margin: 4px 0 0; font-size: 13.5px; color: var(--ink-soft); overflow-wrap: anywhere; }
+  .fm-q .fm-help p { margin: .2em 0; }
+  .fm-in { display: block; width: 100%; box-sizing: border-box; margin-top: 9px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--bg); color: var(--ink); font: inherit; font-size: 14.5px; }
+  textarea.fm-in { min-height: 92px; resize: vertical; }
+  .fm-in:focus { outline: none; border-color: var(--accent); }
+  .fm-choices { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .fm-choices label { display: flex; gap: 8px; align-items: baseline; font-size: 14.5px; cursor: pointer; }
+  .fm-scale { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .fm-scale label { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border: 1px solid var(--rule); border-radius: var(--radius); font-size: 14px; cursor: pointer; }
+  .fm-q.missing { border-color: var(--open); box-shadow: inset 3px 0 0 var(--open); }
+  .fm-outro { margin-top: 18px; }
+  .fm-foot { margin: 22px 0 0; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: baseline; }
+  .fm-foot .btn.primary { font-size: 15px; padding: 8px 26px; }
+  .fm-side { margin: 18px 2px 0; max-width: 68ch; }
+  .fm-side .btn { font-size: 12.5px; padding: 3px 10px; margin-left: 4px; }
+  .fm-problems { margin: 16px 0 0; padding: 10px 14px; border-left: 3px solid var(--open); background: var(--open-tint); font-size: 13.5px; }
+  .fm-problems ul { margin: 4px 0 0; padding-left: 1.2em; }
+  @media (max-width: 700px) {
+    main { padding: 12px 16px 60px; }
+    .fm-card { padding: 18px 14px 18px; }
+    .fm-title { font-size: 23px; }
+    .fm-q { padding: 12px 12px 13px; }
+    .fm-foot .btn.primary { flex: 1 1 100%; min-height: 44px; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Form</h1>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="form"></nav>
+</header>
+<main id="main"><p class="meta">Reading the form…</p></main>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /form?path=<a markdown file with a ## Form section> (0.102.0): the form a step board's step writes, drawn the way the
+// person filling it in would see it. GET /api/form reads the file (part_board.py form_api): the blocks in written order --
+// text, section, question -- and each question's type, options, help and whether it is required. Nothing typed here is
+// sent or saved: the page shows the form, and the file stays the only copy of the questions. "Copy as data" puts the same
+// JSON an agent reads on the clipboard, so a web page or a survey tool can be built from it.
+const esc = BV.esc;
+const $ = s => document.querySelector(s);
+const PATH = new URLSearchParams(location.search).get("path") || "";
+const BASE = PATH.split("/").slice(0, -1).join("/");
+let F = null;
+
+const INPUT = { short: "text", email: "email", phone: "tel", number: "number", date: "date", url: "url" };
+
+function field(q) {
+  const name = "q-" + q.id, req = q.required ? " required" : "";
+  if (q.type === "long") return `<textarea class="fm-in" id="${name}" name="${name}"${req}></textarea>`;
+  if (q.type === "choice" || q.type === "yesno" || q.type === "multi") {
+    const kind = q.type === "multi" ? "checkbox" : "radio";
+    return `<div class="fm-choices" role="group">${q.options.map(o =>
+      `<label><input type="${kind}" name="${name}" value="${esc(o)}"> <span>${BV.inline(o, BASE)}</span></label>`).join("")}</div>`;
+  }
+  if (q.type === "scale") {
+    const n = []; for (let i = q.min; i <= q.max; i++) n.push(i);
+    return `<div class="fm-scale" role="group">${n.map(i => `<label><input type="radio" name="${name}" value="${i}"> ${i}</label>`).join("")}</div>`;
+  }
+  return `<input class="fm-in" type="${INPUT[q.type] || "text"}" id="${name}" name="${name}" autocomplete="off"${req}>`;
+}
+
+function question(q) {
+  const mark = q.required ? `<span class="fm-req" title="required">*</span>` : q.required === false ? `<span class="fm-opt">Optional</span>` : "";
+  const group = ["choice", "yesno", "multi", "scale"].includes(q.type);
+  const head = `<span class="fm-n">${esc(q.n)}.</span>${BV.inline(q.text, BASE)}${mark}`;
+  return `<div class="fm-q" data-id="${esc(q.id)}" data-required="${q.required ? 1 : 0}">
+    ${group ? `<div class="fm-l">${head}</div>` : `<label class="fm-l" for="q-${esc(q.id)}">${head}</label>`}
+    ${q.help ? `<div class="fm-help">${BV.md(q.help, { base: BASE })}</div>` : ""}
+    ${field(q)}
+  </div>`;
+}
+
+function paint() {
+  const f = F.form;
+  let seen = false;
+  const body = f.blocks.map(b => {
+    if (b.kind === "question") { seen = true; return question(b); }
+    if (b.kind === "section") return `<h3 class="fm-section">${BV.inline(b.text, BASE)}</h3>`;
+    return `<div class="fm-text${seen ? " fm-outro" : ""}">${BV.md(b.md, { base: BASE })}</div>`;
+  }).join("");
+  const board = F.board ? `<a href="${esc(BV.mapHref ? BV.mapHref(F.board.canvas, "read") : "/forge?path=" + encodeURIComponent(F.board.canvas) + "&mode=read")}">← the board</a>` : "";
+  const nq = f.questions.length, nreq = f.questions.filter(q => q.required).length;
+  $("#main").innerHTML = `
+    <p class="fm-crumb meta">${board}<span>step: <a href="#" class="filelink" data-open="${esc(F.path)}">${esc(F.step)}</a></span><span>${nq} question${nq === 1 ? "" : "s"}${nreq ? `, ${nreq} required` : ""}</span></p>
+    <form class="card fm-card" id="form" novalidate>
+      <h2 class="fm-title">${esc(f.title)}</h2>
+      ${body}
+      <div class="fm-foot"><button type="submit" class="btn primary">Send</button><span class="meta" id="say" aria-live="polite"></span></div>
+    </form>
+    <p class="fm-side meta">The form as the step's file writes it, drawn the way the person filling it in sees it. Nothing typed here is sent or saved; change the questions in the file.
+      <button type="button" class="btn" id="copy" title="the questions, their types, options and marks, as JSON for an agent or a web page">Copy as data</button></p>
+    ${f.problems.length ? `<div class="fm-problems"><strong>In the file, to fix</strong><ul>${f.problems.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div>` : ""}`;
+}
+
+document.addEventListener("submit", e => {
+  if (!e.target.closest("#form")) return;
+  e.preventDefault();
+  let left = 0;
+  for (const el of document.querySelectorAll(".fm-q")) {
+    let filled = false;
+    for (const i of el.querySelectorAll("input, textarea")) if ((i.type === "radio" || i.type === "checkbox") ? i.checked : i.value.trim()) filled = true;
+    const miss = el.dataset.required === "1" && !filled;
+    el.classList.toggle("missing", miss);
+    if (miss) left++;
+  }
+  $("#say").textContent = left ? `${left} required question${left === 1 ? "" : "s"} left` : "Complete. This page sends nothing; it shows the form.";
+});
+document.addEventListener("click", async e => {
+  const c = e.target.closest("#copy");
+  if (c) {
+    e.preventDefault();
+    try { await navigator.clipboard.writeText(JSON.stringify(F, null, 2)); c.textContent = "Copied"; }
+    catch (err) { c.textContent = "Could not copy"; }
+    setTimeout(() => { c.textContent = "Copy as data"; }, 1600);
+    return;
+  }
+  const o = e.target.closest(".filelink[data-open]"); if (o) { e.preventDefault(); BV.drawer.open(o.dataset.open); return; }
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); BV.drawer.open(w.dataset.wikilink.split("#")[0].trim(), w.dataset.wikilink.split("#")[1]); }
+});
+
+async function load() {
+  if (!PATH) { $("#main").innerHTML = `<p class="note">No form is named: this page opens from a step's <b>Open the form</b> on a step board in the Forge, with the step's file in its address.</p>`; return; }
+  let r, j;
+  try { r = await fetch("/api/form?path=" + encodeURIComponent(PATH)); j = await r.json(); }
+  catch (e) { $("#main").innerHTML = `<p class="note">Could not read the form: ${esc(e.message)}</p>`; return; }
+  if (!r.ok) { $("#main").innerHTML = `<p class="note">Could not open the form: ${esc(j.error || ("the server answered " + r.status))}</p>`; return; }
+  F = j;
+  document.title = (F.form.title || "Form") + " · Form";
+  paint();
+}
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+/* Knight of the Sun. The default look: cream ground, a blackletter title in burgundy, Libre Baskerville text, the grey double-line frame. */
+/* The 33 tokens, moved here unchanged from viewer-tokens.css on 2026-09-22 (T-0208). Their history, and where each value was sampled from, is the header of viewer-tokens.css. What each token controls: looks/readme.md. */
+
+:root {
+  /* type */
+  --font-title: "Grenze Gotisch", "Old English Text MT", "UnifrakturMaguntia", serif;        /* the big titles only; interim blackletter, kept for now on the owner's word 9/04 */
+  --font-display: "Libre Baskerville", Baskerville, Georgia, serif;   /* names, headings, node titles */
+  --font-ui: "Libre Baskerville", Baskerville, Georgia, serif;        /* interface text. The owner likes Baskerville; Libre Baskerville is the screen cut (large x-height, sturdier hairlines) and has a REAL 700. Baskerville Old Face (BASKVILL.TTF) ships one weight, so every bold was synthesized and looked fuzzy (9/04); dropped from the stack the same evening */
+  --font-mono: ui-monospace, Consolas, Menlo, monospace;
+  --size-ui: 14px;      /* Libre Baskerville sets large; 14px reads like 15.5 */
+  --lh-ui: 1.5;
+
+  /* ground + text */
+  --bg: #f8f1d7;        /* the cover's cream ground (sampled) */
+  --surface: #fbf6e4;   /* a hair lighter: bars, cards, the drawer */
+  --ink: #2b2925;       /* Claude's pick; approved for now */
+  --ink-soft: #46423b;
+  --muted: #5a5957;     /* the knight's stroke grey (sampled) */
+  --rule: #8e8c86;      /* the sun / track-list grey (sampled): frames, bars, the drawer edge */
+  --rule-soft: #d8d0b8; /* dividers, table cells */
+  --code: #efe7cc;
+
+  /* the one active thing */
+  --accent: #631111;    /* the title burgundy (sampled) */
+  --accent-deep: #4a0d0d;
+  --selected: #ebe2c3;
+  --hover: #f1e9cd;
+
+  /* meaning -- Claude's picks, the board named none: a hand-tint verdigris, the sun's ochre, the title's burgundy */
+  --done: #5f7a5a;
+  --done-tint: #e6e9d3;
+  --open: #b3862e;
+  --open-tint: #f3e8c8;
+  --blocked: #631111;
+  --blocked-tint: #efdcd3;
+  --mouth: #b0561c;     /* a cell's OUTPUT, the mouth on the outside of its wall, and the packages waiting on the ring beyond it: the canvas palette's orange (preset 2, what the drawings already color an output) brought down onto cream so it is not the gold band and not the burgundy accent. Added 2026-09-10 with the mouth (T-0091) */
+  --mouth-tint: #f3e1cf;
+  --mind: #8a72d6;      /* minds (agents, skills, prompts): the canvas palette's purple lightened to sit on cream; the same value viewer-common.js draws the agent glyph with. Used by the live maps' build layer (2026-09-09) */
+  --danger: #631111;
+  --danger-tint: #efdcd3;
+
+  /* shape: square-ish like the card; the frame is the card's double line (1px border + a second 1px line 3px inside) */
+  --radius: 3px;
+  --radius-lg: 4px;
+  --shadow: none;
+  --frame: inset 0 0 0 3px var(--surface), inset 0 0 0 4px var(--rule);
+}

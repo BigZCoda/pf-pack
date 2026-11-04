@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Survey</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { min-height: 100vh; }
+  main { padding: 18px 34px 80px; max-width: 860px; }
+  .sv-title { margin: 4px 0 10px; font-size: 28px; line-height: 1.2; color: var(--ink); overflow-wrap: anywhere; }
+  .sv-intro { font-size: 15px; color: var(--ink-soft); max-width: 72ch; overflow-wrap: anywhere; }
+  .sv-intro p { margin: .45em 0; }
+  .sv-default { margin: 8px 0 0; max-width: 72ch; overflow-wrap: anywhere; }
+  .sv-progress { margin: 16px 0 12px; font-family: var(--font-display); font-size: 17px; color: var(--ink); }
+  ol.sv-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  li.sv-section { margin: 12px 0 -4px; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  li.sv-item { padding: 16px 20px 14px; }
+  li.sv-item.answered { box-shadow: inset 3px 0 0 var(--done), var(--frame); }
+  .sv-item h3 { margin: 0 0 6px; font-size: 19px; line-height: 1.3; overflow-wrap: anywhere; }
+  .sv-item h3 .sv-n { color: var(--muted); margin-right: 3px; }
+  .sv-item .sv-st { font-size: 14.5px; max-width: 72ch; overflow-wrap: anywhere; }
+  .sv-item .sv-st p { margin: .35em 0; }
+  .sv-opts { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 10px; }
+  .sv-opts button.btn { min-width: 92px; padding: 7px 16px; font-size: 14px; }
+  .sv-opts button.btn.on { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+  .sv-opts button.btn.on:hover { background: var(--accent-deep); }
+  input.sv-note { display: block; width: 100%; margin-top: 10px; padding: 7px 10px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); font-size: 14px; }
+  .sv-opts + input.sv-note { margin-top: 0; }
+  input.sv-note:focus { outline: none; border-color: var(--accent); }
+  input.sv-note:disabled, .sv-opts button.btn:disabled { opacity: .55; }
+  .sv-say { min-height: 1.3em; margin: 6px 0 0; font-size: 12.5px; }
+  .sv-foot { margin: 24px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px; }
+  .sv-foot .sv-progress { margin: 0; }
+  .sv-foot button.btn.primary { font-size: 15px; padding: 8px 24px; }
+  .sv-foot .sv-what { flex-basis: 100%; margin: 0; }
+  @media (max-width: 700px) {
+    main { padding: 14px 16px 60px; }
+    .sv-title { font-size: 24px; }
+    li.sv-item { padding: 14px 14px 12px; }
+    .sv-opts button.btn { flex: 1 1 0; min-width: 0; min-height: 42px; }
+    .sv-foot button.btn.primary { flex: 1 1 100%; min-height: 44px; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Survey</h1>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="survey"></nav>
+</header>
+<main id="main"><p class="meta">Reading the survey…</p></main>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /survey?path=<a survey's .md>&q=<ledger>:<id> (0.78.0): one survey file as a page to press through. GET /api/survey
+// reads it: the title, the intro, the default for a blank item, the items. Each press, and each note when its box is
+// left, is written at once into that item's Answer line through POST /api/survey/answer, so the file stays the record
+// (the Reader shows the same lines). Finish answers the ledger question named in q through the viewer's own answer path
+// (BV.ledgerAct, PUT /api/tasks) with how many items were answered, then goes back to Today. The saves run one after
+// another, and each sends what the card shows when it goes, so a press and a note leaving its box never cross.
+const esc = BV.esc;
+const $ = s => document.querySelector(s);
+const ARGS = new URLSearchParams(location.search);
+const PATH = ARGS.get("path") || "";
+const Q = (() => { const q = ARGS.get("q") || "", k = q.lastIndexOf(":"); return k > 0 && k < q.length - 1 ? { project: q.slice(0, k), id: q.slice(k + 1) } : null; })();
+const BASE = PATH.split("/").slice(0, -1).join("/");
+let S = null;                     // the survey as the server last answered it; each item's choice and note are what the file holds
+let chain = Promise.resolve();    // the saves, one after another
+
+const answered = it => !!(it.choice || it.note);
+const progressText = () => `${S.items.filter(answered).length} of ${S.items.length} answered`;
+const paintProgress = () => { for (const el of document.querySelectorAll(".sv-progress")) el.textContent = progressText(); };
+const itemOf = n => S.items.find(x => x.n === n);
+const cardOf = n => document.getElementById("item-" + n);
+
+function card(it) {
+  const locked = !S.canWrite || it.line == null;
+  const opts = (it.options || []).map(o => `<button type="button" class="btn sv-opt${o === it.choice ? " on" : ""}" data-opt="${esc(o)}" aria-pressed="${o === it.choice}"${locked ? " disabled" : ""}>${esc(o)}</button>`).join("");
+  return `<li class="card sv-item${answered(it) ? " answered" : ""}" id="item-${it.n}" data-n="${it.n}">
+    <h3><span class="sv-n">${it.n}.</span> ${esc(it.title)}</h3>
+    ${it.statement ? `<div class="sv-st">${BV.md(it.statement, { base: BASE })}</div>` : ""}
+    ${opts ? `<div class="sv-opts" role="group" aria-label="your answer to item ${it.n}">${opts}</div>` : ""}
+    <input type="text" class="sv-note" value="${esc(it.note)}" maxlength="2000" autocomplete="off"
+      placeholder="${opts ? "a line, if you want" : "your answer, in your own words"}" aria-label="${opts ? "a line on" : "your answer to"} item ${it.n}"${locked ? " disabled" : ""}>
+    <p class="sv-say meta" aria-live="polite">${it.line == null ? "This item has no Answer line in the file, so it cannot be answered here; add one in the Reader." : ""}</p>
+  </li>`;
+}
+
+function paint() {
+  let section = "";
+  const rows = S.items.map(it => {
+    const head = it.section && it.section !== section ? `<li class="sv-section">${esc(it.section)}</li>` : "";
+    section = it.section || section;
+    return head + card(it);
+  }).join("");
+  $("#main").innerHTML = `<h2 class="sv-title">${esc(S.title)}</h2>
+    ${S.intro ? `<div class="sv-intro">${BV.md(S.intro, { base: BASE })}</div>` : ""}
+    ${S.default ? `<p class="sv-default meta">${BV.inline(S.default, BASE)}</p>` : ""}
+    ${S.canWrite ? "" : `<p class="note">This file is read here but not written: ${esc(S.writeReason || "the viewer does not write it")}. Answer it in the Reader's place for it, or move it.</p>`}
+    ${S.items.length ? `<p class="sv-progress" aria-live="polite">${progressText()}</p><ol class="sv-items">${rows}</ol>`
+      : `<p class="note">Nothing in this file is written as a survey item: a heading <b>### 1. Title</b>, its statement, an <b>Options:</b> line and an <b>Answer:</b> line.</p>`}
+    <div class="sv-foot">
+      <button type="button" class="btn primary" id="finish" title="${Q ? "answer the question that opened this survey, with how many items are answered, and go back to Today" : "go back to Today"}">Finish</button>
+      ${S.items.length ? `<span class="sv-progress">${progressText()}</span>` : ""}
+      <p class="sv-what meta">${Q ? "Every press is saved as you make it, and a line when you leave its box. Finish answers the question that brought you here and goes back to Today."
+        : "Every press is saved as you make it. No question is named in this page's address, so Finish only goes back to Today."}
+        <a href="${esc(S.reader)}">the file in the Reader</a></p>
+      <p class="meta" id="say" aria-live="polite"></p>
+    </div>`;
+  if (BV.glossary && BV.glossary.scan) BV.glossary.scan($("#main"));
+}
+
+// one card drawn as the file holds it: its press, its mark and the progress
+function mark(n) {
+  const it = itemOf(n), li = cardOf(n); if (!it || !li) return;
+  for (const b of li.querySelectorAll(".sv-opt")) { const on = b.dataset.opt === it.choice; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); }
+  li.classList.toggle("answered", answered(it));
+  paintProgress();
+}
+
+// one save: the card's choice and note as they are when the save goes, into that item's Answer line
+function save(n) {
+  const li = cardOf(n), say = li && li.querySelector(".sv-say");
+  if (say) say.textContent = "saving…";
+  const job = chain.then(async () => {
+    const on = li.querySelector(".sv-opt.on"), box = li.querySelector(".sv-note");
+    const body = { path: PATH, n, choice: on ? on.dataset.opt : "", note: box ? box.value : "" };
+    let r, j;
+    try {
+      r = await fetch("/api/survey/answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      j = await r.json().catch(() => ({}));
+    } catch (e) { r = { ok: false, status: 0 }; j = { error: e.message }; }
+    const it = itemOf(n);
+    if (r.ok) {
+      it.choice = j.choice || ""; it.note = j.note || "";
+      if (box && document.activeElement !== box) box.value = it.note;
+      if (say) say.textContent = j.proposed ? BV.proposedText(j) : "saved";
+    } else if (say) say.textContent = "not saved: " + (j.error || ("the server answered " + r.status));
+    mark(n);                      // a refused press goes back to what the file holds
+    return r.ok;
+  });
+  chain = job.catch(() => false);
+  return job;
+}
+
+async function finish(btn) {
+  const say = t => { $("#say").textContent = t; };
+  btn.disabled = true;
+  say("saving the last answers…");
+  await chain;
+  let d = S;
+  try { const r = await fetch("/api/survey?path=" + encodeURIComponent(PATH)); if (r.ok) d = await r.json(); } catch (e) {}
+  if (!Q) { location.href = "/"; return; }
+  const n = (d.items || []).filter(x => x.answered !== undefined ? x.answered : answered(x)).length, m = (d.items || []).length;
+  say("answering the question…");
+  const res = await BV.ledgerAct(Q.project, { action: "answer", id: Q.id, text: `Survey done: ${n} of ${m} answered; the answers are in the linked file`, by: BV.owner });
+  if (!res.ok) { say(res.message); btn.disabled = false; return; }
+  location.href = "/";
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest(".sv-opt");
+  if (b) {
+    e.preventDefault();
+    if (b.disabled || b.classList.contains("on")) return;
+    const li = b.closest(".sv-item");
+    for (const x of li.querySelectorAll(".sv-opt")) { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", String(on)); }
+    save(+li.dataset.n);
+    return;
+  }
+  const f = e.target.closest("#finish"); if (f) { e.preventDefault(); if (!f.disabled) finish(f); return; }
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); BV.drawer.open(w.dataset.wikilink.split("#")[0].trim(), w.dataset.wikilink.split("#")[1]); return; }
+  const o = e.target.closest(".filelink[data-open]"); if (o) { e.preventDefault(); BV.drawer.open(o.dataset.open, o.dataset.frag); return; }
+  const im = e.target.closest("[data-img]"); if (im) { e.preventDefault(); BV.lightbox(im.dataset.img); }
+});
+// a note is saved when its box is left (change fires then, and only when the words moved); Enter leaves the box
+document.addEventListener("change", e => { const box = e.target.closest("input.sv-note"); if (box) save(+box.closest(".sv-item").dataset.n); });
+document.addEventListener("keydown", e => {
+  const box = e.target.closest && e.target.closest("input.sv-note");
+  if (box && e.key === "Enter") { e.preventDefault(); box.blur(); }
+});
+// a line still being typed when the page is left goes with it
+window.addEventListener("pagehide", () => {
+  const box = document.activeElement && document.activeElement.closest && document.activeElement.closest("input.sv-note");
+  if (!box || !navigator.sendBeacon) return;
+  const li = box.closest(".sv-item"), it = itemOf(+li.dataset.n), on = li.querySelector(".sv-opt.on");
+  if (!it || box.value === it.note) return;
+  navigator.sendBeacon("/api/survey/answer", new Blob([JSON.stringify({ path: PATH, n: it.n, choice: on ? on.dataset.opt : "", note: box.value })], { type: "application/json" }));
+});
+
+async function load() {
+  if (!PATH) { $("#main").innerHTML = `<p class="note">No survey is named: this page opens from a survey question's <b>Take the survey</b> press, with the survey file in its address.</p>`; return; }
+  let r, j;
+  try { r = await fetch("/api/survey?path=" + encodeURIComponent(PATH)); j = await r.json(); }
+  catch (e) { $("#main").innerHTML = `<p class="note">Could not read the survey: ${esc(e.message)}</p>`; return; }
+  if (!r.ok) { $("#main").innerHTML = `<p class="note">Could not open the survey: ${esc(j.error || ("the server answered " + r.status))}</p>`; return; }
+  S = j;
+  document.title = S.title || "Survey";
+  paint();
+}
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+/* /people, round 1b (2026-10-02): layout only; every color and font comes from viewer-tokens.css.
+   Direction: deliverables/viewer-direction-people-page-2026-10-02.md, mockup skills/brain-viewer/mockups/people-direction-2026-10-02.html */
+main { max-width: 1160px; }
+section.blk { margin: 0 0 30px; }
+h3.blk { font-family: var(--font-display); font-size: 21px; margin: 0 0 8px; font-weight: 400; }
+h3.blk .meta { font-family: var(--font-ui); font-size: 13px; color: var(--muted); margin-left: 8px; }
+a.n { font-family: var(--font-display); color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--rule-soft); }
+a.n:hover { color: var(--accent); border-color: var(--accent); }
+.nocard { color: var(--ink-soft); }
+.nocard .meta { font-size: 12px; }
+
+/* this week's calls */
+ul.week { list-style: none; margin: 0; padding: 0; }
+ul.week li { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; gap: 14px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--rule-soft); font-size: 15px; }
+ul.week li:first-child { border-top: 0; }
+ul.week li.held { opacity: .5; }
+ul.week li.next, ul.week li.live { font-size: 16.5px; }
+ul.week li.next .when b, ul.week li.live .when b { color: var(--accent); }
+ul.week .when { font-family: var(--font-display); white-space: nowrap; }
+ul.week .when small { display: block; color: var(--muted); font-size: 12px; font-family: var(--font-ui); }
+ul.week .title { font-weight: 700; color: var(--ink); text-decoration: none; margin-right: 10px; }
+ul.week .title:hover { color: var(--accent); }
+ul.week .who a.n, ul.week .who .nocard { margin-right: 10px; }
+ul.week .join { font-size: 13px; margin-left: 4px; }
+ul.week .prep { white-space: nowrap; text-align: right; }
+ul.week .prep a { font-weight: 700; }
+ul.week .prep .badge { margin-left: 6px; }
+ul.week .prep .more { display: block; margin-top: 3px; }
+
+/* the weekly people: one small card per person, one line */
+.wk { display: grid; grid-template-columns: 170px 58px minmax(0, 1fr) minmax(0, 290px) 140px; gap: 14px; align-items: baseline; padding: 11px 14px; margin: 0 0 8px; background: var(--surface); border-left: 3px solid var(--accent); border-radius: var(--radius); }
+.wk .nm a.n { font-size: 17px; }
+.dots { white-space: nowrap; letter-spacing: 3px; font-size: 13px; color: var(--accent); }
+.dots i { font-style: normal; color: var(--rule-soft); }
+.stands1 { color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.stands1 .d { color: var(--muted); font-size: 12px; margin-right: 6px; }
+.stands1.none { color: var(--muted); font-style: italic; }
+.open1 { color: var(--ink-soft); min-width: 0; display: flex; gap: 6px; align-items: baseline; }
+.open1 .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.open1 a.more { color: var(--open); font-weight: 700; white-space: nowrap; text-decoration: none; }
+.open1.none { color: var(--muted); }
+.nx { white-space: nowrap; }
+
+/* the folds by relationship */
+details.rel { border-top: 1px solid var(--rule-soft); padding: 8px 0; }
+details.rel > summary { cursor: pointer; list-style: none; display: flex; gap: 12px; align-items: baseline; font-family: var(--font-display); font-size: 16.5px; }
+details.rel > summary::-webkit-details-marker { display: none; }
+details.rel > summary::before { content: "\25B8"; color: var(--muted); font-size: 11px; }
+details.rel[open] > summary::before { content: "\25BE"; }
+details.rel > summary .why { font-family: var(--font-ui); font-size: 13px; color: var(--muted); }
+details.rel > summary .wait { font-family: var(--font-ui); font-size: 12.5px; color: var(--open); margin-left: auto; white-space: nowrap; }
+.row { display: grid; grid-template-columns: 200px minmax(0, 1fr) 92px; gap: 14px; align-items: baseline; padding: 6px 0 6px 22px; border-top: 1px dotted var(--rule-soft); }
+.row:first-of-type { border-top: 0; }
+.row.on { background: var(--selected); }
+.row > a.n, .wk .nm a.n { justify-self: start; }
+.row .last { color: var(--muted); font-size: 12.5px; white-space: nowrap; text-align: right; }
+.row .ow { color: var(--open); font-weight: 700; font-size: 12.5px; margin-left: 6px; }
+.row .mem a.n, .row .mem .nocard { margin-right: 8px; }
+
+/* the drawer, widenable (T-0167); !important because a drag on its edge writes an inline width */
+aside.drawer.wide { width: min(1100px, 92%) !important; }
+aside.drawer .dh .spacer { flex: 1; }
+
+@media (max-width: 900px) {
+  main { padding: 18px 16px 60px; }
+  ul.week li { grid-template-columns: 1fr; gap: 2px; }
+  ul.week .prep { text-align: left; }
+  .wk, .row { grid-template-columns: 1fr; gap: 3px; }
+  .stands1, .open1 .t { white-space: normal; }
+  .row { padding-left: 8px; }
+}

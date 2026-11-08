@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sharing</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { min-height: 100vh; }
+  main { padding: 18px 34px 80px; max-width: 980px; }
+  .sh-title { margin: 4px 0 6px; font-size: 28px; line-height: 1.2; color: var(--ink); overflow-wrap: anywhere; }
+  .sh-state { margin: 0 0 4px; font-size: 15px; color: var(--ink-soft); max-width: 78ch; overflow-wrap: anywhere; }
+  .sh-counts { margin: 0 0 16px; font-family: var(--font-display); font-size: 17px; color: var(--ink); }
+  details.sh-band { margin: 0 0 12px; padding: 12px 18px; }
+  details.sh-band > summary { cursor: pointer; font-family: var(--font-display); font-size: 18px; color: var(--ink); list-style-position: inside; }
+  details.sh-band > summary .meta { font-family: var(--font-body, inherit); font-size: 13.5px; margin-left: 6px; }
+  .sh-band-body { margin: 10px 0 2px; }
+  .sh-band-body > p.meta { margin: 0 0 10px; max-width: 78ch; }
+  ul.sh-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  li.sh-row { padding: 6px 0; border-top: 1px solid var(--rule-soft); }
+  li.sh-row:first-child { border-top: 0; }
+  .sh-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+  .sh-line label { display: inline-flex; align-items: baseline; gap: 8px; cursor: pointer; font-size: 15px; color: var(--ink); overflow-wrap: anywhere; min-width: 0; }
+  .sh-line label.off { color: var(--muted); }
+  .sh-line input[type=checkbox] { flex: none; width: 17px; height: 17px; margin: 0; position: relative; top: 2px; accent-color: var(--accent); }
+  .sh-line input[type=checkbox]:disabled + span { opacity: .6; }
+  .sh-path { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+  .sh-tag { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  textarea.sh-why { display: block; box-sizing: border-box; width: calc(100% - 25px); max-width: 84ch; margin: 6px 0 0 25px; padding: 5px 9px; border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--surface); font: inherit; font-size: 13.5px; line-height: 1.4; resize: vertical; }
+  textarea.sh-why:focus { outline: none; border-color: var(--accent); }
+  details.sh-sub { margin: 4px 0 0 25px; }
+  details.sh-sub > summary { cursor: pointer; font-size: 13px; color: var(--ink-soft); }
+  details.sh-sub ul.sh-rows { margin: 6px 0 4px; }
+  details.sh-sub li.sh-row { padding: 3px 0; border-top: 0; }
+  li.sh-row.lvl3 { padding-left: 22px; }
+  .sh-say { min-height: 0; margin: 2px 0 0 25px; font-size: 12.5px; }
+  .sh-say:empty { display: none; }
+  ul.sh-plain { margin: 0; padding-left: 18px; }
+  ul.sh-plain li { margin: 2px 0; overflow-wrap: anywhere; }
+  @media (max-width: 700px) {
+    main { padding: 14px 16px 60px; }
+    .sh-title { font-size: 24px; }
+    details.sh-band { padding: 10px 12px; }
+    .sh-line label { font-size: 15px; }
+    textarea.sh-why { width: 100%; }
+    textarea.sh-why, details.sh-sub, .sh-say { margin-left: 0; }
+    li.sh-row.lvl3 { padding-left: 14px; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Sharing</h1>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="share"></nav>
+</header>
+<main id="main" class="no-gloss"><p class="meta">Reading what this copy is sent…</p></main>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /share?member=<name> (0.87.0): the sharing checklist, one person's copy of the brain as ticks. GET /api/share asks the
+// team-copy export what it would send (the tier rules, the people tier, the held-back list) and marks what was unticked.
+// A tick on a folder, a file, a dashboard piece or a whole card goes through POST /api/share; a tick on a card's section
+// through POST /api/share/section, which marks or unmarks [private] on that heading in the card. Every change goes out
+// with the next send of the copy. The bands open folded with their counts (rules 4b); what was open stays open.
+const esc = BV.esc;
+const $ = s => document.querySelector(s);
+const MEMBER = new URLSearchParams(location.search).get("member") || "";
+let S = null;                     // the copy as the server last answered it, kept in step with each tick
+let chain = Promise.resolve();    // the writes, one after another
+
+const slug = s => String(s || "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
+const filesGoing = () => S.folders.reduce((n, g) => n + (g.held ? 0 : g.files.filter(f => !f.held).length), 0);
+const when = iso => { if (!iso) return ""; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); };
+
+function countsText() {
+  const go = S.cards.filter(c => c.goes).length, held = S.cards.length - go;
+  return `${filesGoing()} files and ${go} people cards go; ${held} card${held === 1 ? " is" : "s are"} held back.`;
+}
+
+function whyBox(path, why, kind) {
+  return `<textarea class="sh-why" rows="2" data-why="${esc(path)}" data-kind="${kind}" maxlength="300"
+    placeholder="why it stays out, in a line (optional)" aria-label="why ${esc(path)} stays out">${esc(why || "")}</textarea>`;
+}
+
+function fileRow(g, f) {
+  const off = g.held || !!f.held, byFolder = g.held || (f.held && f.held !== f.path);
+  return `<li class="sh-row" data-path="${esc(f.path)}"><div class="sh-line">
+      <label class="${off ? "off" : ""}"><input type="checkbox" data-tick="${esc(f.path)}" data-kind="file"${off ? "" : " checked"}${byFolder ? " disabled" : ""}>
+      <span>${esc(f.path.split("/").pop())}</span></label><span class="sh-path">${esc(f.path)}</span>
+      ${byFolder ? `<span class="sh-tag">held with its folder</span>` : ""}</div>
+    ${f.held && !byFolder ? whyBox(f.path, f.why, "file") : ""}<p class="sh-say meta" aria-live="polite"></p></li>`;
+}
+
+function folderRow(g) {
+  const going = g.held ? 0 : g.files.filter(f => !f.held).length;
+  const tick = g.path ? `<input type="checkbox" data-tick="${esc(g.path)}" data-kind="folder"${g.held ? "" : " checked"}>` : "";
+  return `<li class="sh-row" data-path="${esc(g.path || g.id)}"><div class="sh-line">
+      <label class="${g.held ? "off" : ""}">${tick}<span>${esc(g.name)}</span></label>
+      ${g.path ? `<span class="sh-path">${esc(g.path)}</span>` : ""}
+      <span class="meta">${g.held ? "held back" : `${going} of ${g.files.length} file${g.files.length === 1 ? "" : "s"} go`}</span></div>
+    ${g.held ? whyBox(g.path, g.why, "folder") : ""}<p class="sh-say meta" aria-live="polite"></p>
+    ${g.files.length > 1 || !g.path ? `<details class="sh-sub" id="f-${slug(g.id)}"><summary>the files</summary><ul class="sh-rows">${g.files.map(f => fileRow(g, f)).join("")}</ul></details>` : ""}</li>`;
+}
+
+function sectionRows(c) {
+  if (!c.sections.length) return `<p class="meta">No sections on this card.</p>`;
+  return `<ul class="sh-rows">${c.sections.map(s => {
+    const on = !s.private && !s.inherited;
+    return `<li class="sh-row lvl${s.level}"><div class="sh-line">
+      <label class="${on ? "" : "off"}"><input type="checkbox" data-sec="${esc(c.path)}" data-line="${s.line}" data-text="${esc(s.text)}"${on && c.goes ? " checked" : ""}${s.inherited || !c.goes ? " disabled" : ""}>
+      <span>${esc(s.text || "(untitled)")}</span></label>${s.inherited ? `<span class="sh-tag">out with the section above</span>` : ""}</div>
+      <p class="sh-say meta" aria-live="polite"></p></li>`; }).join("")}</ul>`;
+}
+
+function cardRow(c) {
+  const kept = c.sections.filter(s => s.private).length;
+  const tick = c.never ? "" : `<input type="checkbox" data-tick="${esc(c.path)}" data-kind="card"${c.goes ? " checked" : ""}>`;
+  return `<li class="sh-row" data-path="${esc(c.path)}"><div class="sh-line">
+      <label class="${c.goes ? "" : "off"}">${tick}<span>${esc(c.name)}</span></label>
+      ${c.never ? `<span class="sh-tag">never crosses</span>` : !c.goes ? `<span class="meta">held back for ${esc(c.heldFor || "every copy")}</span>` : kept ? `<span class="meta">${kept} section${kept === 1 ? "" : "s"} kept out</span>` : ""}</div>
+    ${!c.goes && !c.never ? whyBox(c.path, c.why, "card") : ""}<p class="sh-say meta" aria-live="polite"></p>
+    ${c.never ? "" : `<details class="sh-sub" id="c-${slug(c.path)}"><summary>its sections${c.goes ? "" : " (out with the card)"}</summary>${sectionRows(c)}</details>`}</li>`;
+}
+
+function paint() {
+  const open = new Set([...document.querySelectorAll("details[open]")].map(d => d.id).filter(Boolean));
+  const going = S.folders.filter(g => !g.held);
+  const cardsGo = S.cards.filter(c => c.goes).length;
+  $("#main").innerHTML = `<h2 class="sh-title">${esc(S.display)}'s copy</h2>
+    <p class="sh-state">${S.lastSent ? `Last sent ${esc(when(S.lastSent))}.` : "Not sent yet."} A tick changed here goes out with the next send.</p>
+    <p class="sh-counts" aria-live="polite">${esc(countsText())}</p>
+    ${S.heldError ? `<p class="note">${esc(S.heldError)}.</p>` : ""}
+    ${S.peopleError ? `<p class="note">The held-back list of people cards cannot be read, so no card goes until it is fixed (${esc(S.peopleError)}).</p>` : ""}
+    <details class="card sh-band" id="b-folders"><summary>Folders and files that go <span class="meta">${going.length} of ${S.folders.length} folders, ${filesGoing()} files</span></summary>
+      <div class="sh-band-body"><p class="meta">What the sharing tiers send to this copy. Untick a folder or a file to hold it back from this copy only, with a line on why if you want one. Kept in <code>${esc(S.shareFile)}</code>.</p>
+      <ul class="sh-rows">${S.folders.map(folderRow).join("")}</ul></div></details>
+    <details class="card sh-band" id="b-cards"><summary>People cards <span class="meta">${cardsGo} go, ${S.cards.length - cardsGo} held back</span></summary>
+      <div class="sh-band-body"><p class="meta">Untick a card to hold it back from every copy; open its sections to keep one part out. A section kept out is marked [private] on its heading in the card, and every copy leaves it out. Whole cards are kept in <code>${esc(S.heldFile)}</code>.</p>
+      <ul class="sh-rows">${S.cards.map(cardRow).join("")}</ul></div></details>
+    <details class="card sh-band" id="b-private"><summary>Not shared <span class="meta">${S.private.length} folders and files marked private</span></summary>
+      <div class="sh-band-body"><p class="meta">The sharing tiers keep these out. A tier is changed in the brain's registry, not here, so a private folder is never one tick away from a copy that is sent every night.</p>
+      <ul class="sh-plain">${S.private.map(r => `<li>${esc(r.name)} <span class="sh-path">${esc(r.path)}</span></li>`).join("")}</ul></div></details>
+    <details class="card sh-band" id="b-never"><summary>Never crosses</summary>
+      <div class="sh-band-body"><p class="meta">The files at the brain's root (the key files, the instructions, the personal files), everything under skills/ except the tools a copy runs, and any card marked never crosses. No tick reaches these.</p></div></details>`;
+  for (const id of open) { const d = document.getElementById(id); if (d) d.open = true; }
+  fitWhy(document);
+  // no glossary underlines here (main is .no-gloss): the rows are paths and names, and "hold" and "from" are terms elsewhere
+}
+
+// a reason box as tall as its words, so a long reason is read whole at any width
+function fitWhy(root) { for (const t of root.querySelectorAll("textarea.sh-why")) { t.style.height = "auto"; if (t.scrollHeight) t.style.height = (t.scrollHeight + 2) + "px"; } }
+document.addEventListener("toggle", e => { if (e.target.tagName === "DETAILS" && e.target.open) fitWhy(e.target); }, true);
+document.addEventListener("input", e => { if (e.target.matches && e.target.matches("textarea.sh-why")) fitWhy(e.target.parentNode); });
+
+function sayAt(el, t) { const li = el.closest("li.sh-row"), p = li && li.querySelector(":scope > .sh-say"); if (p) p.textContent = t; }
+
+async function post(url, body) {
+  let r, j;
+  try {
+    r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    j = await r.json().catch(() => ({}));
+  } catch (e) { r = { ok: false, status: 0 }; j = { error: e.message }; }
+  return { ok: r.ok, j, status: r.status };
+}
+
+// one tick on a folder, file or card, written and then drawn as the server took it
+function tick(box) {
+  const path = box.dataset.tick, kind = box.dataset.kind, go = box.checked;
+  sayAt(box, "saving…");
+  chain = chain.then(async () => {
+    const res = await post("/api/share", { member: S.member, path, go, why: "" });
+    if (!res.ok) { box.checked = !go; sayAt(box, "not saved: " + (res.j.error || ("the server answered " + res.status))); return; }
+    if (kind === "card") {
+      const c = S.cards.find(x => x.path === path); if (c) { c.goes = go; c.why = res.j.why || ""; c.heldFor = go ? "" : "every copy"; }
+    } else if (kind === "folder") {
+      const g = S.folders.find(x => x.path === path); if (g) { g.held = !go; g.why = res.j.why || ""; for (const f of g.files) if (f.held === path) f.held = null; }
+    } else {
+      for (const g of S.folders) for (const f of g.files) if (f.path === path) { f.held = go ? null : path; f.why = res.j.why || ""; }
+    }
+    paint();
+    const row = document.querySelector(`li.sh-row[data-path="${CSS.escape(path)}"]`);
+    if (row) { const p = row.querySelector(":scope > .sh-say"); if (p) p.textContent = go ? "goes with the next send" : "held back from the next send"; }
+  }).catch(() => {});
+}
+
+// the line on why: written when its box is left
+function why(box) {
+  const path = box.dataset.why;
+  chain = chain.then(async () => {
+    const res = await post("/api/share", { member: S.member, path, go: false, why: box.value });
+    sayAt(box, res.ok ? "saved" : "not saved: " + (res.j.error || ("the server answered " + res.status)));
+    if (res.ok) {
+      for (const g of S.folders) { if (g.path === path) g.why = res.j.why; for (const f of g.files) if (f.path === path) f.why = res.j.why; }
+      for (const c of S.cards) if (c.path === path) c.why = res.j.why;
+    }
+  }).catch(() => {});
+}
+
+// one section of a card in or out, as [private] on its heading
+function section(box) {
+  const path = box.dataset.sec, keepOut = !box.checked;
+  sayAt(box, "saving…");
+  chain = chain.then(async () => {
+    const res = await post("/api/share/section", { path, line: +box.dataset.line, text: box.dataset.text, private: keepOut });
+    if (!res.ok) { box.checked = keepOut; sayAt(box, "not saved: " + (res.j.error || ("the server answered " + res.status))); return; }
+    const c = S.cards.find(x => x.path === path); if (c && res.j.sections) c.sections = res.j.sections;
+    paint();
+    const sub = document.getElementById("c-" + slug(path));
+    const mine = sub && [...sub.querySelectorAll("input[data-line]")].find(b => b.dataset.line === box.dataset.line);
+    if (mine) sayAt(mine, keepOut ? "kept out of every copy: marked [private] in the card" : "goes again with the card");
+  }).catch(() => {});
+}
+
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.matches && t.matches("input[data-tick]")) return tick(t);
+  if (t.matches && t.matches("input[data-sec]")) return section(t);
+  if (t.matches && t.matches("textarea.sh-why")) return why(t);
+});
+document.addEventListener("keydown", e => { if (e.target.matches && e.target.matches("textarea.sh-why") && e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.target.blur(); } });
+
+async function load() {
+  let r, j;
+  try { r = await fetch("/api/share" + (MEMBER ? "?member=" + encodeURIComponent(MEMBER) : "")); j = await r.json(); }
+  catch (e) { $("#main").innerHTML = `<p class="note">Could not read the copy: ${esc(e.message)}</p>`; return; }
+  if (!r.ok) { $("#main").innerHTML = `<p class="note">${esc(j.error || ("The server answered " + r.status))}</p>`; return; }
+  if (!j.available) { $("#main").innerHTML = `<p class="note">${esc(j.why || "There is no copy to share from this brain.")}</p>`; return; }
+  S = j;
+  document.title = `Sharing: ${S.display}'s copy`;
+  paint();
+}
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "component": "brain-tasks",
+  "version": "0.108.1",
+  "releasedAt": "2026-11-07",
+  "installRoot": "skills/brain-tasks",
+  "note": "Released with brain-viewer 0.108.1 by its release.py; the viewer requires it."
+}

@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sent to you</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { flex: 1; position: relative; min-height: 0; overflow: hidden; display: flex; }
+  main { flex: 1; overflow: auto; padding: 22px 34px 90px; }
+  .sheet { max-width: 920px; margin: 0 auto; }
+  .lead { color: var(--ink-soft); margin: 0 0 6px; max-width: 78ch; }
+  .pull { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+  .pull .btn { padding: 2px 12px; font-size: 12.5px; }
+  .xnote { margin: 0 0 12px; padding: 10px 14px; font-size: 13.5px; color: var(--ink-soft); }
+  section.card, details.card { padding: 10px 18px 12px; margin: 0 0 16px; }
+  details.card > summary { cursor: pointer; padding: 4px 0; font-family: var(--font-display); font-size: 17px; }
+  section.card > h2 { margin: 2px 0 6px; font-family: var(--font-display); font-size: 19px; font-weight: 400; }
+  /* select and archive: one bar over a list */
+  .selbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 4px 0 8px; border-bottom: 1px solid var(--rule-soft); font-size: 13px; color: var(--muted); }
+  .selbar label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; color: var(--ink-soft); }
+  .selbar .btn { padding: 2px 12px; font-size: 12.5px; }
+  .selbar .say { flex-basis: 100%; }
+  .selbar .say:empty { display: none; }
+  input[type=checkbox] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  /* one row a thing sent */
+  ol.sent { list-style: none; margin: 0; padding: 0; }
+  li.sx { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 12px 6px; border-top: 1px solid var(--rule-soft); border-radius: var(--radius); }
+  li.sx:first-child { border-top: 0; }
+  li.sx > .sxbox { padding-top: 5px; }
+  .sxt { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .sxtitle { font-family: var(--font-display); font-size: 18px; line-height: 1.25; background: none; border: 0; padding: 0; color: var(--ink); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+  .sxtitle:hover { color: var(--accent); text-decoration: underline; }
+  li.sx.unopened .sxtitle { color: var(--accent); }
+  .sxm { margin-top: 2px; font-size: 12.5px; }
+  .sxmsg { margin-top: 4px; font-size: 13.5px; color: var(--ink-soft); max-width: 72ch; }
+  .sxin { margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+  .sxacts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .sxacts .btn, .sxacts a.btn { white-space: nowrap; }
+  /* a press that is a link (open in a new tab, download) looks like every other press */
+  a.btn { display: inline-block; font-size: 13px; line-height: normal; padding: 5px 12px; border-radius: var(--radius); border: 1px solid var(--rule); background: var(--surface); color: var(--ink); text-decoration: none; cursor: pointer; }
+  a.btn:hover { background: var(--hover); color: var(--ink); }
+  a.btn.primary { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+  a.btn.primary:hover { background: var(--accent-deep); color: var(--surface); }
+  .sxsay { grid-column: 2 / -1; font-size: 12.5px; color: var(--ink-soft); }
+  .sxsay:empty { display: none; }
+  .sxplay { grid-column: 2 / -1; margin-top: 6px; }
+  .sxplay[hidden] { display: none; }
+  .sxplay video, .sxplay img { display: block; max-width: 100%; max-height: 62vh; border-radius: var(--radius); background: #000; }
+  .sxplay img { background: transparent; border: 1px solid var(--rule-soft); }
+  .sxplay audio { width: 100%; }
+  .sxplay .playfoot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+  ul.sxfiles { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow: auto; border: 1px solid var(--rule-soft); border-radius: var(--radius); }
+  ul.sxfiles li { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; padding: 5px 10px; border-top: 1px solid var(--rule-soft); font-size: 13px; }
+  ul.sxfiles li:first-child { border-top: 0; }
+  ul.sxfiles .fn { overflow-wrap: anywhere; min-width: 0; }
+  ul.sxfiles .btn { padding: 0 9px; font-size: 12px; flex: none; }
+  .none { margin: 10px 0 4px; color: var(--muted); font-size: 13.5px; }
+  .qrow { padding: 8px 0; border-top: 1px solid var(--rule-soft); font-size: 13.5px; }
+  .qrow:first-child { border-top: 0; }
+  details.notefold { margin-top: 6px; }
+  details.notefold > summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+  aside.drawer .dh strong { font-family: var(--font-display); font-weight: 400; font-size: 16px; overflow-wrap: anywhere; }
+  @media (max-width: 700px) {
+    main { padding: 14px 16px 80px; }
+    li.sx { grid-template-columns: 22px minmax(0, 1fr); padding: 12px 2px; }
+    .sxacts { grid-column: 2; justify-content: flex-start; }
+    .sxsay, .sxplay { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Sent to you</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="sent"></nav>
+</header>
+<div class="stage">
+  <main id="main">
+    <div class="sheet">
+      <p class="lead" id="lead">Reading what was sent to you…</p>
+      <p class="pull" id="pullLine" hidden><span id="pullSay"></span><button type="button" class="btn" id="pullNow" title="bring in anything new that was sent to you">pull</button></p>
+      <div id="notes"></div>
+      <section class="card" id="inbox" hidden>
+        <div class="selbar no-gloss" id="selMain"></div>
+        <ol class="sent" id="list"></ol>
+      </section>
+      <details class="card" id="archfold" hidden>
+        <summary>Archived <span class="meta" id="archSum"></span></summary>
+        <div class="selbar no-gloss" id="selArch"></div>
+        <ol class="sent" id="archList"></ol>
+      </details>
+      <section class="card" id="requests" hidden>
+        <h2 id="reqHead">Proposed by a team copy</h2>
+        <div id="reqBody"></div>
+      </section>
+    </div>
+  </main>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /sent (sent.html, 0.105.0, 2026-11-03): what was sent to this brain, on a page of its own and in the menu.
+// Until 0.105.0 it was a section of From Claude drawn only in a proposing team copy: in a copy that is the member's own
+// brain (viewer_mode "shared", 0.96.0) an exchange with nothing pulled yet was filtered out, so the section that held the
+// pull press never showed, and an item had no press, only a path. Now:
+//   - the list is drawn wherever an exchange is configured, with its pull press, and the page pulls on its own when it
+//     opens (POST /api/exchange/pull; the viewer also pulls at start, and a shared copy with every sync);
+//   - not opened first, then the newest; one press opens an item where it is (fileUrl: GET /api/exchange/file/...):
+//     a video or a picture in the page under its row, a markdown or text file in the drawer, a web page or a PDF in a
+//     new tab, anything else downloads; a folder item lists its files, each with the same press;
+//   - bring into my folder is the second press in a team copy (POST /api/exchange/bring-in), a copy in her own folder;
+//   - a box per row, a box for all, archive: the rows leave the list for the Archived fold at the foot, where put back
+//     returns them (BV.archiveSet, viewer/archived.json). Nothing is moved, copied or deleted by archiving;
+//   - an opened item is marked in this viewer's own layer (POST /api/exchange/opened), which is what the menu counts.
+// Below, the requests a proposing team copy sent (GET /api/requests), as From Claude drew them before.
+const { esc } = BV;
+const $ = s => document.querySelector(s);
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const mb = n => n == null ? "" : (n >= 1048576 ? (n / 1048576).toFixed(n >= 10485760 ? 0 : 1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB");
+const when = at => { const d = new Date(at || ""); return isNaN(d) ? "" : d.toLocaleString(undefined, { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }); };
+const ago = at => {
+  const t = Date.parse(at || ""); if (isNaN(t)) return "";
+  const m = Math.round((Date.now() - t) / 60000);
+  return m < 1 ? "just now" : m < 60 ? `${plural(m, "minute")} ago` : m < 1440 ? `${plural(Math.round(m / 60), "hour")} ago` : new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+};
+const S = { x: null, r: null, pulling: false, said: "", sel: { main: new Set(), arch: new Set() }, say: {}, play: {}, bring: {}, selSay: { main: "", arch: "" } };
+
+// ---- what a file is, and the one press that opens it ----
+const EXT = f => (/\.([a-z0-9]+)$/i.exec(f || "") || ["", ""])[1].toLowerCase();
+const KIND = f => {
+  const e = EXT(f);
+  if (["mp4", "m4v", "mov", "webm"].includes(e)) return "video";
+  if (["mp3", "m4a", "wav"].includes(e)) return "audio";
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(e)) return "picture";
+  if (["md", "txt"].includes(e)) return "doc";
+  if (["html", "htm"].includes(e)) return "page";
+  if (e === "pdf") return "pdf";
+  return "file";
+};
+const PRESS = { video: "play", audio: "play", picture: "look", doc: "read", page: "open", pdf: "open", file: "download" };
+const KIND_WORD = { video: "a video", audio: "a recording", picture: "a picture", doc: "a document", page: "a web page", pdf: "a PDF", file: "a file" };
+const fileUrl = (it, rel) => `/api/exchange/file/${encodeURIComponent(it.exchange)}/${encodeURIComponent(it.name)}/${String(rel).split("/").map(encodeURIComponent).join("/")}`;
+// the file an item's first press opens: its only file, else a site's index.html at its top or one folder down, else a
+// readme at its top, else none (the press lists its files)
+function lead(it) {
+  const fs = it.files || [];
+  if (fs.length === 1) return fs[0];
+  const depth = f => f.split("/").length;
+  return fs.filter(f => /(^|\/)index\.html?$/i.test(f) && depth(f) <= 2).sort((a, b) => depth(a) - depth(b))[0]
+    || fs.find(f => /^readme\.md$/i.test(f)) || fs.find(f => !f.includes("/") && /\.md$/i.test(f)) || null;
+}
+const items = () => {
+  const X = S.x;
+  return X && X.available ? (X.exchanges || []).flatMap(x => x.items || []) : [];
+};
+const byKey = k => items().find(i => i.key === k);
+// not opened first, then the newest (an item's folder name begins with its time)
+const order = list => list.slice().sort((a, b) => (!!a.opened - !!b.opened) || String(b.name).localeCompare(String(a.name)));
+
+// ---- the lead and the pull line ----
+function paintLead() {
+  const X = S.x, all = items(), shown = all.filter(i => !i.archived), un = shown.filter(i => !i.opened).length;
+  const xs = X && X.available ? X.exchanges || [] : [];
+  const reqOpen = ((S.r && S.r.requests) || []).filter(r => !r.closed).length;
+  const who = xs.length === 1 ? xs[0].themName : "";
+  $("#crumb").textContent = who ? `from ${who}` : "";
+  let t;
+  if (!X) t = "Could not read what was sent to you.";
+  else if (!X.available) t = "This brain has no exchange tool, so nothing can be sent to it yet.";
+  else if (!xs.length) t = reqOpen ? "" : "No exchange is set up in this brain, so nothing has been sent to it.";
+  else if (!shown.length) t = all.length ? `Nothing in the list: ${plural(all.length, "thing")} sent to you ${all.length === 1 ? "is" : "are"} archived.` : "Nothing has been sent to you yet.";
+  else t = un ? `${un} of ${plural(shown.length, "thing")} sent to you ${un === 1 ? "is" : "are"} not opened yet.` : `${plural(shown.length, "thing")} sent to you, all opened.`;
+  if (reqOpen) t = (t ? t + " " : "") + `${plural(reqOpen, "change")} proposed by a team copy ${reqOpen === 1 ? "waits" : "wait"} below.`;
+  $("#lead").textContent = t;
+  const line = $("#pullLine");
+  line.hidden = !(X && X.available && xs.length);
+  if (line.hidden) return;
+  const L = X.lastPull;
+  $("#pullSay").textContent = S.pulling ? "Checking for anything new…"
+    : S.said ? S.said
+    : L ? (L.ok ? `Checked ${ago(L.at)}${L.new ? `: ${plural(L.new, "new thing")} came in` : ": nothing new"}.` : `The last check did not get through: ${L.error || "no answer"}.`)
+    : "Not checked since the viewer started.";
+  $("#pullNow").disabled = S.pulling;
+  $("#pullNow").textContent = S.pulling ? "pulling…" : "pull";
+}
+
+// ---- one row ----
+function row(it, list) {
+  const fs = it.files || [], f1 = lead(it), k = f1 ? KIND(f1) : null;
+  const kindWord = fs.length > 1 ? `${fs.length} files` : k ? KIND_WORD[k] : "";
+  const meta = [`from ${esc(it.fromName || it.from || "someone")}`, esc(when(it.at)), kindWord, it.bytes ? mb(it.bytes) : ""].filter(Boolean).join(" · ");
+  const sel = S.sel[list].has(it.key) ? " checked" : "";
+  const open = S.play[it.key];
+  const main = it.error ? "" : f1
+    ? (k === "page" || k === "pdf" ? `<a class="btn primary" href="${esc(fileUrl(it, f1))}" target="_blank" rel="noopener" data-mark="${esc(it.key)}" title="${esc(f1.split("/").pop())} in a new tab">open</a>`
+      : k === "file" ? `<a class="btn primary" href="${esc(fileUrl(it, f1))}?download=1" data-mark="${esc(it.key)}" title="save ${esc(f1.split("/").pop())} to this computer">download</a>`
+      : `<button type="button" class="btn primary" data-go="${esc(it.key)}">${open && open.file === f1 && (k === "video" || k === "audio" || k === "picture") ? "hide" : PRESS[k]}</button>`)
+    : "";
+  const filesPress = fs.length > 1 && !it.error ? `<button type="button" class="btn${f1 ? "" : " primary"}" data-files="${esc(it.key)}">${open && open.files ? "hide the files" : `its ${fs.length} files`}</button>` : "";
+  const dl = f1 && fs.length === 1 && !["file"].includes(k) && !it.error ? `<a class="btn" href="${esc(fileUrl(it, f1))}?download=1" data-mark="${esc(it.key)}" title="save it to this computer">download</a>` : "";
+  const X = S.x, st = S.bring[it.key] || {};
+  const bring = X && X.bringIn && !it.error
+    ? (st.busy ? `<button type="button" class="btn" disabled>bringing it in…</button>`
+      : st.clash ? `<button type="button" class="btn" data-bring="${esc(it.key)}" data-replace="1">replace them</button>`
+      : `<button type="button" class="btn" data-bring="${esc(it.key)}" title="a copy of it in your own folder, to keep">${it.broughtIn ? "bring it in again" : "bring into my folder"}</button>`) : "";
+  const b = it.broughtIn;
+  const brought = b ? `<div class="sxin">A copy is in your folder since ${esc(when(b.at))}: <span class="filelink" data-open="${esc(b.to)}" title="${esc(b.to)}">open the folder</span>${b.replaced ? ` · ${plural(b.replaced, "file")} of yours replaced` : ""}</div>` : "";
+  const title = it.error ? `<span class="sxtitle" style="cursor:default">${esc(it.title || it.name)}</span>`
+    : `<button type="button" class="sxtitle" ${f1 ? `data-go="${esc(it.key)}"` : `data-files="${esc(it.key)}"`} title="${f1 ? esc(PRESS[k] + " it") : "its files"}">${esc(it.title || it.name)}</button>`;
+  return `<li class="sx no-gloss${!it.opened && !it.archived ? " unopened" : ""}" data-key="${esc(it.key)}">
+    <label class="sxbox"><input type="checkbox" data-sel="${esc(it.key)}" data-list="${list}"${sel} aria-label="select ${esc(it.title || it.name)}"></label>
+    <div class="sxbody">
+      <div class="sxt">${title}${!it.opened && !it.archived ? `<span class="badge open">not opened</span>` : ""}</div>
+      <div class="sxm meta">${meta}</div>
+      ${it.message ? `<div class="sxmsg">${esc(it.message)}</div>` : ""}
+      ${it.error ? `<div class="sxmsg">This one cannot be read: ${esc(it.error)}</div>` : ""}
+      ${brought}
+    </div>
+    <div class="sxacts no-gloss">${main}${filesPress}${bring}${dl}</div>
+    <div class="sxsay" aria-live="polite">${esc(st.said || S.say[it.key] || "")}</div>
+    <div class="sxplay"${open ? "" : " hidden"}>${open ? playHTML(it, open) : ""}</div>
+  </li>`;
+}
+// what opens under a row: the player, the picture, or the item's files
+function playHTML(it, open) {
+  if (open.files) {
+    const fs = it.files || [];
+    return `<ul class="sxfiles">${fs.map(f => { const k = KIND(f);
+      const press = k === "page" || k === "pdf" ? `<a class="btn" href="${esc(fileUrl(it, f))}" target="_blank" rel="noopener" data-mark="${esc(it.key)}">open</a>`
+        : k === "file" ? `<a class="btn" href="${esc(fileUrl(it, f))}?download=1" data-mark="${esc(it.key)}">download</a>`
+        : `<button type="button" class="btn" data-go="${esc(it.key)}" data-file="${esc(f)}">${open.file === f && k !== "doc" ? "hide" : PRESS[k]}</button>`;
+      return `<li><span class="fn">${esc(f)}</span>${press}</li>`; }).join("")}</ul>`
+      + (open.file ? `<div class="sxplay2">${mediaHTML(it, open.file)}</div>` : "");
+  }
+  return mediaHTML(it, open.file);
+}
+function mediaHTML(it, f) {
+  const k = KIND(f), u = esc(fileUrl(it, f));
+  if (k === "video") return `<video controls playsinline preload="metadata" src="${u}"></video><div class="playfoot">${esc(f.split("/").pop())}</div>`;
+  if (k === "audio") return `<audio controls preload="metadata" src="${u}"></audio>`;
+  if (k === "picture") return `<img src="${u}" alt="${esc(f.split("/").pop())}" loading="lazy"><div class="playfoot">${esc(f.split("/").pop())}</div>`;
+  return "";
+}
+
+// ---- the select bar over a list ----
+function selBar(list, rows) {
+  const n = S.sel[list].size, all = rows.length && rows.every(i => S.sel[list].has(i.key));
+  const word = list === "main" ? "archive" : "put back";
+  const title = list === "main" ? "hide the selected from this list; they stay under Archived at the foot, where put back returns them"
+    : "return the selected to the list";
+  return `<label title="select every one in this list"><input type="checkbox" data-selall="${list}"${all ? " checked" : ""} aria-label="select all"> all</label>
+    <span>${n ? `${n} selected` : "none selected"}</span>
+    <button type="button" class="btn" data-archive="${list}"${n ? "" : " disabled"} title="${title}">${word}</button>
+    <span class="say" aria-live="polite">${esc(S.selSay[list] || "")}</span>`;
+}
+function paintSelects() {
+  const all = items();
+  const main = order(all.filter(i => !i.archived)), arch = all.filter(i => i.archived).sort((a, b) => String(b.name).localeCompare(String(a.name)));
+  $("#selMain").innerHTML = selBar("main", main);
+  $("#selArch").innerHTML = selBar("arch", arch);
+  for (const list of ["main", "arch"]) {
+    const rows = list === "main" ? main : arch, box = document.querySelector(`[data-selall="${list}"]`);
+    if (box) box.indeterminate = S.sel[list].size > 0 && !rows.every(i => S.sel[list].has(i.key));
+  }
+}
+
+// ---- the page ----
+function paint() {
+  const X = S.x, xs = X && X.available ? X.exchanges || [] : [], all = items();
+  // a key no longer listed leaves the selection
+  for (const list of ["main", "arch"]) for (const k of [...S.sel[list]]) { const it = byKey(k); if (!it || !!it.archived !== (list === "arch")) S.sel[list].delete(k); }
+  const main = order(all.filter(i => !i.archived)), arch = all.filter(i => i.archived).sort((a, b) => String(b.name).localeCompare(String(a.name)));
+  // an exchange that is not on this computer, or cannot be read, says so above the list
+  $("#notes").innerHTML = xs.filter(x => x.error).map(x => `<p class="card xnote">${x.error === "not cloned on this machine yet"
+    ? `What ${esc(x.themName || x.them)} sends you is not on this computer yet. Press pull to bring it in.`
+    : `What ${esc(x.themName || x.them)} sent cannot be read right now: ${esc(x.error)}`}</p>`).join("");
+  $("#inbox").hidden = !xs.length;
+  $("#list").innerHTML = main.map(it => row(it, "main")).join("") || `<li class="none">${all.length ? "Everything sent to you is archived." : "Nothing has been sent to you yet. What arrives shows here, the newest first."}</li>`;
+  $("#archfold").hidden = !arch.length;
+  $("#archSum").textContent = arch.length ? String(arch.length) : "";
+  $("#archList").innerHTML = arch.map(it => row(it, "arch")).join("");
+  paintSelects();
+  paintRequests();
+  paintLead();
+  BV.glossary.scan($("#main"));
+}
+// the requests a proposing team copy sent (owner) or made (the copy itself), as From Claude drew them until 0.105.0
+function paintRequests() {
+  const R = S.r, reqs = (R && R.requests) || [], open = reqs.filter(r => !r.closed), closed = reqs.filter(r => r.closed);
+  const sec = $("#requests");
+  sec.hidden = !(open.length || closed.length);
+  if (sec.hidden) return;
+  $("#reqHead").textContent = BV.mode().propose ? "Your requests" : "Proposed by a team copy";
+  const xWhen = at => at ? String(at).replace("T", " ").replace("Z", " UTC").slice(0, 16) : "";
+  const rItem = r => `<div class="qrow"><span class="badge">${esc(r.kind || "request")}</span> <b>${esc(r.member)}</b> <span class="meta">${esc(xWhen(r.at))}</span>
+      ${r.target ? ` · <span class="filelink" data-open="${esc(r.target)}">${esc(r.target.split("/").pop())}</span>` : ""}${r.note ? `<div>${esc(r.note)}</div>` : ""}
+      ${r.file ? `<div class="meta"><span class="filelink" data-open="${esc(r.file)}">the request</span>${r.closed ? ` · ${esc(r.closed.outcome)} ${esc(r.closed.on)}` : ""}</div>` : ""}</div>`;
+  $("#reqBody").innerHTML = (open.map(rItem).join("") || `<p class="meta">None open.</p>`)
+    + (closed.length ? `<details class="notefold"><summary>${plural(closed.length, "request")} already applied or rejected</summary>${closed.map(rItem).join("")}</details>` : "");
+}
+async function load() {
+  const [x, r] = await Promise.all([
+    fetch("/api/exchange").then(res => res.json()).catch(e => ({ error: e.message })),
+    fetch("/api/requests").then(res => res.ok ? res.json() : null).catch(() => null),
+  ]);
+  S.x = x && !x.error ? x : null;
+  S.r = r && !r.error ? r : null;
+  paint();
+}
+
+// ---- the presses ----
+async function markOpened(it) {
+  if (!it || it.opened) return;
+  it.opened = new Date().toISOString();      // drawn opened at once; the row keeps its place until the page is read again
+  try {
+    await fetch("/api/exchange/opened", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ exchange: it.exchange, item: it.name }) });
+  } catch (e) {}
+  BV.refreshBadges();
+}
+function repaintRow(it) {
+  const li = document.querySelector(`li.sx[data-key="${CSS.escape(it.key)}"]`); if (!li) return paint();
+  const tmp = document.createElement("ol"); tmp.innerHTML = row(it, it.archived ? "arch" : "main");
+  li.replaceWith(tmp.firstElementChild);
+  paintLead();
+}
+async function readDoc(it, f) {
+  const d = $("#drawer"), u = fileUrl(it, f), name = f.split("/").pop();
+  d.classList.remove("wide"); d.hidden = false;
+  const head = `<button class="btn dclose backto" id="closeDrawer" type="button" title="close the file and stay on this page">‹ back to sent to you</button>`
+    + `<div class="dh"><strong>${esc(name)}</strong><a class="btn" href="${esc(u)}" target="_blank" rel="noopener" title="the file in a browser tab of its own">open in a new tab</a>`
+    + `<a class="btn" href="${esc(u)}?download=1" title="save the file itself to this computer">download</a><span class="meta">from ${esc(it.fromName || it.from || "")}</span></div>`;
+  d.innerHTML = head + `<div class="empty">reading…</div>`;
+  try {
+    const r = await fetch(u), t = await r.text();
+    if (!r.ok) { let e = t; try { e = JSON.parse(t).error || t; } catch (x) {} throw new Error(e); }
+    d.innerHTML = head + (/\.md$/i.test(f) ? `<article class="md">${BV.md(t)}</article>` : `<pre>${esc(t)}</pre>`);
+  } catch (e) { d.innerHTML = head + `<div class="empty">Could not read it: ${esc(e.message)}</div>`; }
+  d.scrollTop = 0;
+}
+function go(it, f) {
+  f = f || lead(it);
+  if (!f) return;
+  const k = KIND(f);
+  markOpened(it);
+  if (k === "doc") { readDoc(it, f); repaintRow(it); return; }
+  if (k === "page" || k === "pdf") { window.open(fileUrl(it, f), "_blank", "noopener"); repaintRow(it); return; }
+  if (k === "file") { location.href = fileUrl(it, f) + "?download=1"; repaintRow(it); return; }
+  // a video, a recording or a picture opens under its row; the same press folds it again
+  const cur = S.play[it.key];
+  if (cur && cur.file === f && !cur.files) delete S.play[it.key];
+  else if (cur && cur.files) S.play[it.key] = { files: true, file: cur.file === f ? null : f };
+  else S.play[it.key] = { file: f };
+  repaintRow(it);
+  const v = document.querySelector(`li.sx[data-key="${CSS.escape(it.key)}"] .sxplay video, li.sx[data-key="${CSS.escape(it.key)}"] .sxplay audio`);
+  if (v) v.play().catch(() => {});        // a browser that will not start it without a press shows its controls instead
+}
+function toggleFiles(it) {
+  const cur = S.play[it.key];
+  if (cur && cur.files) delete S.play[it.key]; else S.play[it.key] = { files: true, file: null };
+  markOpened(it);
+  repaintRow(it);
+}
+async function bringIn(it, replace) {
+  S.bring[it.key] = { busy: true }; repaintRow(it);
+  let st = {};
+  try {
+    const r = await fetch("/api/exchange/bring-in", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(Object.assign({ exchange: it.exchange, item: it.name }, replace ? { replace: true } : {})) });
+    const j = await r.json();
+    if (r.ok) st = { said: `A copy is in your folder now: ${plural(j.copied, "file")} copied${j.same ? `, ${j.same} already there` : ""}${j.replaced ? `, ${j.replaced} replaced` : ""}.` };
+    else if (r.status === 409 && (j.clash || []).length) st = { clash: true, said: j.error };
+    else st = { said: "Not brought in: " + (j.error || ("the server answered " + r.status)) };
+  } catch (e) { st = { said: "Not brought in: " + e.message }; }
+  S.bring[it.key] = st;
+  await load();
+  BV.refreshBadges();
+}
+async function pull(quiet) {
+  S.pulling = true; S.said = ""; paintLead();
+  let j = null;
+  try {
+    const r = await fetch("/api/exchange/pull", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    j = await r.json();
+    const cl = (j.cloned || []).join("; ");
+    S.said = j.error ? `The pull did not get through: ${j.error}` : ((cl ? cl + ". " : "") + (j.new ? `${plural(j.new, "new thing")} came in.` : "Checked just now: nothing new."));
+  } catch (e) { S.said = `The pull did not get through: ${e.message}`; }
+  S.pulling = false;
+  // a player that is open keeps playing: the list is drawn again only when nothing is open, or when it was pressed
+  const playing = Object.keys(S.play).length > 0;
+  if (!quiet || !playing || (j && j.new)) {
+    if (playing && quiet) { S.said += " Press pull to see it in the list."; paintLead(); return; }
+    await load();
+  } else paintLead();
+  BV.refreshBadges();
+}
+async function archive(list) {
+  const keys = [...S.sel[list]]; if (!keys.length) return;
+  const on = list === "main";
+  try {
+    await BV.archiveSet("sent", keys, on);
+    for (const k of keys) { const it = byKey(k); if (it) it.archived = on ? new Date().toISOString() : null; delete S.play[k]; }
+    S.sel[list].clear();
+    S.selSay.arch = "";
+    S.selSay.main = on ? `Archived ${plural(keys.length, "thing")}: under Archived at the foot, where put back returns ${keys.length === 1 ? "it" : "them"}.`
+      : `Put back ${plural(keys.length, "thing")} into the list.`;
+  } catch (e) { S.selSay[list] = (on ? "Not archived: " : "Not put back: ") + e.message; }
+  paint();
+  BV.refreshBadges();
+}
+
+document.addEventListener("click", e => {
+  const t = e.target;
+  const g = t.closest("[data-go]"); if (g) { const it = byKey(g.dataset.go); if (it) go(it, g.dataset.file || null); return; }
+  const fl = t.closest("[data-files]"); if (fl) { const it = byKey(fl.dataset.files); if (it) toggleFiles(it); return; }
+  const mk = t.closest("a[data-mark]"); if (mk) { const it = byKey(mk.dataset.mark); if (it) setTimeout(() => { markOpened(it); repaintRow(it); }, 0); return; }
+  const br = t.closest("[data-bring]"); if (br) { const it = byKey(br.dataset.bring); if (it) bringIn(it, br.dataset.replace === "1"); return; }
+  if (t.closest("#pullNow")) { pull(false); return; }
+  const ar = t.closest("[data-archive]"); if (ar) { archive(ar.dataset.archive); return; }
+});
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.matches("[data-sel]")) { const s = S.sel[t.dataset.list]; if (t.checked) s.add(t.dataset.sel); else s.delete(t.dataset.sel); S.selSay[t.dataset.list] = ""; paintSelects(); return; }
+  if (t.matches("[data-selall]")) {
+    const list = t.dataset.selall, s = S.sel[list];
+    const rows = items().filter(i => !!i.archived === (list === "arch"));
+    if (t.checked) rows.forEach(i => s.add(i.key)); else s.clear();
+    document.querySelectorAll(`input[data-sel][data-list="${list}"]`).forEach(b => { b.checked = s.has(b.dataset.sel); });
+    S.selSay[list] = "";
+    paintSelects();
+  }
+});
+document.addEventListener("keydown", e => { if (!BV.typing(e) && e.key === "Escape") $("#drawer").hidden = true; });
+
+// ?open=<exchange>/<item> (a row of Today's Sent to you band): that item is scrolled to, flashed, and opened
+const wantOpen = new URLSearchParams(location.search).get("open") || "";
+load().then(() => {
+  if (wantOpen) {
+    const it = byKey(wantOpen), li = it && document.querySelector(`li.sx[data-key="${CSS.escape(it.key)}"]`);
+    if (it && !it.error) { if (lead(it)) go(it); else toggleFiles(it); }
+    const li2 = it && document.querySelector(`li.sx[data-key="${CSS.escape(it.key)}"]`);
+    if (li2 || li) BV.land(li2 || li);
+  } else if (location.hash === "#requests") { const s = $("#requests"); if (s && !s.hidden) s.scrollIntoView({ block: "start" }); }
+  // the page pulls on its own when it opens, so what was sent since the last check comes in without a press
+  if (S.x && S.x.available && (S.x.exchanges || []).length) pull(true);
+});
+</script>
+</body>
+</html>

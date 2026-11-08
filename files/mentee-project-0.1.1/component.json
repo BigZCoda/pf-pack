@@ -1,0 +1,11 @@
+{
+  "component": "mentee-project",
+  "version": "0.1.1",
+  "releasedAt": "2026-11-07",
+  "installRoot": "skills/mentee-project",
+  "requires": [
+    "brain-tasks",
+    "brain-log"
+  ],
+  "note": "Released into pf-pack 2026-11-07 with brain-tasks 0.108.1, whose readme tables carry the step and conversation tags and the four project roles; install or update with python skills/update/install-component.py mentee-project."
+}

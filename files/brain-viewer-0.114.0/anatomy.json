@@ -1,0 +1,1365 @@
+{
+ "_schema": "brain-anatomy/1",
+ "_about": "The Anatomy the viewer reads (viewer 0.110.0, 2026-11-10). types: each type of thing a brain holds, its facets and what each means, what it fits into, its contract. pages: each viewer page by its address, its pieces as a tree (sel finds the piece on the live page, idx picks one of several), each piece's parts, and the type a piece is an instance of. corners: the pieces every page carries. The '?' press on a page draws these on the page itself (anatomy.js). Written for every brain the kit makes; a brain's own additions are a later round. Changed by hand or by a session, never by the page.",
+ "types": {
+  "task": {
+   "name": "Task",
+   "means": "One thing to do, owned by one person: one line on a project's list with an open box.",
+   "fits": "A project's list, under a heading. It shows on Today, on every thread it gathers on, and in the work in progress it answers to.",
+   "contract": "One line: a box, the id, the day, the owner, the words, then each facet after a dot.",
+   "facets": [
+    {
+     "name": "id",
+     "means": "its number on its list: T for a task"
+    },
+    {
+     "name": "created",
+     "means": "the day it was filed"
+    },
+    {
+     "name": "owner",
+     "means": "who does it"
+    },
+    {
+     "name": "state",
+     "means": "open, done, blocked, on hold"
+    },
+    {
+     "name": "text",
+     "means": "the words of it, the ask first"
+    },
+    {
+     "name": "due",
+     "means": "the day it is owed by"
+    },
+    {
+     "name": "until",
+     "means": "the day a hold ends and it comes back"
+    },
+    {
+     "name": "note",
+     "means": "one line to keep in mind; a reply lands here"
+    },
+    {
+     "name": "people",
+     "means": "the people it is about, by their card"
+    },
+    {
+     "name": "links",
+     "means": "the files it lives in or points at"
+    },
+    {
+     "name": "steps",
+     "means": "what finishes it, each with its own tick"
+    },
+    {
+     "name": "tags",
+     "means": "labels the viewer acts on: checklist, survey, pick"
+    },
+    {
+     "name": "blocked",
+     "means": "the question or reason it waits on"
+    },
+    {
+     "name": "unblocked",
+     "means": "when what it waited on was answered"
+    },
+    {
+     "name": "done",
+     "means": "when it was closed, and what it made"
+    },
+    {
+     "name": "source",
+     "means": "who found it"
+    },
+    {
+     "name": "key",
+     "means": "the finder's own id, so a repeat lands on the same item"
+    },
+    {
+     "name": "repeats",
+     "means": "how many times the same finding came back"
+    },
+    {
+     "name": "call",
+     "means": "the person whose next call raises it"
+    },
+    {
+     "name": "milestone",
+     "means": "the heading it sits under on its list"
+    },
+    {
+     "name": "app",
+     "means": "the PF App task it is mirrored to"
+    }
+   ]
+  },
+  "question": {
+   "name": "Question",
+   "means": "A decision put to someone, with presses for its choices: one line on a project's list, its box a question mark.",
+   "fits": "A project's list. A task it holds up names it as what it is blocked by.",
+   "contract": "One line: a question-mark box, the id, the day, who asks, who is asked, the words, then its facets.",
+   "facets": [
+    {
+     "name": "id",
+     "means": "its number on its list: Q for a question"
+    },
+    {
+     "name": "created",
+     "means": "the day it was asked"
+    },
+    {
+     "name": "owner",
+     "means": "who asked it"
+    },
+    {
+     "name": "to",
+     "means": "who it is put to"
+    },
+    {
+     "name": "text",
+     "means": "the ask first, readable cold"
+    },
+    {
+     "name": "options",
+     "means": "the presses it offers"
+    },
+    {
+     "name": "answer",
+     "means": "the words that answered it"
+    },
+    {
+     "name": "answered",
+     "means": "when, and by whom"
+    },
+    {
+     "name": "due",
+     "means": "the day it is wanted by"
+    },
+    {
+     "name": "people",
+     "means": "the people it is about"
+    },
+    {
+     "name": "links",
+     "means": "the files it is about"
+    },
+    {
+     "name": "note",
+     "means": "one line to keep in mind"
+    },
+    {
+     "name": "source",
+     "means": "who filed it"
+    },
+    {
+     "name": "tags",
+     "means": "labels the viewer acts on"
+    },
+    {
+     "name": "milestone",
+     "means": "the heading it sits under"
+    }
+   ]
+  },
+  "thread": {
+   "name": "Thread",
+   "means": "A workspace: one subject, every item about it gathered, its state, decisions and what is needed to finish it.",
+   "fits": "A project, by its project facet; a thread can sit inside another thread.",
+   "contract": "A markdown file under projects/<project>/subjects/: a header of facets, then Where it stands, Decisions, Learned and Sources.",
+   "facets": [
+    {
+     "name": "subject",
+     "means": "the thread's name"
+    },
+    {
+     "name": "slug",
+     "means": "its short name in links"
+    },
+    {
+     "name": "project",
+     "means": "the project it belongs to"
+    },
+    {
+     "name": "status",
+     "means": "live, done or parked"
+    },
+    {
+     "name": "opened",
+     "means": "the day it started"
+    },
+    {
+     "name": "now",
+     "means": "what is being worked on, and what comes next"
+    },
+    {
+     "name": "connects",
+     "means": "how it relates to other threads"
+    },
+    {
+     "name": "progress",
+     "means": "the work in progress it is drawn with"
+    },
+    {
+     "name": "depends",
+     "means": "what it reads to stay right"
+    },
+    {
+     "name": "people",
+     "means": "whose items it gathers"
+    },
+    {
+     "name": "match",
+     "means": "words that pull matching items in"
+    },
+    {
+     "name": "canonical",
+     "means": "the files that hold its current truth"
+    },
+    {
+     "name": "threads",
+     "means": "other threads it sits under"
+    },
+    {
+     "name": "parent",
+     "means": "the thread it is a piece of"
+    },
+    {
+     "name": "gather",
+     "means": "whether it takes only its own items"
+    }
+   ]
+  },
+  "project": {
+   "name": "Project",
+   "means": "A holon: one row on the project registry, its folder, its list, and everything filed under it.",
+   "fits": "The brain; a project can sit inside another project.",
+   "contract": "A row in context/holon-registry.json, and a folder under projects/.",
+   "facets": [
+    {
+     "name": "id",
+     "means": "its short name everywhere"
+    },
+    {
+     "name": "name",
+     "means": "what the Projects page calls it"
+    },
+    {
+     "name": "type",
+     "means": "which kind of holon it is"
+    },
+    {
+     "name": "path",
+     "means": "the folder it lives in"
+    },
+    {
+     "name": "description",
+     "means": "one line on what it holds"
+    },
+    {
+     "name": "tasks",
+     "means": "its list of tasks and questions"
+    },
+    {
+     "name": "sharing",
+     "means": "who it is shared with"
+    },
+    {
+     "name": "children",
+     "means": "the projects inside it"
+    },
+    {
+     "name": "parent",
+     "means": "the project it sits inside"
+    },
+    {
+     "name": "stamped",
+     "means": "whether its folder carries its own stamp"
+    }
+   ]
+  }
+ },
+ "pages": {
+  "/projects": {
+   "id": "page",
+   "name": "The Projects page",
+   "sel": "body",
+   "means": "Every project's list on one page. Picking a project with its chip makes it that project's page. Press any outlined piece to go inside it.",
+   "kids": [
+    {
+     "id": "bar",
+     "name": "The bar",
+     "sel": "header.bar",
+     "means": "The top of every page: the way around the viewer.",
+     "parts": [
+      {
+       "sel": "header.bar button.back",
+       "term": "Back",
+       "means": "Goes to the page you came from."
+      },
+      {
+       "sel": "header.bar img.mark",
+       "term": "The sun",
+       "means": "The viewer's mark."
+      },
+      {
+       "sel": "header.bar h1",
+       "term": "The page's name",
+       "means": "Projects."
+      },
+      {
+       "sel": "header.bar .day",
+       "term": "The day",
+       "means": "Today's date, so you know which day the page shows."
+      },
+      {
+       "sel": "header.bar form.filesearch",
+       "term": "Search",
+       "means": "Finds threads, tasks and questions, people and files."
+      },
+      {
+       "sel": "header.bar button.showall",
+       "term": "Live or everything",
+       "means": "The page opens showing only what is live. Pressed, it shows what is folded away too."
+      },
+      {
+       "sel": "nav.panels",
+       "term": "The menu",
+       "means": "Every page of the viewer, in the order of a day: your day, the work, the people, the tools."
+      },
+      {
+       "sel": "nav.panels .navcount",
+       "term": "A count",
+       "means": "How many items wait there. On today: the questions and tasks waiting on you."
+      },
+      {
+       "sel": "nav.panels a.on",
+       "term": "This page",
+       "means": "Where you are, marked in the menu."
+      },
+      {
+       "sel": "details.navmore",
+       "term": "More",
+       "means": "The pages used less often: what was sent to you, what is shared, what's new."
+      },
+      {
+       "sel": "header.bar button.help",
+       "term": "Help",
+       "means": "Opens this page's help: what each part is for."
+      }
+     ]
+    },
+    {
+     "id": "chips",
+     "name": "The project chips",
+     "sel": "#filters",
+     "means": "One chip for each project that has a list of its own. Picking one turns this page into that project's page.",
+     "parts": [
+      {
+       "sel": "#filters button",
+       "term": "Everything",
+       "means": "Every project's items at once."
+      },
+      {
+       "sel": "#filters button.on",
+       "term": "The picked project",
+       "means": "The chip that is picked: Everything, or one project. What the page shows below is its list."
+      },
+      {
+       "sel": "#filters button.on .n",
+       "term": "Its count",
+       "means": "How many items are open on its list."
+      },
+      {
+       "sel": "#filters button:not(.on):not(:first-child)",
+       "term": "Another project",
+       "means": "Another project's list; press it to switch."
+      }
+     ]
+    },
+    {
+     "id": "tidy",
+     "name": "The tidy-up",
+     "sel": "#outbox",
+     "means": "Keeps the list honest: settled items closed, and every press you made today undoable.",
+     "parts": [
+      {
+       "sel": "#outbox .ob-check button",
+       "term": "Clear what's settled",
+       "means": "Reads each of your open items against the brain and closes or rewrites the ones already settled."
+      },
+      {
+       "sel": "#outbox .ob-say",
+       "term": "The last check",
+       "means": "What the last tidy-up did: how many it closed, rewrote and left."
+      },
+      {
+       "sel": "#outbox .ob-undo button",
+       "term": "Today's presses",
+       "means": "Every press you made today, each one undoable."
+      }
+     ]
+    },
+    {
+     "id": "chat",
+     "name": "Chat about this project",
+     "sel": ".ledgerline",
+     "means": "A conversation with Claude that starts from this project's list.",
+     "parts": [
+      {
+       "sel": ".ledgerline a.btn",
+       "term": "Chat about this project",
+       "means": "Opens the conversation, with the project's list already in it."
+      }
+     ]
+    },
+    {
+     "id": "waiting",
+     "name": "Waiting on you",
+     "sel": "section.blk.hero",
+     "means": "The questions put to you and your late tasks, the ones holding up other work first.",
+     "kids": [
+      {
+       "id": "q124",
+       "name": "A question",
+       "sel": "section.blk.hero .qc",
+       "means": "A decision put to you: one line on the project's list, its box a question mark.",
+       "type": "question",
+       "parts": [
+        {
+         "sel": "section.blk.hero .qc .idtag",
+         "term": "Its id",
+         "means": "Its number on the list. The dots show the file it lives in."
+        },
+        {
+         "sel": "section.blk.hero .qc p.qt",
+         "term": "Its words",
+         "means": "The ask first, written so you can answer it cold."
+        },
+        {
+         "sel": "section.blk.hero .qc .idref",
+         "term": "A named task",
+         "means": "A task its words mention, drawn as a press that opens it."
+        },
+        {
+         "sel": "section.blk.hero .qc .holds",
+         "term": "What it frees",
+         "means": "The work waiting on this answer. That task is blocked by this question."
+        },
+        {
+         "sel": "section.blk.hero .qc .smark",
+         "term": "Its state",
+         "means": "Open. The circle fills once it is answered."
+        },
+        {
+         "sel": "section.blk.hero .qc .m .filelink",
+         "term": "Its thread",
+         "means": "The thread it belongs to."
+        },
+        {
+         "sel": "section.blk.hero .qc .worklink",
+         "term": "Workspace",
+         "means": "Opens the item with its brief, files, people and thread on one page."
+        },
+        {
+         "sel": "section.blk.hero .qc .todaylink",
+         "term": "On Today",
+         "means": "Answer it, close it or put it off on Today."
+        },
+        {
+         "sel": "section.blk.hero .qc .press",
+         "term": "Its choices",
+         "means": "The question's options, one press each."
+        },
+        {
+         "sel": "section.blk.hero .qc form.qbox",
+         "term": "The answer box",
+         "means": "Your own words instead of a press. They become its answer."
+        }
+       ]
+      },
+      {
+       "id": "question",
+       "name": "Another question",
+       "sel": "section.blk.hero .qc ~ .qc",
+       "means": "A second question waiting on you, the same kind of card. Its parts show only what it has: its people, a due day that has passed, who asked.",
+       "type": "question",
+       "parts": [
+        {
+         "sel": "section.blk.hero .qc ~ .qc .idtag",
+         "term": "Its id",
+         "means": "Its number on the list. The dots show the file it lives in."
+        },
+        {
+         "sel": "section.blk.hero .qc ~ .qc p.qt",
+         "term": "Its words",
+         "means": "The ask first, written so you can answer it cold. A task named in them is a press that opens it."
+        },
+        {
+         "sel": "section.blk.hero .qc ~ .qc .holds",
+         "term": "What it frees",
+         "means": "The work waiting on this answer. That task is blocked by this question."
+        },
+        {
+         "sel": "section.blk.hero .qc ~ .qc .smark",
+         "term": "Its state",
+         "means": "Open. The circle fills once it is answered."
+        },
+        {
+         "sel": "section.blk.hero .qc ~ .qc .badge.person",
+         "term": "Its people",
+         "means": "The people it is about. Each opens their card."
+        },
+        {
+         "sel": "section.blk.hero .qc ~ .qc .late",
+         "term": "Late",
+         "means": "Its due day has passed."
+        },
+        {
+         "sel": "section.blk.hero .qc ~ .qc .worklink",
+         "term": "Workspace",
+         "means": "Opens the item with its brief, files, people and thread on one page."
+        },
+        {
+         "sel": "section.blk.hero .qc ~ .qc .todaylink",
+         "term": "On Today",
+         "means": "Answer it, close it or put it off on Today."
+        },
+        {
+         "sel": "section.blk.hero .qc ~ .qc .press",
+         "term": "Its choices",
+         "means": "The question's options, one press each."
+        },
+        {
+         "sel": "section.blk.hero .qc ~ .qc form.qbox",
+         "term": "The answer box",
+         "means": "Your own words instead of a press. They become its answer."
+        },
+        {
+         "sel": "section.blk.hero .qc ~ .qc .prov",
+         "term": "Who asked",
+         "means": "The check or session that filed it."
+        }
+       ]
+      },
+      {
+       "id": "task",
+       "name": "A task",
+       "sel": "section.blk.hero ul.rows > li",
+       "means": "One thing to do, owned by one person: a line on the list with an open box. A task here is due today or late; a press on it opens the rest of its parts.",
+       "type": "task",
+       "parts": [
+        {
+         "sel": "section.blk.hero ul.rows > li .idtag",
+         "term": "Its id",
+         "means": "Its number on the list. The dots show the file it lives in."
+        },
+        {
+         "sel": "section.blk.hero ul.rows > li input[type=checkbox]",
+         "term": "The box",
+         "means": "Ticked, the task is done and closed on its list."
+        },
+        {
+         "sel": "section.blk.hero ul.rows > li .t",
+         "term": "Its words",
+         "means": "What to do, the ask first."
+        },
+        {
+         "sel": "section.blk.hero ul.rows > li .gl",
+         "term": "A defined word",
+         "means": "A word the viewer defines. Hovered, it shows its meaning."
+        },
+        {
+         "sel": "section.blk.hero ul.rows > li .badge.person",
+         "term": "Its people",
+         "means": "The people it is about. Each opens their card."
+        },
+        {
+         "sel": "section.blk.hero ul.rows > li .m .filelink",
+         "term": "A link",
+         "means": "A file it lives in or points at."
+        },
+        {
+         "sel": "section.blk.hero ul.rows > li .when",
+         "term": "Its due day",
+         "means": "The day it is owed by, red once it has passed."
+        },
+        {
+         "sel": "section.blk.hero ul.rows > li .more .press",
+         "term": "Hold",
+         "means": "Puts it down for a few days. It comes back by itself."
+        },
+        {
+         "sel": "section.blk.hero ul.rows > li form.replyrow",
+         "term": "Reply",
+         "means": "Your words on it. The item stays open."
+        },
+        {
+         "sel": "section.blk.hero ul.rows > li .keep",
+         "term": "Its note",
+         "means": "One line to keep in mind while doing it."
+        },
+        {
+         "sel": "section.blk.hero ul.rows > li .reply",
+         "term": "Your replies",
+         "means": "What you said on it before, and what Claude answered."
+        },
+        {
+         "sel": "section.blk.hero ul.rows > li .more .prov",
+         "term": "Who found it",
+         "means": "The session, transcript or check that filed it."
+        }
+       ]
+      },
+      {
+       "id": "fold1",
+       "name": "The fold",
+       "sel": "section.blk.hero > details.fold",
+       "means": "The rest of the list, closed until you open it.",
+       "parts": [
+        {
+         "sel": "section.blk.hero > details.fold > summary",
+         "term": "The rest, folded",
+         "means": "The other items waiting on you, in the same order; its count says how many."
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "questions",
+     "name": "Questions",
+     "sel": "section.blk:not(.hero):not([data-linked])",
+     "means": "Open questions that hold nothing up.",
+     "kids": [
+      {
+       "id": "question2",
+       "name": "A question",
+       "sel": "section.blk:not(.hero):not([data-linked]) .qc",
+       "means": "The same kind of card as a question waiting on you, holding nothing up.",
+       "type": "question",
+       "parts": [
+        {
+         "sel": "section.blk:not(.hero):not([data-linked]) .qc p.qt",
+         "term": "Its words",
+         "means": "The ask first."
+        },
+        {
+         "sel": "section.blk:not(.hero):not([data-linked]) .qc .m .filelink",
+         "term": "Its document",
+         "means": "The file the question is about."
+        },
+        {
+         "sel": "section.blk:not(.hero):not([data-linked]) .qc .late",
+         "term": "Late",
+         "means": "Its due day has passed."
+        },
+        {
+         "sel": "section.blk:not(.hero):not([data-linked]) .qc .press",
+         "term": "Its choices",
+         "means": "One press each."
+        },
+        {
+         "sel": "section.blk:not(.hero):not([data-linked]) .qc form.qbox",
+         "term": "The answer box",
+         "means": "Your own words instead of a press."
+        }
+       ]
+      },
+      {
+       "id": "fold2",
+       "name": "The fold",
+       "sel": "section.blk:not(.hero):not([data-linked]) > details.fold",
+       "means": "The rest of the questions, closed until you open it.",
+       "parts": [
+        {
+         "sel": "section.blk:not(.hero):not([data-linked]) > details.fold > summary",
+         "term": "The rest, folded",
+         "means": "The other open questions; its count says how many."
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "rest",
+     "name": "The rest",
+     "sel": "section.blk:has(form.addline)",
+     "means": "Everything else on the list, folded by whose work it is, and the box that adds to it.",
+     "kids": [
+      {
+       "id": "yours",
+       "name": "Your other tasks",
+       "sel": ".rest details.fold",
+       "means": "One fold per owner. Yours is open here; Claude's, each person's and what was done this week sit closed below it.",
+       "parts": [
+        {
+         "sel": ".rest details.fold > summary",
+         "term": "Whose work",
+         "means": "The owner, and how many of their items are open."
+        },
+        {
+         "sel": ".rest details.fold ul.rows > li",
+         "term": "A task",
+         "means": "One of your tasks that is not late: the same kind of row as the task waiting on you, closed."
+        },
+        {
+         "sel": ".rest details.fold ul.rows > li .when",
+         "term": "Its due day",
+         "means": "The day it is owed by."
+        }
+       ]
+      },
+      {
+       "id": "others",
+       "name": "The other owners",
+       "sel": ".rest details.fold",
+       "means": "The folds after the first: Claude's work, each person's work, and what was done this week, each a fold of its own.",
+       "idx": 1,
+       "parts": [
+        {
+         "term": "Whose work",
+         "sel": ".rest details.fold > summary",
+         "means": "Whose work the fold holds, and how many of their items are open."
+        }
+       ]
+      },
+      {
+       "id": "add",
+       "name": "Add",
+       "sel": "form.addline",
+       "means": "A new task or question, straight onto this project's list.",
+       "parts": [
+        {
+         "sel": "form.addline .mode",
+         "term": "Task or question",
+         "means": "Which kind of item the box adds."
+        },
+        {
+         "sel": "form.addline input",
+         "term": "Its words",
+         "means": "What the new item says."
+        },
+        {
+         "sel": "form.addline button.primary",
+         "term": "Add",
+         "means": "Files it on the list picked beside the box."
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "brain",
+     "name": "Every part of the brain",
+     "sel": "#holons",
+     "means": "The project registry: every folder and file the brain treats as one unit of work, nested as it nests.",
+     "kids": [
+      {
+       "id": "row",
+       "name": "A holon row",
+       "sel": "details.hrow.d0",
+       "means": "One row of the registry: a project or a part of the brain, opened to show what it holds.",
+       "type": "project",
+       "parts": [
+        {
+         "sel": "details.hrow.d0 .nm",
+         "term": "Its name",
+         "means": "What it is called."
+        },
+        {
+         "sel": "details.hrow.d0 .badge.type",
+         "term": "Its type",
+         "means": "Which kind of holon it is: family, canonical domain, index, mirror, state file."
+        },
+        {
+         "sel": "details.hrow.d0 .m a",
+         "term": "Its list",
+         "means": "The list it owns, when it has one; it opens on this page."
+        },
+        {
+         "sel": "details.hrow.d0 p.what",
+         "term": "What it holds",
+         "means": "One line on what is in it."
+        },
+        {
+         "sel": "details.hrow.d0 table tr",
+         "term": "Where",
+         "means": "Its folder, and its readme."
+        },
+        {
+         "sel": "details.hrow.d0 table tr:not(:first-child)",
+         "term": "Its other facts",
+         "means": "Its rules, runbook and status file when it has them, and who it is shared with when it is shared."
+        }
+       ]
+      },
+      {
+       "id": "inside",
+       "name": "A part inside it",
+       "sel": "details.hrow.d1",
+       "means": "A part that sits inside the row above it, drawn indented: a file or folder that belongs to that project.",
+       "type": "project",
+       "parts": [
+        {
+         "sel": "details.hrow.d1 .nm",
+         "term": "Its name",
+         "means": "What it is called."
+        },
+        {
+         "sel": "details.hrow.d1 .badge.type",
+         "term": "Its type",
+         "means": "Which kind of part it is: a canonical domain is the one file that holds the current truth on its subject."
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "/thread": {
+   "id": "page",
+   "name": "A Thread page",
+   "sel": "body",
+   "means": "One page per piece of work: everything about one subject in one place. The main column is the work; the right-hand column is what surrounds it. Press any outlined piece to go inside it.",
+   "kids": [
+    {
+     "id": "bar",
+     "name": "The bar",
+     "sel": "header.bar",
+     "means": "The top of every page: the way around the viewer.",
+     "parts": [
+      {
+       "sel": "header.bar button.back",
+       "term": "Back",
+       "means": "Goes to the page you came from."
+      },
+      {
+       "sel": "header.bar img.mark",
+       "term": "The sun",
+       "means": "The viewer's mark."
+      },
+      {
+       "sel": "header.bar h1",
+       "term": "The page's name",
+       "means": "Thread."
+      },
+      {
+       "sel": "header.bar .day",
+       "term": "The day",
+       "means": "Today's date."
+      },
+      {
+       "sel": "header.bar form.filesearch",
+       "term": "Search",
+       "means": "Finds threads, tasks and questions, people and files."
+      },
+      {
+       "sel": "nav.panels",
+       "term": "The menu",
+       "means": "Every page of the viewer, in the order of a day."
+      },
+      {
+       "sel": "nav.panels a.on",
+       "term": "This page's place",
+       "means": "Threads, marked in the menu."
+      },
+      {
+       "sel": "header.bar button.help",
+       "term": "Help",
+       "means": "Opens this page's help."
+      }
+     ]
+    },
+    {
+     "id": "head",
+     "name": "The thread's head",
+     "sel": ".thead",
+     "means": "The thread's name, where it belongs, and who it is shared with.",
+     "parts": [
+      {
+       "sel": ".thead nav.crumbs a.back",
+       "term": "Every thread",
+       "means": "Back to the list of every thread."
+      },
+      {
+       "sel": ".thead h2",
+       "term": "Its name",
+       "means": "The thread's subject."
+      },
+      {
+       "sel": ".thead .meta",
+       "term": "Where it belongs",
+       "means": "Its project, and the day it last changed."
+      },
+      {
+       "sel": ".thead .sharebtn",
+       "term": "Share",
+       "means": "Puts the whole thread in front of the person you share with."
+      }
+     ]
+    },
+    {
+     "id": "questions",
+     "name": "Questions",
+     "sel": "#questions",
+     "means": "The questions on this thread, yours first, then the soonest due, then the newest.",
+     "kids": [
+      {
+       "id": "q",
+       "name": "A question",
+       "sel": "#questions li.trow",
+       "means": "A decision put to you, from the project's list, shown on the thread it belongs to.",
+       "type": "question",
+       "parts": [
+        {
+         "sel": "#questions li.trow .idtag",
+         "term": "Its id",
+         "means": "Its number on its list. The dots show the file it lives in."
+        },
+        {
+         "sel": "#questions li.trow > .n",
+         "term": "Its place",
+         "means": "Its place in this list."
+        },
+        {
+         "sel": "#questions li.trow .t",
+         "term": "Its words",
+         "means": "The ask first, written so you can answer it cold."
+        },
+        {
+         "sel": "#questions li.trow .t .gl",
+         "term": "A defined word",
+         "means": "A word the viewer defines. Hovered, it shows its meaning."
+        },
+        {
+         "sel": "#questions li.trow .t a.idpress",
+         "term": "A named task",
+         "means": "A task its words mention: a press that opens it here."
+        },
+        {
+         "sel": "#questions li.trow .rel.frees",
+         "term": "What it frees",
+         "means": "The task waiting on this answer: a press that opens it."
+        },
+        {
+         "sel": "#questions li.trow .m .badge",
+         "term": "Its project",
+         "means": "The list it lives on."
+        },
+        {
+         "sel": "#questions li.trow .m a.wslink",
+         "term": "Its thread",
+         "means": "This thread, the one it belongs to."
+        },
+        {
+         "sel": "#questions li.trow .m a.worklink",
+         "term": "Workspace",
+         "means": "Opens the item with its brief, files and people."
+        },
+        {
+         "sel": "#questions li.trow .press",
+         "term": "Its choices",
+         "means": "The question's options, one press each."
+        },
+        {
+         "sel": "#questions li.trow form.qbox",
+         "term": "The answer box",
+         "means": "Your own words instead of a press. They become its answer."
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "now",
+     "name": "In progress",
+     "sel": "#nowband",
+     "means": "What is being worked on in this thread right now, and what comes after it.",
+     "parts": [
+      {
+       "sel": "#nowband p.kicker",
+       "term": "In progress",
+       "means": "The thread's now: one thing at a time."
+      },
+      {
+       "sel": "#nowband h3.nowname",
+       "term": "What it is",
+       "means": "The name of what is being worked on."
+      },
+      {
+       "sel": "#nowband p.nowline",
+       "term": "Why it matters",
+       "means": "One line on why it comes first."
+      },
+      {
+       "sel": "#nowband .nowpress a",
+       "term": "Open",
+       "means": "Opens the file or the item being worked on."
+      },
+      {
+       "sel": "#nowband p.nownext",
+       "term": "Next on it",
+       "means": "What comes after it."
+      }
+     ]
+    },
+    {
+     "id": "stands",
+     "name": "Where it stands",
+     "sel": "section.stands",
+     "means": "The state of the thread today: the one section of the thread's own file that this page draws in full.",
+     "parts": [
+      {
+       "sel": "section.stands h3",
+       "term": "Its heading and date",
+       "means": "The day the state was last written."
+      },
+      {
+       "sel": "section.stands article.md",
+       "term": "The state",
+       "means": "In the thread's own words: what is true now, and what is next."
+      },
+      {
+       "sel": "section.stands p.foot",
+       "term": "Open it in the Reader",
+       "means": "The whole thread file, every section of it."
+      }
+     ]
+    },
+    {
+     "id": "reply",
+     "name": "Reply about this project",
+     "sel": "section.threadreply",
+     "means": "Your words on the thread as a whole. They reach the session with your next answers.",
+     "parts": [
+      {
+       "sel": "section.threadreply textarea",
+       "term": "The box",
+       "means": "What you want to say about the thread."
+      },
+      {
+       "sel": "section.threadreply button",
+       "term": "Reply",
+       "means": "Sends it."
+      }
+     ]
+    },
+    {
+     "id": "map",
+     "name": "How it connects",
+     "sel": "section.mapcard",
+     "means": "How this thread relates to others: what feeds it, what it feeds, what sits beside it.",
+     "parts": [
+      {
+       "sel": "section.mapcard text.mp-here",
+       "term": "This thread",
+       "means": "This thread, in the middle."
+      },
+      {
+       "sel": "section.mapcard text.mp-name",
+       "term": "A connected thread",
+       "means": "Another thread; a press opens it."
+      },
+      {
+       "sel": "section.mapcard text.mp-kind",
+       "term": "How it connects",
+       "means": "Feeds this, fed by this, or beside it."
+      },
+      {
+       "sel": "section.mapcard text.mp-say",
+       "term": "What it brings",
+       "means": "One line on what passes between the two."
+      }
+     ]
+    },
+    {
+     "id": "docs",
+     "name": "Documents",
+     "sel": "section.card:has(ul.docs)",
+     "means": "The documents the thread reads to stay right, the newest first.",
+     "parts": [
+      {
+       "sel": "ul.docs li",
+       "term": "A document",
+       "means": "A file the thread depends on; a press opens it."
+      },
+      {
+       "sel": "ul.docs li .d",
+       "term": "Its date",
+       "means": "The day it last changed."
+      }
+     ]
+    },
+    {
+     "id": "needs",
+     "name": "What needs you",
+     "sel": "section.todo-card:not(#questions)",
+     "means": "Everything else open on this thread, grouped by whose it is.",
+     "parts": [
+      {
+       "term": "Whose they are",
+       "sel": "section.todo-card:not(#questions) p.glabel",
+       "means": "Each group starts with whose tasks follow: yours first, then Claude's, then everyone else's."
+      }
+     ],
+     "kids": [
+      {
+       "id": "mine",
+       "name": "A task",
+       "sel": "section.todo-card:not(#questions) li.trow",
+       "means": "One thing to do, gathered here because it names this thread, its people or its words. Yours come first.",
+       "type": "task",
+       "parts": [
+        {
+         "sel": "section.todo-card:not(#questions) li.trow .idtag",
+         "term": "Its id",
+         "means": "Its number on its list."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow .t",
+         "term": "Its words",
+         "means": "What to do, the ask first."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow .t a.idpress",
+         "term": "A named task",
+         "means": "Another task its words mention, drawn struck through once it is closed."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow .m > span:nth-child(2)",
+         "term": "Its owner",
+         "means": "Whose it is: you, Claude, or a person."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow .m > span.badge:nth-child(3):not(.held)",
+         "term": "Its due day",
+         "means": "The day it is owed by."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow .m .badge.person",
+         "term": "Its people",
+         "means": "The people it is about. Each opens their card."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow .m a.worklink",
+         "term": "Workspace",
+         "means": "Opens the item with its brief, files and people."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow .keep",
+         "term": "Its note",
+         "means": "One line to keep in mind."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow .press .done",
+         "term": "Done",
+         "means": "Closes it on its list."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow .press button[data-hold]",
+         "term": "Hold",
+         "means": "Puts it down for a few days."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow .press button[data-qnote]",
+         "term": "Reply",
+         "means": "Your words on it; it stays open."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow .sharebtn",
+         "term": "Share",
+         "means": "Puts this one task in front of the person you share with."
+        }
+       ]
+      },
+      {
+       "id": "claudes",
+       "name": "A task with steps",
+       "sel": "section.todo-card:not(#questions) li.trow:has(.stepsbox)",
+       "means": "A task whose steps are what finishes it, each with its own tick.",
+       "type": "task",
+       "parts": [
+        {
+         "sel": "section.todo-card:not(#questions) li.trow:has(.stepsbox) .rel",
+         "term": "Waiting on",
+         "means": "The question or task it waits on: a press that opens it."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow:has(.stepsbox) .stepsbox",
+         "term": "Its steps",
+         "means": "What finishes it, each with its own tick."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow:has(.stepsbox) .stepsbox .sc",
+         "term": "How many ticked",
+         "means": "How many of its steps are ticked."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow:has(.stepsbox) li.step.hasgo",
+         "term": "A step with a link",
+         "means": "A step whose words name the place that makes it true."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow:has(.stepsbox) .stepgo",
+         "term": "Open",
+         "means": "Goes to that place."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow:has(.stepsbox) .keep.folded",
+         "term": "Its note, folded",
+         "means": "Its note, folded to its first line; more opens the rest."
+        },
+        {
+         "sel": "section.todo-card:not(#questions) li.trow:has(.stepsbox) .reply",
+         "term": "Replies",
+         "means": "What you said on it and what Claude answered."
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "nextcall",
+     "name": "Next call",
+     "sel": ".side > section.card",
+     "means": "The next call with this thread's people, with its prep, once one is on the calendar.",
+     "parts": [
+      {
+       "sel": ".side > section.card p.line",
+       "term": "None yet",
+       "means": "No call with the thread's people is on the calendar yet."
+      }
+     ]
+    },
+    {
+     "id": "progress",
+     "name": "Progress",
+     "sel": "section.card.progress",
+     "means": "What happened on this thread and what comes next, newest first.",
+     "parts": [
+      {
+       "sel": "section.card.progress p.phead",
+       "term": "Done",
+       "means": "What was finished, answered, decided or learned."
+      },
+      {
+       "sel": "section.card.progress div.prow.done",
+       "term": "A done row",
+       "means": "The day, and what was finished."
+      },
+      {
+       "sel": "section.card.progress p.phead",
+       "idx": 1,
+       "term": "Next",
+       "means": "What comes next."
+      },
+      {
+       "sel": "section.card.progress div.prow.next",
+       "term": "A next row",
+       "means": "Whose it is, and what it is."
+      }
+     ]
+    },
+    {
+     "id": "checklist",
+     "name": "Tasks needed for completion",
+     "sel": "section.card.checklist",
+     "means": "What must be true before this thread is done: one task's steps, each linking to what makes it true.",
+     "type": "task",
+     "parts": [
+      {
+       "sel": "section.card.checklist h3",
+       "term": "Its heading",
+       "means": "Opens the task the list belongs to."
+      },
+      {
+       "sel": "section.card.checklist .sc",
+       "term": "How many ticked",
+       "means": "The count of steps done."
+      },
+      {
+       "sel": "section.card.checklist li.step",
+       "term": "A step",
+       "means": "One thing that must be true."
+      },
+      {
+       "sel": "section.card.checklist li.step input",
+       "term": "Its box",
+       "means": "A tick writes it on the list."
+      },
+      {
+       "sel": "section.card.checklist li.step label a",
+       "term": "Its link",
+       "means": "The thread, task or file that makes it true."
+      },
+      {
+       "sel": "section.card.checklist .stepgo",
+       "term": "Open",
+       "means": "Goes there."
+      }
+     ]
+    },
+    {
+     "id": "people",
+     "name": "People",
+     "sel": ".side > section.card:last-child",
+     "means": "The people this thread gathers, each with where things stand with them.",
+     "parts": [
+      {
+       "term": "A person",
+       "sel": ".side > section.card:last-child .ws-pp",
+       "means": "Someone the thread names: a press opens their card, and under the name is where things stand with them."
+      },
+      {
+       "term": "No one named",
+       "sel": ".side > section.card:last-child p.none",
+       "means": "Shown when the thread names no one."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "corners": [
+  {
+   "id": "done",
+   "name": "Done",
+   "sel": "#questlog",
+   "means": "The timeline of what was finished, newest first, in the top right corner of every page.",
+   "parts": [
+    {
+     "sel": "#questlog .qtab",
+     "term": "Done",
+     "means": "How many things were finished; pressed, it opens the timeline, each with what it built."
+    }
+   ]
+  },
+  {
+   "id": "notepad",
+   "name": "Notepad",
+   "sel": "#notepad",
+   "means": "A note written on any page lands in the brain, pictures and all.",
+   "parts": [
+    {
+     "sel": "#notepad .ntab",
+     "term": "Notepad",
+     "means": "Opens the note box."
+    }
+   ]
+  },
+  {
+   "id": "send",
+   "name": "Send answers",
+   "sel": ".obfab",
+   "means": "Your presses reach Claude when you press this, leave the viewer, or stop pressing for a few minutes.",
+   "parts": [
+    {
+     "sel": ".obfab .obpress",
+     "term": "Send answers",
+     "means": "Sends what you pressed now."
+    }
+   ]
+  }
+ ]
+}

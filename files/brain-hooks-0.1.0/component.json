@@ -1,0 +1,8 @@
+{
+  "component": "brain-hooks",
+  "version": "0.1.0",
+  "releasedAt": "2026-11-12",
+  "installRoot": "skills/brain-hooks",
+  "requires": ["brain-log", "brain-tasks"],
+  "note": "The hooks a brain runs on its own: the brain's state before the first reply, the viewer started, the log checked, a reminder when the last-session file goes stale, a breadcrumb before compaction; plus the /start-session, /update and /done-for-today commands. install.py registers them in .claude/."
+}

@@ -1,0 +1,43 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" session-start 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" session-start", "timeout": 30},
+          {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" viewer 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" viewer", "timeout": 30}
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" log-check PostToolUse 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" log-check PostToolUse", "timeout": 15}
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" log-check Stop 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" log-check Stop", "timeout": 15}
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" session-end 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" session-end", "timeout": 10},
+          {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" log-check SessionEnd 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" log-check SessionEnd", "timeout": 15}
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" precompact 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/skills/brain-hooks/hooks.py\" precompact", "timeout": 15}
+        ]
+      }
+    ]
+  }
+}

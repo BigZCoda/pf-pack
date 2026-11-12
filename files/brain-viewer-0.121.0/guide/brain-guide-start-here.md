@@ -16,7 +16,7 @@ This guide is short on purpose. Read this page and the day-to-day how-to first, 
 - [What your brain can do](/reader?path=skills%2Fbrain-viewer%2Fguide%2Fbrain-guide-what-it-can-do.md): a short presentation of the whole thing, in eight slides.
 - [Your brain, part by part](/reader?path=skills%2Fbrain-viewer%2Fguide%2Fbrain-guide-part-by-part.md): Today, people, projects and tasks, calls and transcripts, asking Claude, and what stays on your computer.
 
-You can always get back here from Today: the line about this guide sits at the top of Today until you press **got it**, and at the bottom of Today after that.
+You can always get back here from Today: the line about this guide sits near the top of Today, under Up first, until you press **got it**, and at the bottom of Today after that.
 
 ## Finding your way in the viewer
 

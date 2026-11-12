@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Artifacts</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { min-height: 100vh; }
+  main { padding: 18px 34px 60px; max-width: 980px; }
+  @media (max-width: 700px) { main { padding: 14px 16px 50px; } }
+  .ahead { margin: 0 0 14px; font-size: 13.5px; color: var(--ink-soft); }
+  ul.arts { list-style: none; padding: 0; margin: 0; }
+  li.art { padding: 16px 0 14px; border-top: 1px solid var(--rule-soft); display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 6px 14px; align-items: start; }
+  li.art > .abox { padding-top: 8px; }
+  li.art:first-child { border-top: 0; padding-top: 4px; }
+  .art .nm { margin: 0; font-family: var(--font-display); font-size: 24px; font-weight: 400; line-height: 1.2; color: var(--ink); overflow-wrap: anywhere; }
+  .art .nm a { color: inherit; text-decoration: none; }
+  .art .nm a:hover { color: var(--accent); text-decoration: underline; }
+  .art .ln { margin: 4px 0 0; font-size: 14px; color: var(--ink-soft); max-width: 72ch; }
+  .art .when { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); }
+  .art .where { margin: 2px 0 0; font-family: var(--font-mono); font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+  .art .acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .art a.press { display: inline-block; font-size: 13px; padding: 5px 14px; border-radius: var(--radius); border: 1px solid var(--rule); background: var(--surface); color: var(--ink); text-decoration: none; white-space: nowrap; }
+  .art a.press:hover { background: var(--hover); }
+  .art a.press.open { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+  .art a.press.open:hover { background: var(--accent-deep); }
+  .art a.press.small { font-size: 12px; padding: 3px 10px; }
+  .art .pages { grid-column: 2 / -1; display: flex; gap: 6px; flex-wrap: wrap; align-items: baseline; font-size: 12.5px; }
+  .art .pages .meta { margin-right: 2px; }
+  .art .pages a { font-size: 12px; padding: 2px 9px; border-radius: var(--radius); border: 1px solid var(--rule-soft); color: var(--ink-soft); text-decoration: none; }
+  .art .pages a:hover { background: var(--hover); color: var(--ink); }
+  .art .why { margin: 6px 0 0; font-size: 12.5px; }
+  .art .why a, .art .why .filelink { color: var(--accent); cursor: pointer; }
+  /* 0.105.0: select and archive, one bar over the list; Archived is a fold at the foot */
+  .selbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 6px 0 10px; border-bottom: 1px solid var(--rule-soft); font-size: 13px; color: var(--muted); position: sticky; top: 56px; background: var(--bg); z-index: 2; }
+  .selbar label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; color: var(--ink-soft); }
+  .selbar .btn { padding: 2px 12px; font-size: 12.5px; }
+  .selbar .say { flex-basis: 100%; }
+  .selbar .say:empty { display: none; }
+  input[type=checkbox] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  details.archfold { margin-top: 22px; border-top: 1px solid var(--rule); padding-top: 8px; }
+  details.archfold > summary { cursor: pointer; font-family: var(--font-display); font-size: 18px; padding: 4px 0 8px; }
+  details.archfold .selbar { position: static; }
+  @media (max-width: 700px) { li.art { grid-template-columns: 22px minmax(0, 1fr); } .art .acts { grid-column: 2; justify-content: flex-start; } .selbar { position: static; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Artifacts</h1>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="artifacts"></nav>
+</header>
+<main id="main"><p class="meta">Finding what has been built…</p></main>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /artifacts (0.76.0, 2026-10-09): every built thing in the brain by its name, from GET /api/artifacts.
+// A built thing is opened from here, never hunted for through its documents. OPEN is the page
+// itself in a new tab (/raw/<path>), PREVIEW is the same page inside the viewer at the width presets, ABOUT is the folder's
+// readme in the Reader. A site's other pages sit under it as small presses that open each in a new tab.
+// 0.105.0: most relevant first (GET /api/artifacts?order=relevant, artifacts_relevant in serve.py): a page an open item or
+// a coming call's prep links, saying which, one press to it; then what changed in the last seven days; then the rest,
+// newest first in each. A box per row, a box for all, and archive: the rows leave the list for the Archived fold at the
+// foot, where put back returns them (BV.archiveSet, kept in the viewer's own layer). No file is moved or deleted.
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const raw = p => "/raw/" + p.split("/").map(encodeURIComponent).join("/");
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const when = iso => {
+  const d = new Date(iso); if (isNaN(d)) return "";
+  const days = Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
+  const t = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  if (days <= 0) return `changed today at ${t}`;
+  if (days === 1) return `changed yesterday at ${t}`;
+  return `changed ${d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}`;
+};
+const S = { list: [], count: 0, sel: { main: new Set(), arch: new Set() }, say: { main: "", arch: "" }, archOpen: false };
+
+// why a row is near the top: the open item or the prep that links it, one press to it
+function why(a) {
+  const w = a.why; if (!w) return "";
+  if (w.item) return `<p class="why"><a href="/work?item=${encodeURIComponent(w.item)}" title="open the item">${esc(w.words)}</a>${w.text ? `<span class="meta">: ${esc(w.text)}</span>` : ""}</p>`;
+  if (w.prep) return `<p class="why"><span class="filelink" data-open="${esc(w.prep)}" title="open the prep beside the page">${esc(w.words)}</span></p>`;
+  return `<p class="why meta">${esc(w.words)}</p>`;
+}
+function row(a, list) {
+  const pages = (a.pages || []).length
+    ? `<div class="pages"><span class="meta">its other pages:</span>${a.pages.map(p => `<a href="${esc(raw(p.path))}" target="_blank" rel="noopener" title="open this page in a new tab">${esc(p.name)}</a>`).join("")}</div>` : "";
+  return `<li class="art" data-key="${esc(a.key)}">
+    <label class="abox"><input type="checkbox" data-sel="${esc(a.key)}" data-list="${list}"${S.sel[list].has(a.key) ? " checked" : ""} aria-label="select ${esc(a.name)}"></label>
+    <div>
+      <h2 class="nm"><a href="${esc(raw(a.path))}" target="_blank" rel="noopener" title="open it in a new tab">${esc(a.name)}</a></h2>
+      ${a.line ? `<p class="ln">${esc(a.line)}</p>` : ""}
+      ${list === "main" ? why(a) : ""}
+      <p class="when">${esc(when(a.at))}${a.site ? ` · a site of ${a.pages.length + 1} pages` : ""}</p>
+      <p class="where">${esc(a.path)}</p>
+    </div>
+    <div class="acts">
+      <a class="press open" href="${esc(raw(a.path))}" target="_blank" rel="noopener" title="the page itself, full window, in a new tab">open</a>
+      <a class="press" href="/preview?path=${encodeURIComponent(a.path)}" title="the page inside the viewer, at phone, tablet and laptop widths">preview</a>
+      ${a.about ? `<a class="press small" href="${esc(BV.readerHref(a.about))}" title="what this is and how it was made, in the Reader">about</a>` : ""}
+    </div>
+    ${pages}
+  </li>`;
+}
+function selBar(list, rows) {
+  const n = S.sel[list].size, all = rows.length > 0 && rows.every(a => S.sel[list].has(a.key));
+  return `<div class="selbar" data-bar="${list}">
+    <label title="select every one in this list"><input type="checkbox" data-selall="${list}"${all ? " checked" : ""} aria-label="select all"> all</label>
+    <span>${n ? `${n} selected` : "none selected"}</span>
+    <button type="button" class="btn" data-archive="${list}"${n ? "" : " disabled"} title="${list === "main" ? "hide the selected from this list; they stay under Archived at the foot, where put back returns them" : "return the selected to the list"}">${list === "main" ? "archive" : "put back"}</button>
+    <span class="say" aria-live="polite">${esc(S.say[list])}</span></div>`;
+}
+function paint() {
+  const m = document.getElementById("main");
+  const main = S.list.filter(a => !a.archived), arch = S.list.filter(a => a.archived).sort((a, b) => b.mtime - a.mtime);
+  for (const list of ["main", "arch"]) for (const k of [...S.sel[list]]) { const a = S.list.find(x => x.key === k); if (!a || !!a.archived !== (list === "arch")) S.sel[list].delete(k); }
+  const lead = !S.list.length ? `<p class="meta">Nothing built yet. A web page saved anywhere in the brain (a site in deliverables/, a mockup) shows here once it exists.</p>`
+    : `<p class="ahead">${main.length === 1 ? "One thing" : `${main.length} things`} built in this brain${arch.length ? `, ${arch.length} more archived` : ""}. <b>open</b> shows the page itself in a new tab; <b>preview</b> shows it here at phone and laptop widths.</p>`;
+  m.innerHTML = lead + (S.list.length ? selBar("main", main) + `<ul class="arts">${main.map(a => row(a, "main")).join("") || `<li class="meta" style="padding:12px 0">Everything built is archived.</li>`}</ul>` : "")
+    + (arch.length ? `<details class="archfold"${S.archOpen ? " open" : ""}><summary>Archived <span class="meta">${arch.length}</span></summary>${selBar("arch", arch)}<ul class="arts">${arch.map(a => row(a, "arch")).join("")}</ul></details>` : "");
+  for (const list of ["main", "arch"]) {
+    const box = m.querySelector(`[data-selall="${list}"]`), rows = list === "main" ? main : arch;
+    if (box) box.indeterminate = S.sel[list].size > 0 && !rows.every(a => S.sel[list].has(a.key));
+  }
+}
+// only the bar's count and press change on a tick, so the page never jumps under the pointer
+function paintBars() {
+  const main = S.list.filter(a => !a.archived), arch = S.list.filter(a => a.archived);
+  for (const [list, rows] of [["main", main], ["arch", arch]]) {
+    const bar = document.querySelector(`[data-bar="${list}"]`); if (!bar) continue;
+    const tmp = document.createElement("div"); tmp.innerHTML = selBar(list, rows);
+    bar.replaceWith(tmp.firstElementChild);
+    const box = document.querySelector(`[data-selall="${list}"]`);
+    if (box) box.indeterminate = S.sel[list].size > 0 && !rows.every(a => S.sel[list].has(a.key));
+  }
+}
+async function archive(list) {
+  const keys = [...S.sel[list]]; if (!keys.length) return;
+  const on = list === "main";
+  try {
+    await BV.archiveSet("artifacts", keys, on);
+    for (const k of keys) { const a = S.list.find(x => x.key === k); if (a) a.archived = on ? new Date().toISOString() : null; }
+    S.sel[list].clear();
+    S.say.arch = "";
+    S.say.main = on ? `Archived ${plural(keys.length, "thing")}: under Archived at the foot, where put back returns ${keys.length === 1 ? "it" : "them"}.`
+      : `Put back ${plural(keys.length, "thing")} into the list.`;
+  } catch (e) { S.say[list] = (on ? "Not archived: " : "Not put back: ") + e.message; }
+  const fold = document.querySelector("details.archfold"); S.archOpen = !!(fold && fold.open && !on);
+  paint();
+}
+document.addEventListener("click", e => {
+  const ar = e.target.closest("[data-archive]"); if (ar) archive(ar.dataset.archive);
+});
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.matches("[data-sel]")) { const s = S.sel[t.dataset.list]; if (t.checked) s.add(t.dataset.sel); else s.delete(t.dataset.sel); S.say[t.dataset.list] = ""; }
+  else if (t.matches("[data-selall]")) {
+    const list = t.dataset.selall, s = S.sel[list];
+    const rows = S.list.filter(a => !!a.archived === (list === "arch"));
+    if (t.checked) rows.forEach(a => s.add(a.key)); else s.clear();
+    document.querySelectorAll(`input[data-sel][data-list="${list}"]`).forEach(b => { b.checked = s.has(b.dataset.sel); });
+    S.say[list] = "";
+  } else return;
+  paintBars();
+});
+
+async function load() {
+  const m = document.getElementById("main");
+  let d;
+  try { d = await (await fetch("/api/artifacts?order=relevant")).json(); }
+  catch (e) { m.innerHTML = `<p class="note">Could not read the list: ${esc(e.message)}</p>`; return; }
+  S.list = d.artifacts || []; S.count = d.count || S.list.length;
+  paint();
+}
+load();
+</script>
+</body>
+</html>

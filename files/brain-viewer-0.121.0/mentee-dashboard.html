@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mentee Content Dashboard</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  main { display:grid; grid-template-columns: 380px minmax(0,1fr); min-height: calc(100vh - 56px); }
+  nav.side { border-right:1px solid var(--rule); background:var(--surface); overflow:auto; max-height: calc(100vh - 56px); position:sticky; top:56px; padding-bottom:24px; }
+  .stage { padding:10px 0 4px; }
+  .stage h2 { font-family:var(--font-ui); font-size:11px; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); font-weight:600; margin:8px 18px 4px; }
+  .stage .why { font-size:12.5px; color:var(--muted); margin:0 18px 6px; }
+  .piece { display:block; width:100%; text-align:left; border:0; background:transparent; padding:8px 18px; cursor:pointer; }
+  .piece:hover { background:var(--hover); }
+  .piece.active { background:var(--selected); }
+  .piece .t { font-family:var(--font-display); font-weight:500; font-size:15.5px; line-height:1.25; }
+  .piece .m { font-size:12px; color:var(--muted); display:flex; gap:8px; align-items:center; margin-top:2px; flex-wrap:wrap; }
+  .badge.canvas { color:var(--accent); background:var(--selected); border-color:transparent; }
+  section#view { padding:24px 32px 60px; max-width:1100px; }
+  .viewhead { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; margin-bottom:14px; }
+  .viewhead h2 { margin:0; font-size:28px; line-height:1.1; }
+  .viewhead .meta { color:var(--muted); font-size:13px; width:100%; }
+  .viewhead .actions { margin-left:auto; display:flex; gap:8px; }
+  .note { margin:0 0 16px; }
+  textarea#editor { width:100%; min-height:70vh; font:13px/1.5 var(--font-mono); padding:14px; border:1px solid var(--rule); border-radius:var(--radius-lg); background:var(--surface); resize:vertical; }
+  textarea#editor:focus { outline:none; border-color:var(--accent); }
+  .canvas-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:12px; }
+  .cnode { background:var(--surface); border:1px solid var(--rule); border-radius:var(--radius-lg); padding:12px 14px; font-size:13.5px; }
+  .cnode .k { font-size:11px; color:var(--muted); margin-bottom:4px; }
+  .qlist li { margin:.35em 0; } .qlist .qmeta { color:var(--muted); font-size:12px; }
+  details.preset { background:var(--surface); border:1px solid var(--rule); border-radius:var(--radius-lg); padding:10px 14px; margin:8px 0; }
+  details.preset summary { cursor:pointer; font-weight:600; } details.preset pre { white-space:pre-wrap; }
+  .status { font-size:13px; color:var(--muted); min-height:1.2em; margin:8px 0 0; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } nav.side { position:static; max-height:none; border-right:0; border-bottom:1px solid var(--rule); } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Mentee Content Dashboard</h1>
+  <span class="sub">every mentee-facing piece, in program order · edits write to the real files</span>
+  <span class="spacer"></span>
+  <input id="search" type="search" placeholder="filter pieces   /" aria-label="filter pieces">
+  <span class="meta" id="count"></span>
+  <nav class="panels" data-page="mentee"></nav>
+</header>
+<main>
+  <nav class="side" id="nav"></nav>
+  <section id="view"><div class="empty">Pick a piece on the left.</div></section>
+</main>
+<script src="/static/viewer-common.js"></script>
+<script>
+let MANIFEST = null, CURRENT = null, EDITING = false, RAW = "";
+const PROPOSE = BV.mode().propose;   // a team copy: saves become requests, the app pieces (which need a token) are hidden
+
+const $ = (s, el=document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function badgeFor(p) {
+  const st = (p.state||"").toLowerCase();
+  if (p.kind === "missing") return ["missing", p.state || "owed"];
+  if (p.kind === "app") return ["live", p.state || "live in the app"];
+  if (p.kind === "canvas") return ["canvas", p.state || "canvas"];
+  if (st.includes("paused")) return ["paused", p.state];
+  if (st.includes("draft") || st.includes("never passed") || st.includes("skeleton") || st.includes("v0.")) return ["draft", p.state];
+  return ["", p.state || ""];
+}
+
+function renderNav() {
+  const q = ($("#search").value||"").toLowerCase();
+  const nav = $("#nav"); nav.innerHTML = "";
+  let total = 0, reviewed = 0, shown = 0;
+  for (const st of MANIFEST.stages) {
+    const visible = PROPOSE ? st.pieces.filter(p => p.kind !== "app") : st.pieces;   // /api/app is 403 in a team copy, so its pieces are not listed there
+    const pieces = visible.filter(p => !q || (p.title+" "+(p.note||"")+" "+(p.state||"")+" "+st.stage).toLowerCase().includes(q));
+    total += visible.length; reviewed += visible.filter(p => p.reviewedAt).length;
+    if (!pieces.length) continue;
+    const div = document.createElement("div"); div.className = "stage";
+    div.innerHTML = `<h2>${esc(st.stage)}</h2>` + (st.why ? `<p class="why">${esc(st.why)}</p>` : "");
+    for (const p of pieces) {
+      shown++;
+      const [cls, label] = badgeFor(p);
+      const b = document.createElement("button"); b.className = "piece" + (CURRENT && CURRENT.id === p.id ? " active" : "");
+      b.innerHTML = `<div class="t">${esc(p.title)}</div>
+        <div class="m"><span class="badge ${cls}">${esc(label)}</span>${p.reviewedAt ? `<span class="badge reviewed">reviewed ${esc(p.reviewedAt.slice(0,10))}</span>` : ""}${p.mtime ? `<span>touched ${esc(p.mtime)}</span>` : ""}${p.exists===false ? `<span class="badge missing">file missing</span>` : ""}</div>`;
+      b.onclick = () => open(p, st);
+      div.appendChild(b);
+    }
+    nav.appendChild(div);
+  }
+  $("#count").textContent = `${reviewed}/${total} reviewed` + (q ? ` · ${shown} shown` : "");
+}
+
+async function open(p, st, statusMsg) {
+  if (EDITING && !confirm("Discard unsaved edits?")) return;
+  EDITING = false; CURRENT = p; renderNav();
+  const view = $("#view");
+  const [cls, label] = badgeFor(p);
+  view.innerHTML = `<div class="viewhead">
+      <h2>${esc(p.title)}</h2>
+      <span class="badge ${cls}" style="align-self:center">${esc(label)}</span>
+      <div class="actions">
+        ${p.kind === "md" && p.exists !== false ? `<button class="btn" id="edit">Edit</button><button class="btn primary" id="save" hidden>${PROPOSE ? "Propose this text" : "Save to file"}</button><button class="btn" id="cancel" hidden>Cancel</button>` : ""}
+        <button class="btn" id="review">${p.reviewedAt ? "Un-mark reviewed" : "Mark reviewed"}</button>
+      </div>
+      <div class="meta">${esc(st.stage)}${p.path ? ` · <code>${esc(p.path)}</code>` : ""}${p.endpoint ? ` · app <code>GET /${esc(p.endpoint)}</code> (${esc(p.token)} token, read-only)` : ""}${p.mtime ? ` · file touched ${esc(p.mtime)}` : ""}${p.bytes ? ` · ${(p.bytes/1024).toFixed(1)} KB` : ""}</div>
+    </div>
+    ${p.note ? `<div class="note">${esc(p.note)}</div>` : ""}
+    <div id="propose"></div>
+    <div id="body"><div class="empty">loading…</div></div>
+    <p class="status" id="status"></p>`;
+  $("#status").textContent = statusMsg || "";   // the save / review feedback survives the re-render that follows a write
+  const pb = BV.proposeBox(p.path || "", { label: "propose a change" }); if (pb) $("#propose").appendChild(pb);
+  $("#review").onclick = () => toggleReviewed(p);
+  const body = $("#body");
+  try {
+    if (p.kind === "md") {
+      if (p.exists === false) { body.innerHTML = `<div class="empty">The manifest points at <code>${esc(p.path)}</code> but no such file exists.</div>`; return; }
+      const r = await fetch(`/api/file?path=${encodeURIComponent(p.path)}`); const j = await r.json();
+      if (j.error) throw new Error(j.error);
+      RAW = j.text; body.innerHTML = `<article class="md">${md(RAW)}</article>`;
+      $("#edit").onclick = () => startEdit(p); $("#cancel").onclick = () => { EDITING=false; open(p, st); }; $("#save").onclick = () => save(p, st);
+    } else if (p.kind === "canvas") {
+      const r = await fetch(`/api/canvas?path=${encodeURIComponent(p.path)}`); const j = await r.json();
+      if (j.error) throw new Error(j.error);
+      const nodes = (j.nodes||[]).slice().sort((a,b) => (a.y-b.y) || (a.x-b.x));
+      body.innerHTML = `<p class="status">${nodes.length} nodes · ${(j.edges||[]).length} edges · <a href="${BV.mapHref(p.path, "read")}" style="color:var(--accent)">open the drawing</a> for the real layout; listed here top-to-bottom, left-to-right.</p>
+        <div class="canvas-grid">${nodes.map(n => `<div class="cnode"><div class="k">${esc(n.type||"node")}${n.file ? " · " + esc(n.file) : ""}</div>${n.text ? md(n.text) : (n.file ? `<span class="wikilink">${esc(n.file)}</span>` : "")}</div>`).join("")}</div>`;
+    } else if (p.kind === "app") {
+      const r = await fetch(`/api/app/${encodeURIComponent(p.endpoint)}?token=${encodeURIComponent(p.token||"personal")}`); const j = await r.json();
+      if (j.error) throw new Error(j.error + (j.body ? " — " + j.body : ""));
+      body.innerHTML = p.endpoint === "checkin-templates" ? renderTemplates(j) : p.endpoint === "presets" ? renderPresets(j) : `<pre>${esc(JSON.stringify(j,null,2))}</pre>`;
+    } else {
+      body.innerHTML = `<div class="empty">Nothing to show yet: this piece is owed, not written.</div>`;
+    }
+  } catch (e) { body.innerHTML = `<div class="note">Could not load: ${esc(e.message)}</div>`; }
+}
+
+function renderTemplates(j) {
+  const ts = j.templates || j || [];
+  return ts.map(t => {
+    const qs = (t.questions||[]).map((q,i) => {
+      const text = typeof q === "string" ? q : (q.text || q.question || q.prompt || q.label || JSON.stringify(q));
+      const meta = typeof q === "object" ? Object.entries(q).filter(([k]) => !["text","question","prompt","label","id"].includes(k)).map(([k,v]) => `${k}: ${typeof v==="object"?JSON.stringify(v):v}`).join(" · ") : "";
+      return `<li>${esc(text)}${meta ? `<div class="qmeta">${esc(meta)}</div>` : ""}</li>`;
+    }).join("");
+    return `<article class="md"><h1>${esc(t.title||"(untitled)")}</h1>
+      <p class="status">audience ${esc(t.audience||"?")} · active ${t.isActive ? "yes" : "no"} · repeat every ${esc(t.repeatEveryDays ?? "?")} days · send offsets ${esc(JSON.stringify(t.sendOffsets||[]))} · ${(t.questions||[]).length} questions · updated ${esc((t.updatedAt||"").slice(0,10))}</p>
+      ${t.intro ? `<blockquote>${md(t.intro)}</blockquote>` : ""}
+      <ol class="qlist">${qs}</ol></article>`;
+  }).join("") || `<div class="empty">No templates returned.</div>`;
+}
+
+function renderPresets(j) {
+  const ps = j.presets || j || [];
+  return `<p class="status">${ps.length} presets · the brain runs these prompts verbatim (preset parity)</p>` +
+    ps.map(p => `<details class="preset"><summary>${esc(p.name)}${p.isDefault ? " · default" : ""}${p.isBuiltIn ? " · built-in" : ""}</summary>
+      ${p.description ? `<p>${esc(p.description)}</p>` : ""}<pre>${esc(p.prompt||"")}</pre>${p.config ? `<details><summary>config</summary><pre>${esc(JSON.stringify(p.config,null,2))}</pre></details>` : ""}</details>`).join("");
+}
+
+function startEdit(p) {
+  EDITING = true;
+  $("#body").innerHTML = `<textarea id="editor" spellcheck="false"></textarea>`;
+  $("#editor").value = RAW;
+  $("#edit").hidden = true; $("#save").hidden = false; $("#cancel").hidden = false;
+}
+
+async function save(p, st) {
+  const text = $("#editor").value;
+  $("#save").disabled = true; $("#status").textContent = "saving…";
+  const r = await fetch(`/api/file?path=${encodeURIComponent(p.path)}`, { method:"PUT", headers:{"Content-Type":"text/plain; charset=utf-8"}, body:text });
+  const j = await r.json();
+  if (!r.ok) { $("#status").textContent = "save failed: " + (j.error||r.status); $("#save").disabled = false; return; }
+  EDITING = false;
+  if (j.proposed) { await loadManifest(false); open(p, st, BV.proposedText(j)); return; }   // the file on disk is unchanged; the request holds the text
+  RAW = text;
+  await loadManifest(false);
+  open(p, st, `saved ${j.bytes} bytes to ${p.path} · ${j.log}`);
+}
+
+async function toggleReviewed(p) {
+  const before = p.reviewedAt;
+  p.reviewedAt = p.reviewedAt ? null : new Date().toISOString();
+  const clean = JSON.parse(JSON.stringify(MANIFEST));
+  delete clean._brain; delete clean._servedAt;
+  for (const st of clean.stages) for (const q of st.pieces) { delete q.exists; delete q.mtime; delete q.bytes; }
+  const r = await fetch("/api/manifest", { method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(clean) });
+  const j = await r.json();
+  if (j.proposed) { p.reviewedAt = before; $("#status").textContent = BV.proposedText(j); renderNav(); return; }   // not applied here: the mark stays as it was
+  $("#status").textContent = r.ok ? (p.reviewedAt ? "marked reviewed (written to the manifest)" : "review mark removed") : "could not write the manifest: " + (j.error||r.status);
+  $("#review").textContent = p.reviewedAt ? "Un-mark reviewed" : "Mark reviewed";
+  renderNav();
+}
+
+// ---- a small markdown renderer: headings, lists (nested by indent), quotes, code, tables, hr, emphasis, links, wikilinks, strikethrough
+function inline(s) {
+  s = esc(s);
+  s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
+  s = s.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (m,a,b) => `<span class="wikilink" title="${a}">${b||a}</span>`);
+  s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "<em>[image: $1]</em>");
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/__([^_]+)__/g, "<strong>$1</strong>");
+  s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>").replace(/~~([^~]+)~~/g, "<del>$1</del>");
+  return s;
+}
+function md(src) {
+  const lines = src.replace(/\r\n/g,"\n").split("\n"); let out = [], i = 0;
+  // frontmatter
+  if (lines[0] === "---") { let j = lines.indexOf("---", 1); if (j > 0) { out.push(`<details><summary class="fm">frontmatter</summary><pre>${esc(lines.slice(1,j).join("\n"))}</pre></details>`); i = j+1; } }
+  const listStack = [];
+  const closeLists = (toLevel=-1) => { while (listStack.length && listStack.length-1 > toLevel) { out.push(listStack.pop() === "ol" ? "</ol>" : "</ul>"); } };
+  while (i < lines.length) {
+    let l = lines[i];
+    if (/^```/.test(l)) { closeLists(); let buf=[]; i++; while (i<lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]); i++; out.push(`<pre><code>${esc(buf.join("\n"))}</code></pre>`); continue; }
+    if (/^\s*$/.test(l)) { closeLists(); i++; continue; }
+    let h = l.match(/^(#{1,6})\s+(.*)$/); if (h) { closeLists(); out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`); i++; continue; }
+    if (/^(-{3,}|\*{3,})\s*$/.test(l)) { closeLists(); out.push("<hr>"); i++; continue; }
+    if (/^\|/.test(l)) { closeLists(); let rows=[]; while (i<lines.length && /^\|/.test(lines[i])) rows.push(lines[i++]);
+      rows = rows.filter(r => !/^\|\s*:?-{2,}/.test(r)); const cells = r => r.replace(/^\||\|$/g,"").split("|").map(c=>inline(c.trim()));
+      out.push("<table>" + rows.map((r,k)=>`<tr>${cells(r).map(c=>k===0?`<th>${c}</th>`:`<td>${c}</td>`).join("")}</tr>`).join("") + "</table>"); continue; }
+    if (/^>/.test(l)) { closeLists(); let buf=[]; while (i<lines.length && /^>/.test(lines[i])) buf.push(lines[i++].replace(/^>\s?/,"")); out.push(`<blockquote>${md(buf.join("\n"))}</blockquote>`); continue; }
+    let li = l.match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/);
+    if (li) {
+      const level = Math.floor(li[1].replace(/\t/g,"  ").length/2); const type = /\d/.test(li[2]) ? "ol" : "ul";
+      while (listStack.length-1 > level) out.push(listStack.pop()==="ol"?"</ol>":"</ul>");
+      while (listStack.length-1 < level) { listStack.push(type); out.push(type==="ol"?"<ol>":"<ul>"); }
+      let text = li[3].replace(/^\[( |x)\]\s*/i, (m,c) => c.toLowerCase()==="x" ? "☑ " : "☐ ");
+      out.push(`<li>${inline(text)}</li>`); i++; continue;
+    }
+    closeLists(); let buf=[l]; i++; while (i<lines.length && lines[i].trim() && !/^(#{1,6}\s|```|\||>|\s*([-*+]|\d+\.)\s)/.test(lines[i])) buf.push(lines[i++]);
+    out.push(`<p>${inline(buf.join(" "))}</p>`);
+  }
+  closeLists(); return out.join("\n");
+}
+
+async function loadManifest(render=true) {
+  const r = await fetch("/api/manifest"); MANIFEST = await r.json();
+  if (render) renderNav();
+  if (CURRENT) { for (const st of MANIFEST.stages) for (const p of st.pieces) if (p.id === CURRENT.id) CURRENT = p; }
+}
+$("#search").addEventListener("input", renderNav);
+document.addEventListener("keydown", e => { if (BV.typing(e)) return; if (e.key === "/" && !EDITING) { e.preventDefault(); $("#search").focus(); } });
+loadManifest().catch(e => { $("#nav").innerHTML = `<div class="note">Could not load the manifest: ${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>

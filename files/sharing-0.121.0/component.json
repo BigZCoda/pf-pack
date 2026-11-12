@@ -1,0 +1,7 @@
+{
+  "component": "sharing",
+  "version": "0.121.0",
+  "releasedAt": "2026-11-12",
+  "installRoot": "skills/sharing",
+  "note": "Released with brain-viewer 0.121.0 by its release.py; the viewer requires it."
+}

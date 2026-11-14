@@ -1,0 +1,6 @@
+{
+  "_about": "Where the sharing service is. Both values are public by design: the address, and the publishable key that every copy of the viewer sends with a request. What protects a shared space is the sign-in and the rule that only its people read it. Never put a secret key or a password here. Empty values mean sharing through the service is not set up yet.",
+  "carrier": "supabase",
+  "url": "https://nbmqgvgjapjedpbcnias.supabase.co",
+  "key": "sb_publishable_CSjmOxFt6bbxAg89d2kGQQ_PpgxHDHF"
+}

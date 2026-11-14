@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>From Claude</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { flex: 1; position: relative; min-height: 0; overflow: hidden; display: flex; }
+  main { flex: 1; overflow: auto; padding: 26px 34px 90px; }
+  .sheet { max-width: 880px; margin: 0 auto; }
+  .lead { color: var(--ink-soft); margin: 0 0 16px; max-width: 78ch; }
+  .pager { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+  /* 0.66.0, the menu folds: Findings and Requests folded in as sections of this page; since 2026-10-28 they were the page;
+     since 0.105.0 what was sent to you is a page of its own (/sent), so Found overnight is this page */
+  section.fsec { padding: 12px 18px 14px; margin: 0 0 18px; }
+  section.fsec > h2 { margin: 0 0 4px; font-family: var(--font-display); font-size: 19px; font-weight: 400; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  section.fsec > h2 .meta { font-family: var(--font-ui); font-size: 12.5px; }
+  section.fsec .sdesc { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; max-width: 78ch; }
+  .fchips { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; align-items: center; }
+  .fchips .btn { padding: 2px 10px; font-size: 12px; }
+  .find { position: relative; padding: 9px 26px 9px 0; border-top: 1px solid var(--rule-soft); }
+  .find:first-child { border-top: 0; }
+  .find.marked { border-left: 2px solid var(--open); padding-left: 10px; }
+  .find .t { font-size: 14px; }
+  .find .m { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 3px; }
+  .find .m .btn { padding: 0 8px; font-size: 11.5px; }
+  details.notefold { margin-top: 4px; }
+  details.notefold > summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  @media (max-width: 900px) {
+    main { padding: 18px 16px 80px; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>From Claude</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="fromclaude"></nav>
+</header>
+<div class="stage">
+  <main id="main">
+    <div class="sheet">
+      <p class="lead" id="lead">Reading the ledgers…</p>
+      <section class="card fsec" id="findings" hidden>
+        <h2>Found overnight <span class="meta" id="findSum"></span></h2>
+        <p class="sdesc">Problems the overnight checks, the tidy-up passes and the handoffs filed on the projects. Nothing here asks you anything; they are worked through at the end-of-day rounds. The most repeated and the oldest come first.</p>
+        <div class="fchips" id="fchips"></div>
+        <div id="findBody"></div>
+      </section>
+    </div>
+  </main>
+  <aside class="drawer" id="drawer" hidden></aside>
+</div>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /from-claude (review.html): what the overnight checks found. 0.105.0: what others sent you moved to its own page,
+// /sent, in the menu as sent to you, so this page reads one thing.
+// 0.66.0 folded the Findings and Requests pages in as two sections of the rating page. On 2026-10-28, on the owner's
+// decision that day, the rating cards, their Rated fold and the To try batch left it, so the page is those two sections
+// and nothing else. The ratings already written stay on disk as the record; nothing here reads or writes them.
+// One read: GET /api/findings (Found overnight). The section is drawn only when it holds something; the lead says what it
+// holds or, plainly, that nothing is here right now.
+const { esc, lightbox } = BV;
+const $ = s => document.querySelector(s);
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const shortDay = d => { const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(String(d || "")); return m ? `${+m[1]}/${m[2]}` : String(d || ""); };
+
+// ---- the lead: what the page holds right now, in one sentence ----
+const READY = { find: false };
+function paintLead() {
+  if (!READY.find) return;
+  const D = FIND.data, f = D && D.counts ? D.counts.total || 0 : 0;
+  if (D && D.today) $("#crumb").textContent = `${D.today} · ${plural((D.ledgers || []).length, "ledger")}`;
+  $("#lead").textContent = !D ? "Could not read the ledgers, so what the overnight checks found is not shown."
+    : f ? `${plural(f, "problem")} the overnight checks found ${f === 1 ? "is" : "are"} open.`
+    : "Nothing right now: the overnight checks found nothing open.";
+}
+
+// ---- the read drawer (the same one /projects opens) ----
+async function openFile(path, frag) { return BV.drawer.open(path, frag); }   // the one shared drawer, viewer-common.js (0.54.1)
+
+document.addEventListener("click", e => {
+  if (e.target.closest("#closeDrawer")) { $("#drawer").hidden = true; return; }
+  const im = e.target.closest(".filelink[data-img]"); if (im) { lightbox(im.dataset.img); return; }
+  const w = e.target.closest("a.wikilink"); if (w) { e.preventDefault(); const t = w.dataset.wikilink.split("#")[0].trim(); if (t.endsWith(".canvas")) location.href = BV.forgeHref(t); else openFile(t, w.dataset.wikilink.split("#")[1]); return; }
+  const o = e.target.closest(".filelink[data-open]"); if (o) { openFile(o.dataset.open, o.dataset.frag); return; }
+});
+document.addEventListener("keydown", e => {
+  if (BV.typing(e)) return;
+  if (e.key === "Escape") $("#drawer").hidden = true;
+});
+
+// ---- Found overnight (0.66.0, the menu folds: the Findings page folded in) ----
+// Every OPEN ledger item carrying a source tag, from GET /api/findings, most repeated then oldest first. The chips
+// filter by what filed it, in words (BV.sourceWords), never the raw tag; a project or owner press on a row narrows to it.
+// Ten to a page. Read-only, as the page was: a finding is worked through at rounds on the ledger it lives on.
+const FIND = { data: null, at: 0, F: { source: "", project: "", owner: "" } };
+const FIND_PAGE = 10;
+(function readFindQuery() { const p = new URLSearchParams(location.search); for (const k of Object.keys(FIND.F)) FIND.F[k] = (p.get(k) || "").trim(); })();
+function findQueryWrite() {
+  const p = new URLSearchParams(location.search);
+  for (const k of Object.keys(FIND.F)) { if (FIND.F[k]) p.set(k, FIND.F[k]); else p.delete(k); }
+  const q = p.toString(); history.replaceState(null, "", location.pathname + (q ? "?" + q : "") + location.hash);
+}
+const whoName = o => { const w = String(o || "").replace(/^@/, ""); return w && w === String(BV.owner || "").replace(/^@/, "") ? "you" : w === "claude" ? "Claude" : w; };
+function findRow(r) {
+  const D = FIND.data, m = D.marks, loud = r.repeats >= m.loudRepeats, old = (r.age_days || 0) >= m.oldDays;
+  const meta = [`<span class="badge type" title="what filed it">${esc(BV.sourceWords(r.source) || "a check")}</span>`,
+    `<button type="button" class="btn" data-fproject="${esc(r.project)}" title="only this project's">${esc(r.projectName || r.project)}</button>`];
+  if (r.owner) meta.push(`<button type="button" class="btn" data-fowner="${esc(r.owner)}" title="only the ones for ${esc(whoName(r.owner))}">${esc(whoName(r.owner))}</button>`);
+  if (r.kind === "question") meta.push(`<span class="badge">a question</span>`);
+  if (r.due) meta.push(`<span class="badge ${D.today && r.due < D.today ? "overdue" : ""}">due ${esc(shortDay(r.due))}</span>`);
+  if (r.held) meta.push(`<span class="badge held">later</span>`);
+  if (r.age_days !== null && r.age_days !== undefined) meta.push(`<span title="open since ${esc(r.date)}">${plural(r.age_days, "day")} open</span>`);
+  if (r.repeats) meta.push(`<span class="${loud ? "badge open" : ""}" title="found again on later runs and noted on this same item">found ${plural(r.repeats + 1, "time")}</span>`);
+  for (const l of r.links || []) meta.push(BV.fileLink(l));
+  return `<div class="find${loud || old ? " marked" : ""}">${BV.idTag(r.id, r.file)}
+    <div class="t">${BV.ledgerText(r.text, r.project)}</div>
+    <div class="m">${meta.join("")}</div>
+    ${r.note ? `<details class="notefold"><summary>note</summary><div class="keep">${BV.ledgerText(r.note, r.project)}</div></details>` : ""}
+  </div>`;
+}
+function paintFindings() {
+  const D = FIND.data, sec = $("#findings");
+  READY.find = true; paintLead();
+  if (!D) { sec.hidden = true; return; }
+  const c = D.counts, by = c.bySource || {}, F = FIND.F;
+  sec.hidden = !c.total;
+  if (!c.total) return;
+  const names = Object.keys(by).sort((a, b) => by[b] - by[a] || a.localeCompare(b));
+  const chip = (key, label, n, on) => `<button type="button" class="btn${on ? " on" : ""}" data-fsource="${esc(key)}" title="${key ? "only what " + esc(label) + " filed" : "every one"}">${esc(label)} <span class="meta">${n}</span></button>`;
+  $("#fchips").innerHTML = [chip("", "all", c.total, !F.source)].concat(names.map(s => chip(s, BV.sourceWords(s) || s, by[s], F.source === s)))
+    .concat(F.project ? [`<button type="button" class="btn on" data-fclear="project" title="press to show every project">one project ✕</button>`] : [])
+    .concat(F.owner ? [`<button type="button" class="btn on" data-fclear="owner" title="press to show everyone's">${esc(whoName(F.owner))} only ✕</button>`] : []).join("");
+  const items = D.items || [], pages = Math.max(1, Math.ceil(items.length / FIND_PAGE));
+  FIND.at = Math.max(0, Math.min(FIND.at, pages - 1));
+  const shown = items.slice(FIND.at * FIND_PAGE, FIND.at * FIND_PAGE + FIND_PAGE);
+  $("#findSum").textContent = `${c.total} open${c.repeated ? `, ${c.repeated} found more than once` : ""}${items.length !== c.total ? ` · ${items.length} under this filter` : ""}`;
+  $("#findBody").innerHTML = (shown.map(findRow).join("") || `<p class="meta" style="margin:0">Nothing under this filter. Press <em>all</em>.</p>`)
+    + (pages > 1 ? `<div class="pager"><button type="button" class="btn" data-fpage="-1"${FIND.at ? "" : " disabled"}>earlier</button><span>page ${FIND.at + 1} of ${pages}</span><button type="button" class="btn" data-fpage="1"${FIND.at < pages - 1 ? "" : " disabled"}>later</button></div>` : "");
+  BV.glossary.scan($("#findings"));
+}
+async function loadFindings() {
+  const p = new URLSearchParams();
+  for (const k of Object.keys(FIND.F)) if (FIND.F[k]) p.set(k, FIND.F[k]);
+  try {
+    const r = await fetch("/api/findings" + (p.toString() ? "?" + p.toString() : ""));
+    const j = await r.json();
+    FIND.data = r.ok && !j.error ? j : null;
+  } catch (e) { FIND.data = null; }
+  paintFindings();
+}
+
+document.addEventListener("click", async e => {
+  const fs = e.target.closest("[data-fsource]"); if (fs) { FIND.F.source = FIND.F.source === fs.dataset.fsource ? "" : fs.dataset.fsource; FIND.at = 0; findQueryWrite(); await loadFindings(); return; }
+  const fp = e.target.closest("[data-fproject]"); if (fp) { FIND.F.project = FIND.F.project === fp.dataset.fproject ? "" : fp.dataset.fproject; FIND.at = 0; findQueryWrite(); await loadFindings(); return; }
+  const fo = e.target.closest("[data-fowner]"); if (fo) { FIND.F.owner = FIND.F.owner === fo.dataset.fowner ? "" : fo.dataset.fowner; FIND.at = 0; findQueryWrite(); await loadFindings(); return; }
+  const fc = e.target.closest("[data-fclear]"); if (fc) { FIND.F[fc.dataset.fclear] = ""; FIND.at = 0; findQueryWrite(); await loadFindings(); return; }
+  const fg = e.target.closest("[data-fpage]"); if (fg) { FIND.at += +fg.dataset.fpage; paintFindings(); const s = $("#findings"); if (s) s.scrollIntoView({ block: "start" }); return; }
+});
+// an old link to /findings lands here with #findings: the section is scrolled to once drawn
+const jumpHash = () => { const h = location.hash.replace(/^#/, ""); const el = h && document.getElementById(h); if (el && !el.hidden) { if (el.tagName === "DETAILS") el.open = true; el.scrollIntoView({ block: "start" }); } };
+loadFindings().then(jumpHash);
+
+BV.ledger.prime();   // one read of the ledgers so an item id in a finding reads as the item it names
+</script>
+</body>
+</html>

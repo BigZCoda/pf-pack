@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Starter brain</title>
+<link rel="stylesheet" href="/static/viewer-tokens.css">
+<link rel="icon" type="image/png" href="/static/sun-favicon.png">
+<style>
+  /* layout only; every color and font comes from viewer-tokens.css */
+  body { min-height: 100vh; }
+  main { padding: 22px 34px 70px; }
+  .sheet { max-width: 1020px; margin: 0 auto; }
+  section.card { padding: 14px 18px 16px; margin: 0 0 18px; }
+  section.card > h2 { margin: 0 0 10px; font-family: var(--font-display); font-size: 21px; font-weight: 400; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  section.card > h2 .meta { font-family: var(--font-ui); font-size: 12.5px; }
+  .lead { margin: 0 0 14px; font-size: 14px; color: var(--ink-soft); max-width: 80ch; }
+  .why { margin: 0; font-size: 15px; color: var(--ink); max-width: 80ch; line-height: 1.5; }
+  .note { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); max-width: 80ch; }
+
+  /* the flow: one numbered step a row, its files as chips under it */
+  ol.flow { list-style: none; margin: 0; padding: 0; counter-reset: st; }
+  ol.flow > li { counter-increment: st; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 2px 12px; padding: 12px 0; border-top: 1px solid var(--rule-soft); }
+  ol.flow > li:first-child { border-top: 0; padding-top: 2px; }
+  ol.flow > li::before { content: counter(st); font-family: var(--font-display); font-size: 20px; color: var(--accent); text-align: right; line-height: 1.2; }
+  .st-title { margin: 0; font-size: 15.5px; font-weight: 700; color: var(--ink); }
+  .st-title .who { font-weight: 400; font-size: 12px; color: var(--muted); margin-left: 6px; }
+  .st-when { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+  .st-what { margin: 4px 0 0; font-size: 14px; color: var(--ink-soft); max-width: 78ch; line-height: 1.45; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px 6px; margin: 7px 0 0; }
+  button.chip { font-family: var(--font-mono); font-size: 11.5px; padding: 2px 8px; border: 1px solid var(--rule); border-radius: 999px; background: none; color: var(--ink-soft); cursor: pointer; max-width: 100%; overflow-wrap: anywhere; text-align: left; }
+  button.chip:hover, button.chip:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+  button.chip .src { color: var(--muted); font-family: var(--font-ui); font-size: 10.5px; margin-left: 5px; }
+  span.chip.gone { font-family: var(--font-mono); font-size: 11.5px; padding: 2px 8px; border: 1px dashed var(--danger, #b3261e); border-radius: 999px; color: var(--danger, #b3261e); overflow-wrap: anywhere; }
+
+  /* the gaps: open first, each with what would close it */
+  ul.gaps { list-style: none; margin: 4px 0 0; padding: 0; }
+  ul.gaps > li { padding: 9px 0; border-top: 1px solid var(--rule-soft); }
+  ul.gaps > li:first-child { border-top: 0; }
+  .gap-title { margin: 0; font-size: 14.5px; color: var(--ink); font-weight: 700; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .tag { font-family: var(--font-ui); font-weight: 400; font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--rule); color: var(--muted); }
+  .tag.open { border-color: var(--accent); color: var(--accent); }
+  .gap-what { margin: 3px 0 0; font-size: 13.5px; color: var(--ink-soft); max-width: 78ch; }
+  .gap-need { margin: 5px 0 0; font-size: 12px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+  /* rows: a name, its version or count, one line on what it is */
+  ul.rows { list-style: none; margin: 0; padding: 0; }
+  ul.rows > li { padding: 8px 0; border-top: 1px solid var(--rule-soft); }
+  ul.rows > li:first-child { border-top: 0; padding-top: 2px; }
+  .row-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .row-name { font-size: 14.5px; color: var(--ink); font-weight: 700; overflow-wrap: anywhere; }
+  button.row-name { background: none; border: 0; padding: 0; cursor: pointer; font-family: inherit; text-align: left; }
+  button.row-name:hover, button.row-name:focus-visible { color: var(--accent); outline: none; }
+  .ver { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+  .ver.diff { color: var(--accent); }
+  .row-line { margin: 2px 0 0; font-size: 13.5px; color: var(--ink-soft); max-width: 80ch; overflow-wrap: anywhere; }
+  details.more { margin: 6px 0 0; }
+  details.more > summary { font-size: 12.5px; color: var(--muted); cursor: pointer; }
+  details.fold > summary { font-family: var(--font-display); font-size: 17px; cursor: pointer; margin: 12px 0 6px; color: var(--ink); }
+  details.fold > summary .meta { font-family: var(--font-ui); font-size: 12.5px; color: var(--muted); }
+  .gh { margin: 0 0 10px; font-size: 13.5px; color: var(--ink-soft); }
+  .gh b { color: var(--accent); }
+  .gh ul { margin: 4px 0 0 18px; padding: 0; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+  .cmd { font-family: var(--font-mono); font-size: 12.5px; background: var(--hover); padding: 2px 6px; border-radius: 4px; overflow-wrap: anywhere; }
+
+  /* the file panel: the file's own words, at the side on a wide screen, over the page on a phone */
+  #panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(640px, 52vw); background: var(--paper, var(--bg)); border-left: 1px solid var(--rule); box-shadow: -6px 0 24px rgba(0,0,0,.08); display: none; flex-direction: column; z-index: 50; }
+  #panel.on { display: flex; }
+  #panel header { display: flex; gap: 10px; align-items: baseline; padding: 12px 16px; border-bottom: 1px solid var(--rule-soft); flex-wrap: wrap; }
+  #panel header .p { font-family: var(--font-mono); font-size: 12px; color: var(--ink); overflow-wrap: anywhere; flex: 1 1 200px; }
+  #panel header a, #panel header button { font-size: 12.5px; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 0; text-decoration: none; }
+  #panel pre { margin: 0; padding: 12px 16px 40px; overflow: auto; flex: 1; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+  @media (max-width: 700px) {
+    main { padding: 14px 16px 60px; }
+    section.card { padding: 12px 12px 14px; }
+    ol.flow > li { grid-template-columns: 22px minmax(0, 1fr); gap: 2px 8px; }
+    #panel { width: 100vw; border-left: 0; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <img class="mark" src="/static/sun-mark.png" alt="" width="36" height="28">
+  <h1>Starter brain</h1>
+  <span class="sub" id="crumb"></span>
+  <span class="spacer"></span>
+  <nav class="panels" data-page="starter"></nav>
+</header>
+<main id="main">
+  <div class="sheet">
+    <p class="lead">What a brain built for a new person contains, and how its pieces work together. Every line is read from the files themselves each time this page opens: the shell, the kit on this computer, your commands and hooks. Press any file to read it.</p>
+    <p class="note" id="scanline">Reading the shell and the kit…</p>
+    <section class="card" id="whycard" hidden>
+      <h2>Why there is no start-session</h2>
+      <p class="why" id="why"></p>
+    </section>
+    <section class="card" id="flowcard" hidden>
+      <h2>How it works together <span class="meta" id="flowSum"></span></h2>
+      <p class="lead" id="flowIntro"></p>
+      <ol class="flow" id="flow"></ol>
+      <details class="fold" id="gapfold" open>
+        <summary>Where a starter brain falls short of yours <span class="meta" id="gapSum"></span></summary>
+        <ul class="gaps" id="gaps"></ul>
+      </details>
+      <p class="note" id="flowFoot"></p>
+    </section>
+    <section class="card" id="kitcard" hidden>
+      <h2>The kit <span class="meta" id="kitSum"></span></h2>
+      <div class="gh" id="gh"></div>
+      <ul class="rows" id="kit"></ul>
+    </section>
+    <section class="card" id="shellcard" hidden>
+      <h2>The shell <span class="meta" id="shellSum"></span></h2>
+      <ul class="rows" id="shellFiles"></ul>
+      <details class="fold" open>
+        <summary>Its folders <span class="meta" id="folderSum"></span></summary>
+        <ul class="rows" id="shellFolders"></ul>
+      </details>
+    </section>
+    <section class="card" id="outcard" hidden>
+      <h2>What stays in your brain only <span class="meta" id="outSum"></span></h2>
+      <details class="fold" open>
+        <summary>Your slash commands <span class="meta" id="cmdSum"></span></summary>
+        <ul class="rows" id="cmds"></ul>
+      </details>
+      <details class="fold">
+        <summary>Your hooks <span class="meta" id="hookSum"></span></summary>
+        <ul class="rows" id="hooks"></ul>
+      </details>
+      <details class="fold">
+        <summary>Skills in your brain the kit does not ship <span class="meta" id="skillSum"></span></summary>
+        <ul class="rows" id="skills"></ul>
+      </details>
+    </section>
+    <section class="card" id="buildcard" hidden>
+      <h2>How a starter brain is built</h2>
+      <ol class="flow" id="build"></ol>
+      <p class="note" id="buildFoot"></p>
+    </section>
+  </div>
+</main>
+<aside id="panel" aria-label="file">
+  <header><span class="p" id="panelPath"></span><a id="panelReader" href="#" hidden>open in the reader</a><button id="panelClose" type="button">close</button></header>
+  <pre id="panelText"></pre>
+</aside>
+<script src="/static/viewer-common.js"></script>
+<script>
+// /starter (0.122.0, 2026-11-12): what a starter brain contains and how it works together, from GET /api/starter
+// (skills/brain-viewer/part_starter.py, which prints the same in a terminal). The steps are written by hand in
+// skills/assemble-brain/starter-brain-flow.json; every file a step or a gap names is checked against the shell and the
+// kit on each read, so a file that is gone shows dashed and red. A file press reads it through GET /api/starter/file.
+// Nothing here writes.
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + "s")}`;
+const $ = id => document.getElementById(id);
+
+function chip(root, path, label, src) {
+  return `<button class="chip" type="button" data-root="${esc(root)}" data-path="${esc(path)}" title="read ${esc(path)}">${esc(label || path)}${src ? `<span class="src">${esc(src)}</span>` : ""}</button>`;
+}
+function fileChip(f) {
+  if (!f.ok) return `<span class="chip gone" title="not in the shell or the kit">${esc(f.path)} · missing</span>`;
+  if (f.where === "kit") return chip("kit", f.src, f.path, "kit");
+  if (f.where === "shell") return chip("shell", f.src, f.path, "shell");
+  return chip("brain", f.src, f.path, "your brain");
+}
+
+function paintFlow(fl) {
+  if (!fl || !fl.found) {
+    $("flowcard").hidden = false;
+    $("flowIntro").textContent = "The steps file could not be read: " + ((fl && fl.error) || "it is missing") + ".";
+    return;
+  }
+  $("flowcard").hidden = false;
+  $("flowIntro").textContent = fl.intro || "";
+  $("flowSum").textContent = plural(fl.steps.length, "step") + (fl.missing ? ` · ${plural(fl.missing, "file")} missing` : " · every file found");
+  $("flow").innerHTML = fl.steps.map(s => `<li><div>
+      <p class="st-title">${esc(s.title)}${s.owner ? `<span class="who">${esc(s.owner)}</span>` : ""}</p>
+      ${s.when ? `<p class="st-when">${esc(s.when)}</p>` : ""}
+      <p class="st-what">${esc(s.what)}</p>
+      <div class="chips">${s.files.map(fileChip).join("")}</div>
+    </div></li>`).join("");
+  const gaps = (fl.gaps || []).slice().sort((a, b) => (a.closed === b.closed ? 0 : a.closed ? 1 : -1));
+  $("gapSum").textContent = gaps.length ? `${fl.open} open of ${gaps.length}` : "";
+  $("gaps").innerHTML = gaps.map(g => `<li>
+      <p class="gap-title">${esc(g.title)} <span class="tag ${g.closed ? "" : "open"}">${g.closed ? "closed" : "open"}</span></p>
+      <p class="gap-what">${esc(g.what)}</p>
+      ${g.detail ? `<p class="gap-need">${esc(g.detail)}</p>` : ""}
+      ${(g.needs || []).length ? `<p class="gap-need">closes when the kit ships ${g.needs.map(n => n.ok ? fileChip(n) : `<span class="chip gone">${esc(n.path)}</span>`).join(" ")}</p>`
+        : (!g.detail ? `<p class="gap-need">no file closes this one; it is written by hand</p>` : "")}
+    </li>`).join("");
+  $("flowFoot").innerHTML = `The steps and gaps are written in ${chip("brain", fl.path, fl.path)}${fl.updated ? `, last edited ${esc(fl.updated)}` : ""}; the files they name are checked every time this page opens.`;
+}
+
+function paintKit(k) {
+  if (!k || !k.found) return;
+  $("kitcard").hidden = false;
+  const comps = k.components || [];
+  $("kitSum").textContent = `${plural(comps.length, "component")} · list dated ${k.updatedAt || "?"}`;
+  const g = k.github || {};
+  $("gh").innerHTML = g.ahead == null ? "Whether this kit is on GitHub could not be read."
+    : g.ahead === 0 ? `The kit on this computer matches GitHub (${esc(g.repo)}), which is where every brain's update check reads it.`
+    : `<b>${plural(g.ahead, "release commit")} on this computer ${g.ahead === 1 ? "is" : "are"} not on GitHub yet.</b> A brain built here gets them; a brain checking for updates reads GitHub and does not see them until the kit is pushed.<ul>${(g.pending || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul>`;
+  $("kit").innerHTML = comps.map(c => {
+    const diff = c.pcVersion && c.pcVersion !== c.version;
+    const spec = (c.files || []).find(f => f.dest === c.spec) || (c.files || [])[0];
+    return `<li>
+      <div class="row-head">${spec ? `<button class="row-name" type="button" data-root="kit" data-path="${esc(spec.src)}">${esc(c.name)}</button>` : `<span class="row-name">${esc(c.name)}</span>`}
+        <span class="ver">${esc(c.version)}</span>${diff ? `<span class="ver diff">your PC runs ${esc(c.pcVersion)}</span>` : ""}</div>
+      ${c.blurb ? `<p class="row-line">${esc(c.blurb)}</p>` : ""}
+      <details class="more"><summary>${plural(c.fileCount, "file")} it installs</summary>
+        <div class="chips">${(c.files || []).map(f => chip("kit", f.src, f.dest)).join("")}</div></details>
+    </li>`;
+  }).join("");
+}
+
+function paintShell(s) {
+  if (!s || !s.found) return;
+  $("shellcard").hidden = false;
+  $("shellSum").textContent = `${s.version || ""} · ${plural((s.files || []).length, "file")} at the top, ${plural((s.folders || []).length, "folder")}`;
+  $("shellFiles").innerHTML = (s.files || []).map(f => `<li><div class="row-head"><button class="row-name" type="button" data-root="shell" data-path="${esc(f.path)}">${esc(f.name)}</button></div>${f.line ? `<p class="row-line">${esc(f.line)}</p>` : ""}</li>`).join("");
+  $("folderSum").textContent = plural((s.folders || []).length, "folder");
+  $("shellFolders").innerHTML = (s.folders || []).map(f => `<li>
+      <div class="row-head">${f.path ? `<button class="row-name" type="button" data-root="shell" data-path="${esc(f.path)}">${esc(f.name)}/</button>` : `<span class="row-name">${esc(f.name)}/</span>`}<span class="ver">${plural(f.files, "file")}</span></div>
+      ${f.line ? `<p class="row-line">${esc(f.line)}</p>` : ""}
+      ${(f.inner || []).length ? `<details class="more"><summary>what is in it</summary><div class="chips">${f.inner.map(p => chip("shell", p, p)).join("")}</div></details>` : ""}
+    </li>`).join("");
+}
+
+function paintOut(o) {
+  if (!o) return;
+  $("outcard").hidden = false;
+  const c = o.commands || [], h = o.hooks || [], s = o.skills || [];
+  $("outSum").textContent = `${plural(c.length, "command")} · ${plural(h.length, "hook")} · ${plural(s.length, "skill")}`;
+  $("cmdSum").textContent = `${c.length} in ${o.commandsPath || "your user folder"}`;
+  $("cmds").innerHTML = c.map(x => `<li><div class="row-head"><button class="row-name" type="button" data-root="commands" data-path="${esc(x.path)}">${esc(x.name)}</button></div>${x.line ? `<p class="row-line">${esc(x.line)}</p>` : ""}</li>`).join("");
+  $("hookSum").textContent = `${h.length}, registered in this brain's .claude/settings.local.json`;
+  $("hooks").innerHTML = h.map(x => `<li><div class="row-head">${x.script ? `<button class="row-name" type="button" data-root="hooks" data-path="${esc(x.script)}">${esc(x.script)}</button>` : `<span class="row-name">${esc(x.event)}</span>`}<span class="ver">${esc(x.event)}${x.matcher ? " · " + esc(x.matcher) : ""}</span></div><p class="row-line"><span class="cmd">${esc(x.command)}</span></p></li>`).join("");
+  $("skillSum").textContent = String(s.length);
+  $("skills").innerHTML = s.map(x => `<li><div class="row-head">${x.path ? `<button class="row-name" type="button" data-root="brain" data-path="${esc(x.path)}">${esc(x.name)}</button>` : `<span class="row-name">${esc(x.name)}</span>`}</div>${x.line ? `<p class="row-line">${esc(x.line)}</p>` : ""}</li>`).join("");
+}
+
+function paintBuild(a) {
+  if (!a) return;
+  $("buildcard").hidden = false;
+  $("build").innerHTML = (a.steps || []).map(s => `<li><div><p class="st-what">${esc(s)}</p></div></li>`).join("");
+  $("buildFoot").innerHTML = `From ${chip("brain", a.path, a.path)}; it skips ${(a.skips || []).map(esc).join(", ")}. To build one: <span class="cmd">${esc(a.command)}</span>`;
+}
+
+async function openFile(root, path) {
+  $("panel").classList.add("on");
+  $("panelPath").textContent = path;
+  $("panelText").textContent = "Reading…";
+  const rd = $("panelReader");
+  rd.hidden = root !== "brain";
+  if (root === "brain") rd.href = "/reader?path=" + encodeURIComponent(path);
+  try {
+    const r = await fetch(`/api/starter/file?root=${encodeURIComponent(root)}&path=${encodeURIComponent(path)}`);
+    const d = await r.json();
+    $("panelText").textContent = r.ok ? d.text + (d.truncated ? "\n\n… the rest of this file is not shown" : "") : (d.error || "could not read it");
+  } catch (e) { $("panelText").textContent = "could not read it: " + e; }
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-root][data-path]");
+  if (b) { e.preventDefault(); openFile(b.dataset.root, b.dataset.path); }
+});
+$("panelClose").addEventListener("click", () => $("panel").classList.remove("on"));
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("panel").classList.remove("on"); });
+
+(async () => {
+  try {
+    const r = await fetch("/api/starter");
+    const d = await r.json();
+    if (!r.ok || !d.available) { $("scanline").textContent = (d && (d.why || d.error)) || "Nothing to show on this computer."; return; }
+    $("scanline").textContent = "Read just now from the files.";
+    $("whycard").hidden = false;
+    $("why").textContent = d.why;
+    paintFlow(d.flow); paintKit(d.kit); paintShell(d.shell); paintOut(d.notShipped); paintBuild(d.assembler);
+  } catch (e) { $("scanline").textContent = "Could not read the starter brain: " + e; }
+})();
+</script>
+</body>
+</html>

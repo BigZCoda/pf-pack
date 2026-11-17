@@ -882,7 +882,7 @@
         {
           "src": "files/brain-survey-1.0.0/brain-survey-skill.md",
           "dest": "skills/brain-survey/brain-survey-skill.md",
-          "sha256": "e52acb4f284690fff1736c191f7f5a3835b8b51a275f3cce994e6fb6074804f2"
+          "sha256": "1c6ff415916bce15dd9451a1c01c689800c36545d7c67b73521dc92fba7a5150"
         },
         {
           "src": "files/brain-survey-1.0.0/component.json",
@@ -892,7 +892,7 @@
         {
           "src": "files/brain-survey-1.0.0/readme.md",
           "dest": "skills/brain-survey/readme.md",
-          "sha256": "7e3599a623ab5dd9a34e2806061c02b4edb208f8e66faf41db38eca3b7ca9e70"
+          "sha256": "c0040392605c5b75ee46bcbb937e4727fb3ebd857bc5ecc96676e5f320ba86d5"
         },
         {
           "src": "files/brain-survey-1.0.0/survey.py",

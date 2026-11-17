@@ -7,7 +7,7 @@ description: >-
 
 # brain-survey: survey first, then ingest by type
 
-> **Version:** 1.0.0 (2026-09-28) | **Built for:** Owen Koenigs's brain, the first brain seeded from a person's own year of files; written to work for anyone after him.
+> **Version:** 1.0.0 (2026-09-28) | **Built for:** the first brain seeded from a person's own year of files; written to work for any brain after it.
 > **Runs in:** the person's own brain, on their own machine, with their own Claude Code. Nothing in it calls an app or needs a key.
 
 ## Why two stages
